@@ -1,12 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/quran.dart';
 import '../services/app_state.dart';
-import '../services/quran_audio_download_service.dart';
 import '../services/quran_audio_player.dart';
 import '../services/quran_repository.dart';
 import '../utils/colors.dart';
@@ -23,32 +21,21 @@ class QuranScreen extends StatefulWidget {
 
 class _QuranScreenState extends State<QuranScreen> {
   late final QuranRepository _repository;
-  late final QuranAudioDownloadService _audioDownloadService;
   late Future<List<QuranChapterSummary>> _chaptersFuture;
   final _searchController = TextEditingController();
   String _query = '';
-  bool _offlineReady = false;
-  bool _isCachingOffline = false;
-  int _cachedChapters = 0;
-  int _totalChaptersToCache = 114;
-  bool _isCachingAudioOffline = false;
-  int _cachedAudioChapters = 0;
-  int _totalAudioChaptersToCache = 114;
 
   @override
   void initState() {
     super.initState();
     _repository = QuranRepository();
-    _audioDownloadService = QuranAudioDownloadService();
     _chaptersFuture = _repository.fetchChapters();
-    unawaited(_loadOfflineStatus());
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     _repository.dispose();
-    _audioDownloadService.dispose();
     super.dispose();
   }
 
@@ -56,105 +43,6 @@ class _QuranScreenState extends State<QuranScreen> {
     final future = _repository.fetchChapters(forceRefresh: true);
     setState(() => _chaptersFuture = future);
     await future;
-  }
-
-  Future<void> _loadOfflineStatus() async {
-    final ready = await _repository.isOfflineComplete();
-    if (!mounted) return;
-    setState(() => _offlineReady = ready);
-  }
-
-  Future<void> _cacheOffline(List<QuranChapterSummary> chapters) async {
-    if (_isCachingOffline) return;
-    setState(() {
-      _isCachingOffline = true;
-      _cachedChapters = 0;
-      _totalChaptersToCache = chapters.length;
-    });
-    try {
-      await _repository.cacheAllChapters(
-        chapters,
-        onProgress: (completed, total) {
-          if (!mounted) return;
-          setState(() {
-            _cachedChapters = completed;
-            _totalChaptersToCache = total;
-          });
-        },
-      );
-      if (!mounted) return;
-      setState(() => _offlineReady = true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Коран сохранён для офлайн-чтения.'),
-          backgroundColor: AppColors.navy,
-        ),
-      );
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Не удалось скачать всё. Проверь интернет и повтори.'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isCachingOffline = false);
-    }
-  }
-
-  Future<void> _cacheOfflineAudio(List<QuranChapterSummary> chapters) async {
-    if (_isCachingAudioOffline) return;
-    setState(() {
-      _isCachingAudioOffline = true;
-      _cachedAudioChapters = 0;
-      _totalAudioChaptersToCache = chapters.length;
-    });
-    try {
-      for (final chapter in chapters) {
-        final existing = await _audioDownloadService.localPathFor(
-          chapter.number,
-        );
-        if (existing == null) {
-          await _audioDownloadService.downloadChapterAudio(
-            chapterNumber: chapter.number,
-            url: _repository.fullChapterAudioUrl(chapter.number),
-          );
-        }
-        if (!mounted) return;
-        await context.read<AppState>().markAudioChapterDownloaded(
-              chapter.number,
-            );
-        if (!mounted) return;
-        setState(() => _cachedAudioChapters++);
-      }
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Полное аудио Корана сохранено офлайн.'),
-          backgroundColor: AppColors.navy,
-        ),
-      );
-    } on UnsupportedError catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.message ?? 'Офлайн-аудио недоступно в браузере.'),
-          backgroundColor: AppColors.navy,
-        ),
-      );
-    } catch (error) {
-      debugPrint('Quran full audio cache failed: $error');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Не удалось скачать всё аудио. Повтори позже.'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isCachingAudioOffline = false);
-    }
   }
 
   @override
@@ -224,15 +112,6 @@ class _QuranScreenState extends State<QuranScreen> {
                   return _QuranHeader(
                     controller: _searchController,
                     onChanged: (value) => setState(() => _query = value),
-                    offlineReady: _offlineReady,
-                    isCachingOffline: _isCachingOffline,
-                    cachedChapters: _cachedChapters,
-                    totalChaptersToCache: _totalChaptersToCache,
-                    isCachingAudioOffline: _isCachingAudioOffline,
-                    cachedAudioChapters: _cachedAudioChapters,
-                    totalAudioChaptersToCache: _totalAudioChaptersToCache,
-                    onCacheOffline: () => _cacheOffline(chapters),
-                    onCacheOfflineAudio: () => _cacheOfflineAudio(chapters),
                   );
                 }
                 if (index == filtered.length + 1) {
@@ -262,28 +141,10 @@ class _QuranScreenState extends State<QuranScreen> {
 class _QuranHeader extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
-  final bool offlineReady;
-  final bool isCachingOffline;
-  final int cachedChapters;
-  final int totalChaptersToCache;
-  final bool isCachingAudioOffline;
-  final int cachedAudioChapters;
-  final int totalAudioChaptersToCache;
-  final VoidCallback onCacheOffline;
-  final VoidCallback onCacheOfflineAudio;
 
   const _QuranHeader({
     required this.controller,
     required this.onChanged,
-    required this.offlineReady,
-    required this.isCachingOffline,
-    required this.cachedChapters,
-    required this.totalChaptersToCache,
-    required this.isCachingAudioOffline,
-    required this.cachedAudioChapters,
-    required this.totalAudioChaptersToCache,
-    required this.onCacheOffline,
-    required this.onCacheOfflineAudio,
   });
 
   @override
@@ -335,21 +196,6 @@ class _QuranHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
-        _OfflineQuranCard(
-          offlineReady: offlineReady,
-          isCachingOffline: isCachingOffline,
-          cachedChapters: cachedChapters,
-          totalChaptersToCache: totalChaptersToCache,
-          onCacheOffline: onCacheOffline,
-        ),
-        const SizedBox(height: 12),
-        _OfflineAudioCard(
-          isCachingAudioOffline: isCachingAudioOffline,
-          cachedAudioChapters: cachedAudioChapters,
-          totalAudioChaptersToCache: totalAudioChaptersToCache,
-          onCacheOfflineAudio: onCacheOfflineAudio,
-        ),
-        const SizedBox(height: 12),
         TextField(
           controller: controller,
           onChanged: onChanged,
@@ -381,223 +227,6 @@ class _QuranHeader extends StatelessWidget {
         ),
         const SizedBox(height: 12),
       ],
-    );
-  }
-}
-
-class _OfflineQuranCard extends StatelessWidget {
-  final bool offlineReady;
-  final bool isCachingOffline;
-  final int cachedChapters;
-  final int totalChaptersToCache;
-  final VoidCallback onCacheOffline;
-
-  const _OfflineQuranCard({
-    required this.offlineReady,
-    required this.isCachingOffline,
-    required this.cachedChapters,
-    required this.totalChaptersToCache,
-    required this.onCacheOffline,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = totalChaptersToCache == 0
-        ? 0.0
-        : (cachedChapters / totalChaptersToCache).clamp(0.0, 1.0);
-    final title = offlineReady
-        ? 'Коран доступен офлайн'
-        : isCachingOffline
-            ? 'Скачиваю Коран'
-            : 'Скачать Коран офлайн';
-    final subtitle = offlineReady
-        ? 'Все 114 сур сохранены на устройстве для чтения без интернета.'
-        : isCachingOffline
-            ? '$cachedChapters из $totalChaptersToCache сур'
-            : 'Сохранит арабский текст, перевод смыслов и транслитерацию.';
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: const BoxDecoration(
-              color: AppColors.skyLight,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              offlineReady
-                  ? Icons.offline_pin_rounded
-                  : Icons.download_for_offline_rounded,
-              color: AppColors.navy,
-              size: 26,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textDark,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 12,
-                    color: AppColors.textGrey,
-                    height: 1.25,
-                  ),
-                ),
-                if (isCachingOffline) ...[
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(99),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      minHeight: 7,
-                      backgroundColor: AppColors.backgroundGrey,
-                      color: AppColors.sky,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          IconButton(
-            tooltip: offlineReady ? 'Уже сохранено' : 'Скачать офлайн',
-            onPressed:
-                offlineReady || isCachingOffline ? null : onCacheOffline,
-            icon: isCachingOffline
-                ? const SizedBox.square(
-                    dimension: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2.2),
-                  )
-                : Icon(
-                    offlineReady
-                        ? Icons.check_circle_rounded
-                        : Icons.download_rounded,
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _OfflineAudioCard extends StatelessWidget {
-  final bool isCachingAudioOffline;
-  final int cachedAudioChapters;
-  final int totalAudioChaptersToCache;
-  final VoidCallback onCacheOfflineAudio;
-
-  const _OfflineAudioCard({
-    required this.isCachingAudioOffline,
-    required this.cachedAudioChapters,
-    required this.totalAudioChaptersToCache,
-    required this.onCacheOfflineAudio,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = totalAudioChaptersToCache == 0
-        ? 0.0
-        : (cachedAudioChapters / totalAudioChaptersToCache).clamp(0.0, 1.0);
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: const BoxDecoration(
-              color: AppColors.skyLight,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.library_music_rounded,
-              color: AppColors.navy,
-              size: 25,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isCachingAudioOffline
-                      ? 'Скачиваю аудио Корана'
-                      : 'Скачать аудио всех сур',
-                  style: const TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textDark,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  isCachingAudioOffline
-                      ? '$cachedAudioChapters из $totalAudioChaptersToCache сур'
-                      : 'Большая загрузка: каждая сура сохраняется цельным '
-                          'mp3 без пауз между аятами.',
-                  style: const TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 12,
-                    color: AppColors.textGrey,
-                    height: 1.25,
-                  ),
-                ),
-                if (isCachingAudioOffline) ...[
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(99),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      minHeight: 7,
-                      backgroundColor: AppColors.backgroundGrey,
-                      color: AppColors.sky,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          IconButton(
-            tooltip: 'Скачать аудио всех сур',
-            onPressed: isCachingAudioOffline ? null : onCacheOfflineAudio,
-            icon: isCachingAudioOffline
-                ? const SizedBox.square(
-                    dimension: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2.2),
-                  )
-                : const Icon(Icons.download_rounded),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -709,16 +338,11 @@ class QuranChapterScreen extends StatefulWidget {
 class _QuranChapterScreenState extends State<QuranChapterScreen> {
   late Future<QuranChapter> _chapterFuture;
   late final QuranAudioPlayer _audioPlayer;
-  late final QuranAudioDownloadService _audioDownloadService;
   StreamSubscription<QuranAudioPlaybackState>? _stateSubscription;
   bool _isPlaying = false;
   int? _activeVerse;
   int? _loadingVerse;
   bool _isChapterLoading = false;
-  bool _isAudioDownloading = false;
-  int _audioDownloadReceived = 0;
-  int? _audioDownloadTotal;
-  String? _localChapterAudioPath;
   _QuranPlaybackMode? _playbackMode;
   List<QuranVerse> _chapterQueue = const [];
   int _chapterQueueIndex = 0;
@@ -729,8 +353,6 @@ class _QuranChapterScreenState extends State<QuranChapterScreen> {
     super.initState();
     _chapterFuture = widget.repository.fetchChapter(widget.chapter);
     _audioPlayer = QuranAudioPlayer();
-    _audioDownloadService = QuranAudioDownloadService();
-    unawaited(_loadLocalChapterAudio());
     _stateSubscription = _audioPlayer.playbackStateStream.listen((state) {
       if (!mounted) return;
       if (state.completed &&
@@ -755,15 +377,7 @@ class _QuranChapterScreenState extends State<QuranChapterScreen> {
   void dispose() {
     _stateSubscription?.cancel();
     _audioPlayer.dispose();
-    _audioDownloadService.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadLocalChapterAudio() async {
-    final path =
-        await _audioDownloadService.localPathFor(widget.chapter.number);
-    if (!mounted) return;
-    setState(() => _localChapterAudioPath = path);
   }
 
   Future<void> _toggleAudio(QuranVerse verse) async {
@@ -929,74 +543,14 @@ class _QuranChapterScreenState extends State<QuranChapterScreen> {
   }
 
   Future<void> _playFullChapter(QuranChapter chapter) async {
-    final localPath = _localChapterAudioPath ??
-        await _audioDownloadService.localPathFor(chapter.summary.number);
-    if (localPath != null) {
-      await _audioPlayer.playFile(localPath);
-    } else {
-      await _audioPlayer.playUrl(chapter.fullAudioUrl);
-    }
+    await _audioPlayer.playUrl(chapter.fullAudioUrl);
     if (!mounted) return;
     setState(() {
-      _localChapterAudioPath = localPath;
       _activeVerse = null;
       _loadingVerse = null;
       _isChapterLoading = false;
       _chapterUsesVerseQueue = false;
     });
-  }
-
-  Future<void> _downloadChapterAudio(QuranChapter chapter) async {
-    if (_isAudioDownloading) return;
-    setState(() {
-      _isAudioDownloading = true;
-      _audioDownloadReceived = 0;
-      _audioDownloadTotal = null;
-    });
-    try {
-      final path = await _audioDownloadService.downloadChapterAudio(
-        chapterNumber: chapter.summary.number,
-        url: chapter.fullAudioUrl,
-        onProgress: (received, total) {
-          if (!mounted) return;
-          setState(() {
-            _audioDownloadReceived = received;
-            _audioDownloadTotal = total;
-          });
-        },
-      );
-      if (!mounted) return;
-      setState(() => _localChapterAudioPath = path);
-      await context
-          .read<AppState>()
-          .markAudioChapterDownloaded(chapter.summary.number);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Аудио суры сохранено офлайн.'),
-          backgroundColor: AppColors.navy,
-        ),
-      );
-    } on UnsupportedError catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.message ?? 'Офлайн-аудио недоступно в браузере.'),
-          backgroundColor: AppColors.navy,
-        ),
-      );
-    } catch (error) {
-      debugPrint('Quran audio download failed: $error');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Не удалось скачать аудио. Проверь интернет.'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isAudioDownloading = false);
-    }
   }
 
   void _clearAudioState() {
@@ -1083,11 +637,6 @@ class _QuranChapterScreenState extends State<QuranChapterScreen> {
                       : null,
                   onPlay: () => _toggleChapterAudio(chapter),
                   onOpenText: () => _showFullChapterText(chapter),
-                  isDownloaded: _localChapterAudioPath != null,
-                  isDownloading: _isAudioDownloading,
-                  downloadReceived: _audioDownloadReceived,
-                  downloadTotal: _audioDownloadTotal,
-                  onDownload: () => _downloadChapterAudio(chapter),
                 );
               }
               if (index == chapter.verses.length + 2) {
@@ -1156,11 +705,6 @@ class _ChapterAudioBar extends StatelessWidget {
   final int? activeVerse;
   final VoidCallback onPlay;
   final VoidCallback onOpenText;
-  final bool isDownloaded;
-  final bool isDownloading;
-  final int downloadReceived;
-  final int? downloadTotal;
-  final VoidCallback onDownload;
 
   const _ChapterAudioBar({
     required this.chapter,
@@ -1169,11 +713,6 @@ class _ChapterAudioBar extends StatelessWidget {
     required this.activeVerse,
     required this.onPlay,
     required this.onOpenText,
-    required this.isDownloaded,
-    required this.isDownloading,
-    required this.downloadReceived,
-    required this.downloadTotal,
-    required this.onDownload,
   });
 
   @override
@@ -1183,14 +722,8 @@ class _ChapterAudioBar extends StatelessWidget {
         : activeVerse == null
             ? (isPlaying
                 ? 'Цельное аудио без пауз'
-                : isDownloaded
-                    ? 'Готово офлайн без пауз'
-                    : 'Слушать с начала')
+                : 'Слушать с начала')
             : 'Аят $activeVerse из ${chapter.summary.ayahCount}';
-    final total = downloadTotal;
-    final downloadProgress = total == null || total == 0
-        ? null
-        : (downloadReceived / total).clamp(0.0, 1.0);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -1281,47 +814,6 @@ class _ChapterAudioBar extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: isDownloaded || isDownloading ? null : onDownload,
-            icon: isDownloading
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Icon(
-                    isDownloaded
-                        ? Icons.offline_pin_rounded
-                        : Icons.download_for_offline_rounded,
-                    size: 18,
-                  ),
-            label: Text(
-              isDownloaded
-                  ? 'Аудио доступно офлайн'
-                  : isDownloading
-                      ? 'Скачиваю аудио'
-                      : 'Скачать аудио суры',
-            ),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.navy,
-              side: const BorderSide(color: AppColors.border),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-          if (isDownloading) ...[
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(99),
-              child: LinearProgressIndicator(
-                value: downloadProgress,
-                minHeight: 7,
-                backgroundColor: AppColors.backgroundGrey,
-                color: AppColors.sky,
-              ),
-            ),
-          ],
         ],
       ),
     );

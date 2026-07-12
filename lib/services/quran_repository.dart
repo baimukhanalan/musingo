@@ -21,7 +21,6 @@ class QuranRepository {
   static const _chaptersCacheKey = 'quran_chapters_v1';
   static const _chapterCachePrefix = 'quran_chapter_v1_';
   static const _chapterCacheLruKey = 'quran_chapter_lru_v1';
-  static const _offlineCompletedKey = 'quran_offline_complete_v1';
   static const _fullChapterAudioBaseUrl = 'https://server8.mp3quran.net/afs';
   static const _maxCachedChapters = 114;
 
@@ -88,31 +87,6 @@ class QuranRepository {
         'Сура не загрузилась. Проверьте интернет и повторите.',
       );
     }
-  }
-
-  Future<void> cacheAllChapters(
-    List<QuranChapterSummary> chapters, {
-    void Function(int completed, int total)? onProgress,
-  }) async {
-    final preferences = await SharedPreferences.getInstance();
-    var completed = 0;
-    for (final summary in chapters) {
-      await fetchChapter(summary);
-      completed++;
-      onProgress?.call(completed, chapters.length);
-    }
-    await preferences.setBool(_offlineCompletedKey, true);
-  }
-
-  Future<bool> isOfflineComplete() async {
-    final preferences = await SharedPreferences.getInstance();
-    if (preferences.getBool(_offlineCompletedKey) != true) return false;
-    for (var chapter = 1; chapter <= 114; chapter++) {
-      if (!preferences.containsKey('$_chapterCachePrefix$chapter')) {
-        return false;
-      }
-    }
-    return true;
   }
 
   Future<String> _get(String path) async {

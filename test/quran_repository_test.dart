@@ -62,19 +62,6 @@ void main() {
     offline.dispose();
   });
 
-  test('offline completion requires all chapter caches', () async {
-    final online = QuranRepository(
-      client: MockClient(_successfulApi),
-      canonicalArabic: Future.value({
-        1: ['بِسْمِ ٱللَّهِ']
-      }),
-    );
-    final chapters = await online.fetchChapters();
-    await online.cacheAllChapters(chapters.take(1).toList());
-
-    expect(await online.isOfflineComplete(), isFalse);
-    online.dispose();
-  });
 }
 
 Future<http.Response> _successfulApi(http.Request request) async {

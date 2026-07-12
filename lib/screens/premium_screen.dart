@@ -9,7 +9,7 @@ class PremiumScreen extends StatelessWidget {
 
   static const _plannedFeatures = [
     (Icons.favorite_rounded, 'Дополнительные способы восстановить жизни'),
-    (Icons.download_for_offline_rounded, 'Офлайн-доступ к выбранным урокам'),
+    (Icons.mic_rounded, 'Расширенная проверка произношения'),
     (Icons.insights_rounded, 'Расширенная статистика обучения'),
     (Icons.auto_awesome_rounded, 'Новые тематические курсы'),
   ];

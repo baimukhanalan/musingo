@@ -20,7 +20,6 @@ class UserModel {
   final int speechAttempts;
   final int rewardChestsOpened;
   final List<String> rewardHistory;
-  final List<int> downloadedAudioChapters;
 
   const UserModel({
     required this.id,
@@ -44,7 +43,6 @@ class UserModel {
     this.speechAttempts = 0,
     this.rewardChestsOpened = 0,
     this.rewardHistory = const [],
-    this.downloadedAudioChapters = const [],
   });
 
   int get xpForNextLevel => (level * 500) - xp;
@@ -71,7 +69,6 @@ class UserModel {
     int? speechAttempts,
     int? rewardChestsOpened,
     List<String>? rewardHistory,
-    List<int>? downloadedAudioChapters,
   }) {
     return UserModel(
       id: id,
@@ -95,8 +92,6 @@ class UserModel {
       speechAttempts: speechAttempts ?? this.speechAttempts,
       rewardChestsOpened: rewardChestsOpened ?? this.rewardChestsOpened,
       rewardHistory: rewardHistory ?? this.rewardHistory,
-      downloadedAudioChapters:
-          downloadedAudioChapters ?? this.downloadedAudioChapters,
     );
   }
 
@@ -122,7 +117,6 @@ class UserModel {
         'speechAttempts': speechAttempts,
         'rewardChestsOpened': rewardChestsOpened,
         'rewardHistory': rewardHistory,
-        'downloadedAudioChapters': downloadedAudioChapters,
       };
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
@@ -149,7 +143,6 @@ class UserModel {
         speechAttempts: json['speechAttempts'] ?? 0,
         rewardChestsOpened: json['rewardChestsOpened'] ?? 0,
         rewardHistory: _stringList(json['rewardHistory']),
-        downloadedAudioChapters: _intList(json['downloadedAudioChapters']),
       );
 
   static UserModel guest() => const UserModel(
@@ -166,15 +159,5 @@ class UserModel {
 
 List<String> _stringList(Object? value) {
   if (value is List) return value.whereType<String>().toList(growable: false);
-  return const [];
-}
-
-List<int> _intList(Object? value) {
-  if (value is List) {
-    return value
-        .map((item) => item is num ? item.toInt() : int.tryParse('$item'))
-        .whereType<int>()
-        .toList(growable: false);
-  }
   return const [];
 }

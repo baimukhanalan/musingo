@@ -19,7 +19,6 @@ onRecordAfterCreateSuccess((e) => {
   progress.set("speechAttempts", 0)
   progress.set("rewardChestsOpened", 0)
   progress.set("rewardHistory", [])
-  progress.set("downloadedAudioChapters", [])
   progress.set("lastStudyDay", "")
   progress.set("completedLessons", [])
   e.app.save(progress)
@@ -68,12 +67,23 @@ routerAdd("POST", "/api/speech/evaluate", (e) => {
   const progressLib = require(`${__hooks}/progress.js`)
   const body = e.requestInfo().body || {}
   const target = String(body.target || "")
+  const phoneticTarget = String(body.phoneticTarget || "")
   const transcript = String(body.transcript || "")
   const passScore = Math.max(0, Math.min(100, Number(body.passScore || 60)))
   if (!target) {
     throw new BadRequestError("Speech target is required")
   }
-  return e.json(200, progressLib.evaluateSpeech(transcript, target, passScore))
+  const targetResult = progressLib.evaluateSpeech(transcript, target, passScore)
+  if (!phoneticTarget) return e.json(200, targetResult)
+  const phoneticResult = progressLib.evaluateSpeech(
+    transcript,
+    phoneticTarget,
+    passScore,
+  )
+  return e.json(
+    200,
+    phoneticResult.score > targetResult.score ? phoneticResult : targetResult,
+  )
 })
 
 routerAdd("POST", "/api/muslingo/progress/complete", (e) => {
@@ -155,24 +165,6 @@ routerAdd("POST", "/api/muslingo/progress/restore-heart", (e) => {
   progress.set("hearts", Math.min(5, progress.getInt("hearts") + 1))
   progress.set("energy", Math.max(0, progress.getInt("energy") - 20))
   e.app.save(progress)
-  return e.json(200, progressLib.serialize(progress))
-}, $apis.requireAuth("users"))
-
-routerAdd("POST", "/api/muslingo/quran/audio/downloaded", (e) => {
-  const progressLib = require(`${__hooks}/progress.js`)
-  const body = e.requestInfo().body || {}
-  const chapterNumber = Number(body.chapterNumber || 0)
-  if (!Number.isInteger(chapterNumber) || chapterNumber < 1 || chapterNumber > 114) {
-    throw new BadRequestError("Invalid Quran chapter")
-  }
-  const progress = progressLib.find(e.app, e.auth.id)
-  const chapters = progressLib.jsonArray(progress, "downloadedAudioChapters")
-  if (chapters.indexOf(chapterNumber) === -1) {
-    chapters.push(chapterNumber)
-    chapters.sort((a, b) => Number(a) - Number(b))
-    progress.set("downloadedAudioChapters", chapters)
-    e.app.save(progress)
-  }
   return e.json(200, progressLib.serialize(progress))
 }, $apis.requireAuth("users"))
 

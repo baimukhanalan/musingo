@@ -242,6 +242,13 @@ class LessonData {
           answers: ['Рассвет', 'Закат', 'Полдень'],
           correctAnswerIndex: 0,
         ),
+        LessonStep(
+          type: LessonStepType.speak,
+          quranGlobalAyahNumber: 6226,
+          arabicText: 'قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ',
+          transliteration: 'Куль а\'узу бираббиль-фалак',
+          russianText: 'Расскажи первый аят суры Аль-Фалак.',
+        ),
       ],
     ),
     const Lesson(
@@ -264,6 +271,62 @@ class LessonData {
           answers: ['Последней сурой Корана', 'Первой сурой', 'Средней сурой'],
           correctAnswerIndex: 0,
         ),
+        LessonStep(
+          type: LessonStepType.speak,
+          quranGlobalAyahNumber: 6231,
+          arabicText: 'قُلْ أَعُوذُ بِرَبِّ النَّاسِ',
+          transliteration: 'Куль а\'узу биробби-н-нас',
+          russianText: 'Расскажи первый аят суры Ан-Нас.',
+        ),
+      ],
+    ),
+    const Lesson(
+      id: 'q_review_5_surahs',
+      title: 'Проверка 5 сур',
+      subtitle: 'Средний тест: смысл и произношение изученных сур',
+      course: CourseType.quran,
+      order: 8,
+      xpReward: 45,
+      steps: [
+        LessonStep(
+          type: LessonStepType.text,
+          russianText: 'Это контроль после пяти изученных сурных блоков. '
+              'Нужно вспомнить смысл и произнести ключевые аяты без подсказки.',
+        ),
+        LessonStep(
+          type: LessonStepType.question,
+          question: 'Какая сура читается в каждом ракаате намаза?',
+          answers: ['Аль-Фатиха', 'Аль-Фалак', 'Ан-Нас'],
+          correctAnswerIndex: 0,
+        ),
+        LessonStep(
+          type: LessonStepType.speak,
+          quranGlobalAyahNumber: 1,
+          arabicText: 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
+          transliteration: 'Бисмилляхи р-рахмани р-рахим',
+          russianText: 'Расскажи первый аят Аль-Фатихи.',
+        ),
+        LessonStep(
+          type: LessonStepType.speak,
+          quranGlobalAyahNumber: 6222,
+          arabicText: 'قُلْ هُوَ اللَّهُ أَحَدٌ',
+          transliteration: 'Куль хуваллаху ахад',
+          russianText: 'Расскажи первый аят Аль-Ихлас.',
+        ),
+        LessonStep(
+          type: LessonStepType.speak,
+          quranGlobalAyahNumber: 6226,
+          arabicText: 'قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ',
+          transliteration: 'Куль а\'узу бираббиль-фалак',
+          russianText: 'Расскажи первый аят Аль-Фалак.',
+        ),
+        LessonStep(
+          type: LessonStepType.speak,
+          quranGlobalAyahNumber: 6231,
+          arabicText: 'قُلْ أَعُوذُ بِرَبِّ النَّاسِ',
+          transliteration: 'Куль а\'узу биробби-н-нас',
+          russianText: 'Расскажи первый аят Ан-Нас.',
+        ),
       ],
     ),
     const Lesson(
@@ -271,7 +334,7 @@ class LessonData {
       title: 'Аль-Бакара 1-2',
       subtitle: 'Учебный фрагмент • полный текст во вкладке «Коран»',
       course: CourseType.quran,
-      order: 8,
+      order: 9,
       steps: [
         LessonStep(
           type: LessonStepType.audio,

@@ -113,7 +113,6 @@ function serialize(record) {
     speechAttempts: record.getInt("speechAttempts"),
     rewardChestsOpened: record.getInt("rewardChestsOpened"),
     rewardHistory: jsonArray(record, "rewardHistory"),
-    downloadedAudioChapters: jsonArray(record, "downloadedAudioChapters"),
     lastStudyDay: record.getString("lastStudyDay"),
     completedLessons: jsonArray(record, "completedLessons"),
   }

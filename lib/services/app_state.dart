@@ -508,27 +508,6 @@ class AppState extends ChangeNotifier {
     return true;
   }
 
-  Future<void> markAudioChapterDownloaded(int chapterNumber) async {
-    if (_user == null) return;
-    if (isBackendUser) {
-      try {
-        _applyBackendProfile(
-          await _backend!.markAudioChapterDownloaded(chapterNumber),
-        );
-        notifyListeners();
-        return;
-      } catch (error) {
-        _error = readableBackendError(error);
-      }
-    }
-    final chapters = _user!.downloadedAudioChapters.toSet()..add(chapterNumber);
-    _user = _user!.copyWith(
-      downloadedAudioChapters: chapters.toList()..sort(),
-    );
-    await _saveUser();
-    notifyListeners();
-  }
-
   Future<bool> restoreHeart() async {
     if (_user == null) return false;
     if (_user!.isPremium || _user!.hearts >= 5) {

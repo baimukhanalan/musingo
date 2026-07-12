@@ -7,11 +7,6 @@ migrate((app) => {
   progress.fields.add({ name: "speechAttempts", type: "number", min: 0 })
   progress.fields.add({ name: "rewardChestsOpened", type: "number", min: 0 })
   progress.fields.add({ name: "rewardHistory", type: "json", maxSize: 200000 })
-  progress.fields.add({
-    name: "downloadedAudioChapters",
-    type: "json",
-    maxSize: 200000,
-  })
   app.save(progress)
 }, (app) => {
   const progress = app.findCollectionByNameOrId("progress")
@@ -23,7 +18,6 @@ migrate((app) => {
     "speechAttempts",
     "rewardChestsOpened",
     "rewardHistory",
-    "downloadedAudioChapters",
   ]) {
     try {
       progress.fields.removeByName(field)

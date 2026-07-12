@@ -140,15 +140,6 @@ class BackendService {
     return _profileFromProgress(response);
   }
 
-  Future<BackendProfile> markAudioChapterDownloaded(int chapterNumber) async {
-    final response = await _client.send<Map<String, dynamic>>(
-      '/api/muslingo/quran/audio/downloaded',
-      method: 'POST',
-      body: {'chapterNumber': chapterNumber},
-    );
-    return _profileFromProgress(response);
-  }
-
   Future<List<LeaderboardEntry>> getLeaderboard() async {
     final response = await _client.send<List<dynamic>>(
       '/api/muslingo/leaderboard',
@@ -208,12 +199,6 @@ class BackendService {
         rewardHistory:
             (progress['rewardHistory'] as List<dynamic>? ?? const [])
                 .whereType<String>()
-                .toList(growable: false),
-        downloadedAudioChapters:
-            (progress['downloadedAudioChapters'] as List<dynamic>? ?? const [])
-                .map((item) =>
-                    item is num ? item.toInt() : int.tryParse('$item'))
-                .whereType<int>()
                 .toList(growable: false),
       ),
       completedLessons: completed,

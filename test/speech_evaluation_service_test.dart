@@ -4,6 +4,20 @@ import 'package:muslingo/models/speech_evaluation.dart';
 import 'package:muslingo/services/speech_evaluation_service.dart';
 
 void main() {
+  test('local speech scoring accepts phonetic Quran transliteration', () {
+    final service = SpeechEvaluationService();
+    final result = service.evaluateLocally(
+      transcript: 'бисмилляхи р рахмани р рахим',
+      target: 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
+      phoneticTarget: 'Бисмилляхи р-рахмани р-рахим',
+      passScore: 70,
+    );
+
+    expect(result.passed, isTrue);
+    expect(result.score, greaterThanOrEqualTo(70));
+    service.dispose();
+  });
+
   test('local fallback scores speech against the configured pass score', () {
     final service = SpeechEvaluationService();
     const step = LessonStep(

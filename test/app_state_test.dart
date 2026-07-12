@@ -44,7 +44,6 @@ void main() {
     expect(user.lessonAttempts, 0);
     expect(user.speechAttempts, 0);
     expect(user.rewardHistory, isEmpty);
-    expect(user.downloadedAudioChapters, isEmpty);
   });
 
   test('lesson completion updates production progress counters', () async {
@@ -60,18 +59,6 @@ void main() {
     expect(state.user?.lessonAttempts, 1);
     expect(state.user?.rewardChestsOpened, 3);
     expect(state.user?.rewardHistory, hasLength(1));
-  });
-
-  test('stores downloaded Quran audio chapters without duplicates', () async {
-    final state = AppState();
-    await _waitUntilInitialized(state);
-    await state.loginAsGuest();
-
-    await state.markAudioChapterDownloaded(2);
-    await state.markAudioChapterDownloaded(1);
-    await state.markAudioChapterDownloaded(2);
-
-    expect(state.user?.downloadedAudioChapters, [1, 2]);
   });
 
   test('restoring a heart spends energy', () async {

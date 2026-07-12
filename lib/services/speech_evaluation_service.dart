@@ -42,6 +42,7 @@ class SpeechEvaluationService {
     String? lessonId,
   }) async {
     final target = step.effectiveSpeechTarget;
+    final phoneticTarget = step.transliteration?.trim() ?? '';
     final isQuranSpeech =
         step.speechMode == SpeechMode.quran ||
         step.quranGlobalAyahNumber != null;
@@ -53,6 +54,7 @@ class SpeechEvaluationService {
           Uri.parse('$apiBaseUrl/api/speech/evaluate'),
         )
           ..fields['target'] = target
+          ..fields['phoneticTarget'] = phoneticTarget
           ..fields['transcript'] = transcript
           ..fields['lessonId'] = lessonId ?? ''
           ..fields['stepId'] = step.id ?? ''
@@ -79,6 +81,7 @@ class SpeechEvaluationService {
         },
         body: jsonEncode({
           'target': target,
+          'phoneticTarget': phoneticTarget,
           'transcript': transcript,
           'lessonId': lessonId ?? '',
           'stepId': step.id ?? '',
@@ -97,6 +100,7 @@ class SpeechEvaluationService {
     return evaluateLocally(
       transcript: transcript,
       target: target,
+      phoneticTarget: phoneticTarget,
       passScore: step.effectivePassScore,
     );
   }
@@ -104,10 +108,14 @@ class SpeechEvaluationService {
   SpeechEvaluationResult evaluateLocally({
     required String transcript,
     required String target,
+    String phoneticTarget = '',
     required int passScore,
   }) {
     final normalizedTranscript = normalizeSpeech(transcript);
-    final normalizedTarget = normalizeSpeech(target);
+    final normalizedTarget = _bestNormalizedTarget(
+      normalizedTranscript,
+      [target, phoneticTarget],
+    );
     final score = (_similarity(normalizedTranscript, normalizedTarget) * 100)
         .round()
         .clamp(0, 100)
@@ -133,16 +141,59 @@ class SpeechEvaluationService {
   String normalizeSpeech(String value) => value
       .toLowerCase()
       .replaceAll(RegExp(r'[\u064B-\u065F\u0670]'), '')
-      .replaceAll(RegExp(r'[^\u0600-\u06FFa-zа-яё0-9]+', unicode: true), '');
+      .replaceAll('ё', 'е')
+      .replaceAll(RegExp(r'[^\u0600-\u06FFa-zа-яе0-9]+', unicode: true), '');
+
+  String _bestNormalizedTarget(String transcript, List<String> targets) {
+    var best = '';
+    var bestScore = 0.0;
+    for (final target in targets) {
+      final normalized = normalizeSpeech(target);
+      if (normalized.isEmpty) continue;
+      final score = _similarity(transcript, normalized);
+      if (score >= bestScore) {
+        best = normalized;
+        bestScore = score;
+      }
+    }
+    return best;
+  }
 
   double _similarity(String spoken, String target) {
     if (spoken.isEmpty || target.isEmpty) return 0;
     if (spoken.contains(target) || target.contains(spoken)) return 1;
+    final distance = _levenshteinDistance(spoken, target);
+    final longest = spoken.length > target.length ? spoken.length : target.length;
+    final editSimilarity = longest == 0 ? 0.0 : 1 - (distance / longest);
     final spokenRunes = spoken.runes.toSet();
     final targetRunes = target.runes.toSet();
     final overlap = spokenRunes.intersection(targetRunes).length;
     final total = targetRunes.union(spokenRunes).length;
-    return total == 0 ? 0 : overlap / total;
+    final setSimilarity = total == 0 ? 0.0 : overlap / total;
+    return editSimilarity > setSimilarity ? editSimilarity : setSimilarity;
+  }
+
+  int _levenshteinDistance(String a, String b) {
+    final aRunes = a.runes.toList(growable: false);
+    final bRunes = b.runes.toList(growable: false);
+    if (aRunes.isEmpty) return bRunes.length;
+    if (bRunes.isEmpty) return aRunes.length;
+    var previous = List<int>.generate(bRunes.length + 1, (index) => index);
+    for (var i = 0; i < aRunes.length; i++) {
+      final current = List<int>.filled(bRunes.length + 1, 0);
+      current[0] = i + 1;
+      for (var j = 0; j < bRunes.length; j++) {
+        final cost = aRunes[i] == bRunes[j] ? 0 : 1;
+        final deletion = previous[j + 1] + 1;
+        final insertion = current[j] + 1;
+        final substitution = previous[j] + cost;
+        current[j + 1] = [deletion, insertion, substitution].reduce(
+          (value, element) => value < element ? value : element,
+        );
+      }
+      previous = current;
+    }
+    return previous.last;
   }
 
   List<String> _weakParts(String normalizedTranscript, String target) {

@@ -527,15 +527,26 @@ class _TextStep extends StatelessWidget {
           child: Column(
             children: [
               if (step.arabicText != null)
-                Text(step.arabicText!,
+                _AlignedArabicHint(
+                  arabicText: step.arabicText!,
+                  transliteration: step.transliteration,
+                  fallback: Text(
+                    step.arabicText!,
                     textAlign: TextAlign.center,
                     textDirection: TextDirection.rtl,
                     style: const TextStyle(
-                        fontFamily: 'Amiri',
-                        fontSize: 26,
-                        height: 1.8,
-                        color: AppColors.textDark)),
-              if (step.transliteration != null) ...[
+                      fontFamily: 'Amiri',
+                      fontSize: 26,
+                      height: 1.8,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                ),
+              if (step.transliteration != null &&
+                  !_AlignedArabicHint.canAlign(
+                    step.arabicText,
+                    step.transliteration,
+                  )) ...[
                 const SizedBox(height: 8),
                 Text(step.transliteration!,
                     textAlign: TextAlign.center,
@@ -561,6 +572,83 @@ class _TextStep extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _AlignedArabicHint extends StatelessWidget {
+  final String arabicText;
+  final String? transliteration;
+  final Widget fallback;
+
+  const _AlignedArabicHint({
+    required this.arabicText,
+    required this.transliteration,
+    required this.fallback,
+  });
+
+  static bool canAlign(String? arabicText, String? transliteration) {
+    if (arabicText == null || transliteration == null) return false;
+    return _tokens(arabicText).length == _tokens(transliteration).length &&
+        _tokens(arabicText).length > 1;
+  }
+
+  static List<String> _tokens(String value) => value
+      .replaceAll(',', ' ')
+      .replaceAll('،', ' ')
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((token) => token.isNotEmpty)
+      .toList(growable: false);
+
+  @override
+  Widget build(BuildContext context) {
+    if (!canAlign(arabicText, transliteration)) return fallback;
+    final arabicTokens = _tokens(arabicText);
+    final phoneticTokens = _tokens(transliteration!);
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 10,
+      runSpacing: 10,
+      textDirection: TextDirection.rtl,
+      children: List.generate(arabicTokens.length, (index) {
+        return Container(
+          constraints: const BoxConstraints(minWidth: 58),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.skyLight.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                arabicTokens[index],
+                textAlign: TextAlign.center,
+                textDirection: TextDirection.rtl,
+                style: const TextStyle(
+                  fontFamily: 'Amiri',
+                  fontSize: 30,
+                  height: 1.1,
+                  color: AppColors.textDark,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                phoneticTokens[index],
+                textAlign: TextAlign.center,
+                textDirection: TextDirection.ltr,
+                style: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
     );
   }
 }
