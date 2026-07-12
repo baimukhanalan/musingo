@@ -1,0 +1,55 @@
+<svg viewBox="0 0 220 240" xmlns="http://www.w3.org/2000/svg">
+  <!-- Звёздочки вокруг -->
+  <text x="18" y="55" font-size="22" fill="#4CAF50">★</text>
+  <text x="175" y="45" font-size="18" fill="#4CAF50">★</text>
+  <text x="10" y="140" font-size="14" fill="#4CAF50">✦</text>
+  <text x="192" y="130" font-size="16" fill="#4CAF50">★</text>
+  <text x="90" y="18" font-size="16" fill="#D4AF37">★</text>
+  <!-- Хвост - поднят вверх -->
+  <path d="M142 175 Q178 140 170 100 Q168 85 155 90" fill="none" stroke="#81C784" stroke-width="12" stroke-linecap="round"/>
+  <!-- Тело -->
+  <ellipse cx="105" cy="168" rx="55" ry="45" fill="#C8E6C9"/>
+  <!-- Грудь -->
+  <ellipse cx="105" cy="178" rx="32" ry="28" fill="#FFFFFF"/>
+  <!-- Лапы вверх! -->
+  <!-- Лапа левая - поднята -->
+  <path d="M68 155 Q40 120 35 100" fill="none" stroke="#C8E6C9" stroke-width="16" stroke-linecap="round"/>
+  <ellipse cx="33" cy="96" rx="14" ry="12" fill="#C8E6C9"/>
+  <!-- Лапа правая - поднята -->
+  <path d="M142 155 Q170 120 178 100" fill="none" stroke="#C8E6C9" stroke-width="16" stroke-linecap="round"/>
+  <ellipse cx="181" cy="96" rx="14" ry="12" fill="#C8E6C9"/>
+  <!-- Голова -->
+  <ellipse cx="105" cy="105" rx="52" ry="48" fill="#C8E6C9"/>
+  <!-- Уши -->
+  <polygon points="63,74 53,44 83,64" fill="#C8E6C9"/>
+  <polygon points="65,70 59,52 77,66" fill="#81C784"/>
+  <polygon points="147,74 157,44 127,64" fill="#C8E6C9"/>
+  <polygon points="145,70 151,52 133,66" fill="#81C784"/>
+  <!-- Тюрбан -->
+  <ellipse cx="105" cy="75" rx="48" ry="22" fill="#81C784"/>
+  <path d="M61 75 Q105 55 149 75" fill="none" stroke="#4CAF50" stroke-width="4"/>
+  <path d="M65 80 Q105 62 145 80" fill="none" stroke="#4CAF50" stroke-width="3"/>
+  <ellipse cx="105" cy="58" rx="12" ry="10" fill="#81C784"/>
+  <path d="M61 77 Q105 60 149 77" fill="none" stroke="#D4AF37" stroke-width="2.5" opacity="0.8"/>
+  <!-- Лицо -->
+  <ellipse cx="105" cy="108" rx="38" ry="34" fill="#C8E6C9"/>
+  <ellipse cx="105" cy="118" rx="24" ry="20" fill="#FFFFFF"/>
+  <!-- Глаза - дуги вверх (счастливые) -->
+  <path d="M78 104 Q85 96 92 104" fill="none" stroke="#2E2E2E" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M118 104 Q125 96 132 104" fill="none" stroke="#2E2E2E" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Румянец -->
+  <ellipse cx="79" cy="114" rx="9" ry="6" fill="#FFB6C1" opacity="0.5"/>
+  <ellipse cx="131" cy="114" rx="9" ry="6" fill="#FFB6C1" opacity="0.5"/>
+  <!-- Нос -->
+  <ellipse cx="105" cy="119" rx="5" ry="4" fill="#FFB6C1"/>
+  <!-- Рот - большая улыбка -->
+  <path d="M94 125 Q105 135 116 125" fill="none" stroke="#2E2E2E" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Усы -->
+  <line x1="83" y1="117" x2="100" y2="120" stroke="#81C784" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="81" y1="122" x2="99" y2="122" stroke="#81C784" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="127" y1="117" x2="110" y2="120" stroke="#81C784" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="129" y1="122" x2="111" y2="122" stroke="#81C784" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Лапы снизу -->
+  <ellipse cx="70" cy="205" rx="22" ry="13" fill="#C8E6C9"/>
+  <ellipse cx="140" cy="205" rx="22" ry="13" fill="#C8E6C9"/>
+</svg>

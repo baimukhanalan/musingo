@@ -1,0 +1,47 @@
+<svg viewBox="0 0 220 230" xmlns="http://www.w3.org/2000/svg">
+  <!-- Хвост -->
+  <path d="M138 182 Q170 165 165 135 Q163 120 153 126" fill="none" stroke="#81C784" stroke-width="12" stroke-linecap="round"/>
+  <!-- Тело -->
+  <ellipse cx="100" cy="165" rx="55" ry="45" fill="#C8E6C9"/>
+  <ellipse cx="100" cy="175" rx="32" ry="30" fill="#FFFFFF"/>
+  <!-- Лапа левая - вниз -->
+  <ellipse cx="60" cy="202" rx="22" ry="13" fill="#C8E6C9"/>
+  <!-- Лапа правая - поднята и машет -->
+  <path d="M145 158 Q175 135 185 110" fill="none" stroke="#C8E6C9" stroke-width="16" stroke-linecap="round"/>
+  <ellipse cx="187" cy="106" rx="14" ry="12" fill="#C8E6C9"/>
+  <!-- Пальцы машущей лапы -->
+  <line x1="182" y1="97" x2="178" y2="90" stroke="#81C784" stroke-width="2" stroke-linecap="round"/>
+  <line x1="188" y1="95" x2="188" y2="87" stroke="#81C784" stroke-width="2" stroke-linecap="round"/>
+  <line x1="194" y1="97" x2="198" y2="90" stroke="#81C784" stroke-width="2" stroke-linecap="round"/>
+  <!-- Голова -->
+  <ellipse cx="100" cy="105" rx="52" ry="48" fill="#C8E6C9"/>
+  <!-- Уши -->
+  <polygon points="58,72 48,42 78,62" fill="#C8E6C9"/>
+  <polygon points="60,68 54,50 72,64" fill="#81C784"/>
+  <polygon points="142,72 152,42 122,62" fill="#C8E6C9"/>
+  <polygon points="140,68 146,50 128,64" fill="#81C784"/>
+  <!-- Тюрбан -->
+  <ellipse cx="100" cy="75" rx="48" ry="22" fill="#81C784"/>
+  <path d="M56 75 Q100 55 144 75" fill="none" stroke="#4CAF50" stroke-width="4"/>
+  <path d="M60 80 Q100 62 140 80" fill="none" stroke="#4CAF50" stroke-width="3"/>
+  <ellipse cx="100" cy="58" rx="12" ry="10" fill="#81C784"/>
+  <path d="M56 77 Q100 60 144 77" fill="none" stroke="#D4AF37" stroke-width="2.5" opacity="0.8"/>
+  <!-- Лицо -->
+  <ellipse cx="100" cy="108" rx="38" ry="34" fill="#C8E6C9"/>
+  <ellipse cx="100" cy="118" rx="24" ry="20" fill="#FFFFFF"/>
+  <!-- Глаза - дуги вверх счастливые -->
+  <path d="M79 104 Q86 96 93 104" fill="none" stroke="#2E2E2E" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M107 104 Q114 96 121 104" fill="none" stroke="#2E2E2E" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Румянец -->
+  <ellipse cx="79" cy="113" rx="8" ry="5" fill="#FFB6C1" opacity="0.5"/>
+  <ellipse cx="121" cy="113" rx="8" ry="5" fill="#FFB6C1" opacity="0.5"/>
+  <!-- Нос -->
+  <ellipse cx="100" cy="120" rx="5" ry="4" fill="#FFB6C1"/>
+  <!-- Рот - улыбка -->
+  <path d="M92 125 Q100 132 108 125" fill="none" stroke="#2E2E2E" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Усы -->
+  <line x1="78" y1="119" x2="95" y2="122" stroke="#81C784" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="76" y1="124" x2="94" y2="124" stroke="#81C784" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="122" y1="119" x2="105" y2="122" stroke="#81C784" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="124" y1="124" x2="106" y2="124" stroke="#81C784" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

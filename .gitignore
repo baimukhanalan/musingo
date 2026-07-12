@@ -1,0 +1,13 @@
+.dart_tool/
+.flutter-plugins*
+.vercel/
+.vercel_flutter/
+.idea/
+.claude/
+.packages
+build/
+backend/pb_data/
+tools/pocketbase/pb_data/
+tools/pocketbase/pocketbase
+tools/pocketbase/CHANGELOG.md
+tools/pocketbase/LICENSE.md

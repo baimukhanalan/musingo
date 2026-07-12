@@ -1,0 +1,46 @@
+<svg viewBox="0 0 200 230" xmlns="http://www.w3.org/2000/svg">
+  <!-- Облачка ошибки -->
+  <text x="12" y="60" font-size="18" fill="#E57373">✕</text>
+  <text x="168" y="55" font-size="16" fill="#E57373">✕</text>
+  <text x="8" y="130" font-size="12" fill="#E57373">•</text>
+  <text x="180" y="125" font-size="12" fill="#E57373">•</text>
+  <!-- Хвост - опущен -->
+  <path d="M128 185 Q155 195 150 215" fill="none" stroke="#81C784" stroke-width="12" stroke-linecap="round"/>
+  <!-- Тело - наклонено чуть вниз -->
+  <ellipse cx="98" cy="168" rx="55" ry="43" fill="#C8E6C9" transform="rotate(5,98,168)"/>
+  <!-- Грудь -->
+  <ellipse cx="98" cy="178" rx="30" ry="27" fill="#FFFFFF"/>
+  <!-- Голова - наклонена -->
+  <g transform="rotate(-8, 100, 108)">
+    <ellipse cx="100" cy="108" rx="52" ry="48" fill="#C8E6C9"/>
+    <!-- Уши -->
+    <polygon points="58,74 48,44 78,64" fill="#C8E6C9"/>
+    <polygon points="60,70 54,52 72,66" fill="#81C784"/>
+    <polygon points="142,74 152,44 122,64" fill="#C8E6C9"/>
+    <polygon points="140,70 146,52 128,66" fill="#81C784"/>
+    <!-- Тюрбан -->
+    <ellipse cx="100" cy="75" rx="48" ry="22" fill="#81C784"/>
+    <path d="M56 75 Q100 55 144 75" fill="none" stroke="#4CAF50" stroke-width="4"/>
+    <ellipse cx="100" cy="58" rx="12" ry="10" fill="#81C784"/>
+    <path d="M56 77 Q100 60 144 77" fill="none" stroke="#D4AF37" stroke-width="2.5" opacity="0.8"/>
+    <!-- Лицо -->
+    <ellipse cx="100" cy="108" rx="38" ry="34" fill="#C8E6C9"/>
+    <ellipse cx="100" cy="118" rx="24" ry="20" fill="#FFFFFF"/>
+    <!-- Глаза - дуги вниз (расстроенные) -->
+    <path d="M78 108 Q85 116 92 108" fill="none" stroke="#2E2E2E" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M108 108 Q115 116 122 108" fill="none" stroke="#2E2E2E" stroke-width="3.5" stroke-linecap="round"/>
+    <!-- Нос -->
+    <ellipse cx="100" cy="120" rx="5" ry="4" fill="#FFB6C1"/>
+    <!-- Рот - мягкое "оу" -->
+    <ellipse cx="100" cy="128" rx="6" ry="5" fill="#2E2E2E"/>
+    <ellipse cx="100" cy="128" rx="4" ry="3" fill="#E57373" opacity="0.7"/>
+    <!-- Усы -->
+    <line x1="78" y1="119" x2="95" y2="122" stroke="#81C784" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="76" y1="124" x2="94" y2="124" stroke="#81C784" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="122" y1="119" x2="105" y2="122" stroke="#81C784" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="124" y1="124" x2="106" y2="124" stroke="#81C784" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+  <!-- Лапы -->
+  <ellipse cx="63" cy="202" rx="22" ry="13" fill="#C8E6C9"/>
+  <ellipse cx="133" cy="202" rx="22" ry="13" fill="#C8E6C9"/>
+</svg>

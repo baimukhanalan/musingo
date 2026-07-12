@@ -1,0 +1,55 @@
+<svg viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+  <!-- Хвост -->
+  <path d="M130 185 Q162 172 158 142 Q156 128 146 133" fill="none" stroke="#81C784" stroke-width="12" stroke-linecap="round"/>
+  <!-- Тело -->
+  <ellipse cx="100" cy="165" rx="55" ry="45" fill="#C8E6C9"/>
+  <!-- Грудь -->
+  <ellipse cx="100" cy="175" rx="32" ry="30" fill="#FFFFFF"/>
+  <!-- Голова -->
+  <ellipse cx="100" cy="105" rx="52" ry="48" fill="#C8E6C9"/>
+  <!-- Уши -->
+  <polygon points="58,72 48,42 78,62" fill="#C8E6C9"/>
+  <polygon points="60,68 54,50 72,64" fill="#81C784"/>
+  <polygon points="142,72 152,42 122,62" fill="#C8E6C9"/>
+  <polygon points="140,68 146,50 128,64" fill="#81C784"/>
+  <!-- Тюрбан -->
+  <ellipse cx="100" cy="75" rx="48" ry="22" fill="#81C784"/>
+  <path d="M56 75 Q100 55 144 75" fill="none" stroke="#4CAF50" stroke-width="4"/>
+  <path d="M60 80 Q100 62 140 80" fill="none" stroke="#4CAF50" stroke-width="3"/>
+  <ellipse cx="100" cy="58" rx="12" ry="10" fill="#81C784"/>
+  <path d="M56 77 Q100 60 144 77" fill="none" stroke="#D4AF37" stroke-width="2.5" opacity="0.8"/>
+  <!-- Лицо -->
+  <ellipse cx="100" cy="108" rx="38" ry="34" fill="#C8E6C9"/>
+  <ellipse cx="100" cy="118" rx="24" ry="20" fill="#FFFFFF"/>
+  <!-- Глаза — добрые, полузакрытые -->
+  <circle cx="85" cy="105" r="11" fill="#FFFFFF"/>
+  <circle cx="115" cy="105" r="11" fill="#FFFFFF"/>
+  <circle cx="86" cy="106" r="7" fill="#2E2E2E"/>
+  <circle cx="116" cy="106" r="7" fill="#2E2E2E"/>
+  <circle cx="89" cy="103" r="2.5" fill="#FFFFFF"/>
+  <circle cx="119" cy="103" r="2.5" fill="#FFFFFF"/>
+  <!-- Веки чуть прикрыты -->
+  <path d="M74 100 Q85 96 96 100" fill="#C8E6C9" stroke="none"/>
+  <path d="M104 100 Q115 96 126 100" fill="#C8E6C9" stroke="none"/>
+  <!-- Нос -->
+  <ellipse cx="100" cy="120" rx="5" ry="4" fill="#FFB6C1"/>
+  <!-- Рот — мягкая спокойная улыбка -->
+  <path d="M94 126 Q100 130 106 126" fill="none" stroke="#2E2E2E" stroke-width="2" stroke-linecap="round"/>
+  <!-- Усы -->
+  <line x1="78" y1="119" x2="95" y2="122" stroke="#81C784" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="76" y1="124" x2="94" y2="124" stroke="#81C784" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="122" y1="119" x2="105" y2="122" stroke="#81C784" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="124" y1="124" x2="106" y2="124" stroke="#81C784" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Лапы -->
+  <ellipse cx="65" cy="200" rx="22" ry="14" fill="#C8E6C9"/>
+  <ellipse cx="135" cy="200" rx="22" ry="14" fill="#C8E6C9"/>
+  <!-- Пальцы -->
+  <line x1="57" y1="208" x2="57" y2="213" stroke="#81C784" stroke-width="2" stroke-linecap="round"/>
+  <line x1="65" y1="210" x2="65" y2="215" stroke="#81C784" stroke-width="2" stroke-linecap="round"/>
+  <line x1="73" y1="208" x2="73" y2="213" stroke="#81C784" stroke-width="2" stroke-linecap="round"/>
+  <line x1="127" y1="208" x2="127" y2="213" stroke="#81C784" stroke-width="2" stroke-linecap="round"/>
+  <line x1="135" y1="210" x2="135" y2="215" stroke="#81C784" stroke-width="2" stroke-linecap="round"/>
+  <line x1="143" y1="208" x2="143" y2="213" stroke="#81C784" stroke-width="2" stroke-linecap="round"/>
+  <!-- Сердечко поддержки -->
+  <text x="155" y="95" font-size="18" fill="#E57373">♡</text>
+</svg>

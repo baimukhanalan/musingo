@@ -1,0 +1,11 @@
+{
+  "installCommand": "git clone --depth 1 --branch stable https://github.com/flutter/flutter.git .vercel_flutter && ./.vercel_flutter/bin/flutter config --enable-web && ./.vercel_flutter/bin/flutter pub get",
+  "buildCommand": "./.vercel_flutter/bin/flutter build web --release --dart-define=MUSLINGO_API_URL=$MUSLINGO_API_URL --dart-define=MUSLINGO_SPEECH_API_URL=$MUSLINGO_SPEECH_API_URL",
+  "outputDirectory": "build/web",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
