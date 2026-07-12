@@ -27,6 +27,8 @@ enum NativeLanguage {
 }
 
 class AppState extends ChangeNotifier {
+  static const _localAccountsKey = 'local_email_accounts';
+
   UserModel? _user;
   List<Course> _courses = [];
   final List<Achievement> _achievements = Achievement.defaults();
@@ -100,6 +102,17 @@ class AppState extends ChangeNotifier {
     if (_user == null || isBackendUser) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user', jsonEncode(_user!.toJson()));
+    if (_user!.id.startsWith('local_') && _user!.email.isNotEmpty) {
+      final accounts = _decodeLocalAccounts(prefs.getString(_localAccountsKey));
+      final account = accounts[_normalizeEmail(_user!.email)];
+      if (account is Map) {
+        accounts[_normalizeEmail(_user!.email)] = {
+          ...Map<String, dynamic>.from(account),
+          'user': _user!.toJson(),
+        };
+        await prefs.setString(_localAccountsKey, jsonEncode(accounts));
+      }
+    }
   }
 
   Future<void> _checkAndUpdateStreak() async {
@@ -129,18 +142,28 @@ class AppState extends ChangeNotifier {
     String email,
     String password,
   ) async {
-    return _authenticate(() => _backend!.register(
+    final serverSuccess = await _authenticate(() => _backend!.register(
           name: name,
           email: email,
           password: password,
         ));
+    if (serverSuccess) return true;
+    if (_isServerUnavailable) {
+      return _registerLocalAccount(name, email, password);
+    }
+    return false;
   }
 
   Future<bool> loginWithPassword(String email, String password) async {
-    return _authenticate(() => _backend!.login(
+    final serverSuccess = await _authenticate(() => _backend!.login(
           email: email,
           password: password,
         ));
+    if (serverSuccess) return true;
+    if (_isServerUnavailable) {
+      return _loginLocalAccount(email, password);
+    }
+    return false;
   }
 
   Future<bool> _authenticate(
@@ -164,6 +187,106 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  bool get _isServerUnavailable =>
+      (_error ?? '').toLowerCase().contains('сервер недоступен');
+
+  Future<bool> _registerLocalAccount(
+    String name,
+    String email,
+    String password,
+  ) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final normalizedEmail = _normalizeEmail(email);
+      final preferences = await SharedPreferences.getInstance();
+      final accounts = _decodeLocalAccounts(
+        preferences.getString(_localAccountsKey),
+      );
+      if (accounts.containsKey(normalizedEmail)) {
+        _error =
+            'Аккаунт с таким email уже есть. Войди через email и пароль.';
+        return false;
+      }
+
+      final user = UserModel(
+        id: _localUserId(normalizedEmail),
+        name: name.trim(),
+        email: normalizedEmail,
+        hearts: 5,
+      );
+      accounts[normalizedEmail] = {
+        'password': password,
+        'user': user.toJson(),
+      };
+      await preferences.setString(_localAccountsKey, jsonEncode(accounts));
+      await _backend?.logout();
+      _user = user;
+      await _restoreCourseProgress();
+      await _saveUser();
+      _checkAchievements();
+      return true;
+    } catch (_) {
+      _error = 'Не удалось создать локальный аккаунт. Попробуй ещё раз.';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> _loginLocalAccount(String email, String password) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final normalizedEmail = _normalizeEmail(email);
+      final preferences = await SharedPreferences.getInstance();
+      final accounts = _decodeLocalAccounts(
+        preferences.getString(_localAccountsKey),
+      );
+      final account = accounts[normalizedEmail];
+      if (account == null) {
+        _error =
+            'Аккаунт не найден. Зарегистрируйся на этом устройстве или подключи сервер.';
+        return false;
+      }
+      if (account['password'] != password) {
+        _error = 'Неверный email или пароль.';
+        return false;
+      }
+
+      final userData = Map<String, dynamic>.from(account['user'] as Map);
+      _user = UserModel.fromJson(userData);
+      await _backend?.logout();
+      await _restoreCourseProgress();
+      await _saveUser();
+      _checkAchievements();
+      return true;
+    } catch (_) {
+      _error = 'Не удалось войти в локальный аккаунт. Попробуй ещё раз.';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Map<String, dynamic> _decodeLocalAccounts(String? raw) {
+    if (raw == null || raw.isEmpty) return <String, dynamic>{};
+    try {
+      return Map<String, dynamic>.from(jsonDecode(raw) as Map);
+    } catch (_) {
+      return <String, dynamic>{};
+    }
+  }
+
+  String _normalizeEmail(String email) => email.trim().toLowerCase();
+
+  String _localUserId(String email) =>
+      'local_${base64Url.encode(utf8.encode(email)).replaceAll('=', '')}';
 
   Future<void> logout() async {
     await _backend?.logout();
