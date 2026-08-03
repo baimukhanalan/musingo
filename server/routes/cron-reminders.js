@@ -17,6 +17,9 @@ const messages = [
 const githubKeys = createRemoteJWKSet(
   new URL('https://token.actions.githubusercontent.com/.well-known/jwks'),
 );
+const trustedWorkflowRef =
+  'baimukhanalan/musingo/.github/workflows/push-reminders.yml@refs/heads/main';
+const trustedEvents = new Set(['schedule', 'workflow_dispatch', 'push']);
 
 async function authorized(request) {
   const authorization = String(request.headers.authorization ?? '');
@@ -30,8 +33,8 @@ async function authorized(request) {
     });
     return payload.repository === 'baimukhanalan/musingo'
       && payload.ref === 'refs/heads/main'
-      && (payload.event_name === 'schedule'
-        || payload.event_name === 'workflow_dispatch');
+      && payload.workflow_ref === trustedWorkflowRef
+      && trustedEvents.has(payload.event_name);
   } catch {
     return false;
   }
