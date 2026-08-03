@@ -1,0 +1,16 @@
+{
+  "name": "muslingo-production-api",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test:api": "node --test server_test/**/*.test.js"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.1",
+    "jose": "^6.1.0",
+    "web-push": "^3.6.7"
+  }
+}

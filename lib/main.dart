@@ -16,6 +16,10 @@ import 'screens/leaderboard_screen.dart';
 import 'screens/achievements_screen.dart';
 import 'screens/streak_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/install_app_screen.dart';
+import 'screens/onboarding_screen.dart';
+import 'screens/coach_screen.dart';
+import 'screens/rules_screen.dart';
 import 'models/lesson.dart';
 
 void main() async {
@@ -36,7 +40,7 @@ class MuslingoApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => AppState(),
       child: MaterialApp(
-        title: 'muslingo',
+        title: 'Muslingo',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         builder: (context, child) => ColoredBox(
@@ -64,6 +68,9 @@ class MuslingoApp extends StatelessWidget {
       case '/carousel':
         page = const CarouselScreen();
         break;
+      case '/onboarding':
+        page = const OnboardingScreen();
+        break;
       case '/login':
         page = const LoginScreen();
         break;
@@ -71,12 +78,22 @@ class MuslingoApp extends StatelessWidget {
         page = const MainTabScreen();
         break;
       case '/lesson':
-        final lesson = settings.arguments as Lesson;
-        page = LessonScreen(lesson: lesson);
+        final arguments = settings.arguments;
+        page = arguments is Lesson
+            ? LessonScreen(lesson: arguments)
+            : const _RouteFallbackScreen(
+                title: 'Урок не найден',
+                message: 'Открой урок с главного экрана, чтобы начать заново.',
+              );
         break;
       case '/lesson_review':
-        final result = settings.arguments as Map<String, dynamic>;
-        page = LessonReviewScreen(result: result);
+        final arguments = settings.arguments;
+        page = arguments is Map<String, dynamic>
+            ? LessonReviewScreen(result: arguments)
+            : const _RouteFallbackScreen(
+                title: 'Итог урока недоступен',
+                message: 'Результат урока не был передан. Вернись к обучению.',
+              );
         break;
       case '/premium':
         page = const PremiumScreen();
@@ -93,11 +110,23 @@ class MuslingoApp extends StatelessWidget {
       case '/settings':
         page = const SettingsScreen();
         break;
+      case '/install':
+        page = const InstallAppScreen();
+        break;
+      case '/coach':
+        page = const CoachScreen();
+        break;
+      case '/rules':
+        page = const RulesScreen();
+        break;
       case '/help':
         page = const HelpScreen();
         break;
       default:
-        page = const CarouselScreen();
+        page = const _RouteFallbackScreen(
+          title: 'Страница не найдена',
+          message: 'Такого раздела нет. Можно вернуться к урокам.',
+        );
     }
 
     return PageRouteBuilder(
@@ -110,6 +139,88 @@ class MuslingoApp extends StatelessWidget {
         );
       },
       transitionDuration: const Duration(milliseconds: 280),
+    );
+  }
+}
+
+class _RouteFallbackScreen extends StatelessWidget {
+  final String title;
+  final String message;
+
+  const _RouteFallbackScreen({
+    required this.title,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: const BoxDecoration(
+                  color: AppColors.skyLight,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.route_rounded,
+                  color: AppColors.navy,
+                  size: 36,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textDark,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 15,
+                  height: 1.4,
+                  color: AppColors.textGrey,
+                ),
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    '/home',
+                    (route) => false,
+                  ),
+                  icon: const Icon(Icons.school_rounded),
+                  label: const Text('К урокам'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.navy,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -152,7 +263,7 @@ class _SplashScreenState extends State<_SplashScreen>
     }
     Navigator.pushReplacementNamed(
       context,
-      state.isLoggedIn ? '/home' : '/carousel',
+      state.isLoggedIn ? '/home' : '/onboarding',
     );
   }
 

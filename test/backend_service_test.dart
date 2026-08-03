@@ -1,17 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:muslingo/services/backend_service.dart';
-import 'package:pocketbase/pocketbase.dart';
 
 void main() {
   test('maps duplicate account errors to a readable login hint', () {
-    final error = ClientException(
-      statusCode: 400,
-      response: {
-        'message': 'Failed to create record.',
-        'data': {
-          'email': {'message': 'Value must be unique.'},
-        },
-      },
+    const error = BackendException(
+      409,
+      'already_exists',
+      'Account already exists.',
     );
 
     expect(
@@ -21,11 +16,21 @@ void main() {
   });
 
   test('maps failed password auth to a readable message', () {
-    final error = ClientException(
-      statusCode: 400,
-      response: {'message': 'Failed to authenticate.'},
+    const error = BackendException(
+      401,
+      'invalid_credentials',
+      'Invalid email or password.',
     );
 
     expect(readableBackendError(error), 'Неверный email или пароль.');
+  });
+
+  test('maps unavailable API to an offline-friendly message', () {
+    const error = BackendException(0, 'network_error', 'Server unavailable.');
+
+    expect(
+      readableBackendError(error),
+      'Сервер недоступен. Проверь подключение и повтори.',
+    );
   });
 }

@@ -4,10 +4,10 @@ import '../services/app_state.dart';
 import '../utils/colors.dart';
 import 'home_screen.dart';
 import 'quran_screen.dart';
-import 'rules_screen.dart';
+import 'coach_screen.dart';
 import 'leaderboard_screen.dart';
 import 'profile_screen.dart';
-import 'login_screen.dart';
+import 'onboarding_screen.dart';
 
 class MainTabScreen extends StatefulWidget {
   final int initialIndex;
@@ -29,7 +29,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
   final _screens = const [
     HomeScreen(),
     QuranScreen(),
-    RulesScreen(),
+    CoachScreen(),
     LeaderboardScreen(),
     ProfileScreen(),
   ];
@@ -43,7 +43,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
         body: Center(child: CircularProgressIndicator(color: AppColors.sky)),
       );
     }
-    if (!appState.isLoggedIn) return const LoginScreen();
+    if (!appState.isLoggedIn) return const OnboardingScreen();
 
     return Scaffold(
       body: IndexedStack(index: _current, children: _screens),
@@ -77,8 +77,8 @@ class _MainTabScreenState extends State<MainTabScreen> {
                     current: _current,
                     onTap: _onTap),
                 _NavItem(
-                    icon: Icons.account_balance_rounded,
-                    label: 'Правила',
+                    icon: Icons.auto_awesome_rounded,
+                    label: 'AI Coach',
                     index: 2,
                     current: _current,
                     onTap: _onTap),

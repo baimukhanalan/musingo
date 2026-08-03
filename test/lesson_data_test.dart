@@ -61,4 +61,23 @@ void main() {
 
     expect(audioAyahs, containsAll(<int>[1, 8, 6222, 6226, 6231]));
   });
+
+  test('logic matching steps have usable pairs', () {
+    final matchingSteps = LessonData.getCourses()
+        .expand((course) => course.lessons)
+        .expand((lesson) => lesson.steps)
+        .where((step) => step.type == LessonStepType.matching)
+        .toList(growable: false);
+
+    expect(matchingSteps.length, greaterThanOrEqualTo(5));
+    for (final step in matchingSteps) {
+      expect(step.matchPairs.length, greaterThanOrEqualTo(2));
+      expect(
+        step.matchPairs.every(
+          (pair) => pair.prompt.trim().isNotEmpty && pair.answer.trim().isNotEmpty,
+        ),
+        isTrue,
+      );
+    }
+  });
 }

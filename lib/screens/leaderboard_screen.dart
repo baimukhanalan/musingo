@@ -29,11 +29,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: AppColors.white,
         elevation: 0,
         title: const Text('Таблица лидеров',
@@ -43,83 +42,49 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                 fontWeight: FontWeight.w800,
                 color: AppColors.textDark)),
       ),
-      body: !state.isBackendUser
-          ? _GuestLeaderboard(onLogin: () {
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/login',
-                (route) => false,
-              );
-            })
-          : Column(
-              children: [
-                _WeeklyBanner(),
-                Expanded(
-                  child: FutureBuilder<List<LeaderboardEntry>>(
-                    future: _entries,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.pistachio,
-                          ),
-                        );
+      body: Column(
+        children: [
+          _WeeklyBanner(),
+          Expanded(
+            child: FutureBuilder<List<LeaderboardEntry>>(
+              future: _entries,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.pistachio,
+                    ),
+                  );
+                }
+                if (snapshot.hasError) {
+                  return _LeaderboardError(onRetry: _refresh);
+                }
+                final entries = snapshot.data ?? const [];
+                if (entries.isEmpty) {
+                  return const Center(child: Text('Пока нет участников'));
+                }
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    _refresh();
+                  },
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: entries.length + 1,
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        return _LeagueRulesCard(entries: entries);
                       }
-                      if (snapshot.hasError) {
-                        return _LeaderboardError(onRetry: _refresh);
-                      }
-                      final entries = snapshot.data ?? const [];
-                      if (entries.isEmpty) {
-                        return const Center(child: Text('Пока нет участников'));
-                      }
-                      return RefreshIndicator(
-                        onRefresh: () async => _refresh(),
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: entries.length,
-                          itemBuilder: (context, index) =>
-                              _LeaderboardTile(entry: entries[index]),
-                        ),
+                      return _LeaderboardTile(
+                        entry: entries[index - 1],
+                        totalEntries: entries.length,
                       );
                     },
                   ),
-                ),
-              ],
+                );
+              },
             ),
-    );
-  }
-}
-
-class _GuestLeaderboard extends StatelessWidget {
-  final VoidCallback onLogin;
-
-  const _GuestLeaderboard({required this.onLogin});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.leaderboard_rounded,
-                size: 64, color: AppColors.pistachio),
-            const SizedBox(height: 16),
-            const Text(
-              'Войди в аккаунт, чтобы участвовать в рейтинге',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Nunito',
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textDark,
-              ),
-            ),
-            const SizedBox(height: 20),
-            CustomButton(text: 'Войти', onPressed: onLogin),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -163,6 +128,7 @@ class _LeaderboardError extends StatelessWidget {
 class _WeeklyBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final remaining = _remainingInSeason(DateTime.now());
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(16),
@@ -174,22 +140,22 @@ class _WeeklyBanner extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.leaderboard_rounded, color: Colors.white, size: 36),
-          SizedBox(width: 14),
+          const Icon(Icons.leaderboard_rounded, color: Colors.white, size: 36),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Общий рейтинг',
+                const Text('Еженедельная лига',
                     style: TextStyle(
                         fontFamily: 'Nunito',
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: Colors.white)),
-                Text('XP обновляется после каждого урока',
-                    style: TextStyle(
+                Text('До конца сезона: $remaining',
+                    style: const TextStyle(
                         fontFamily: 'Nunito',
                         fontSize: 12,
                         color: Colors.white70)),
@@ -200,14 +166,30 @@ class _WeeklyBanner extends StatelessWidget {
       ),
     );
   }
+
+  String _remainingInSeason(DateTime now) {
+    final daysUntilMonday = (DateTime.monday - now.weekday) % 7;
+    final nextMonday = DateTime(now.year, now.month, now.day)
+        .add(Duration(days: daysUntilMonday == 0 ? 7 : daysUntilMonday));
+    final diff = nextMonday.difference(now);
+    final days = diff.inDays;
+    final hours = diff.inHours % 24;
+    if (days <= 0) return '$hours ч.';
+    return '$days д. $hours ч.';
+  }
 }
 
 class _LeaderboardTile extends StatelessWidget {
   final LeaderboardEntry entry;
-  const _LeaderboardTile({required this.entry});
+  final int totalEntries;
+  const _LeaderboardTile({required this.entry, required this.totalEntries});
 
   @override
   Widget build(BuildContext context) {
+    final trimmedName = entry.name.trim();
+    final initial = trimmedName.isEmpty
+        ? '?'
+        : String.fromCharCodes([trimmedName.runes.first]);
     Color? cardColor;
     Widget? medal;
 
@@ -226,6 +208,7 @@ class _LeaderboardTile extends StatelessWidget {
     } else if (entry.isCurrentUser) {
       cardColor = AppColors.pistachioLight.withValues(alpha: 0.4);
     }
+    final zone = _zoneFor(entry.position, totalEntries);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -265,7 +248,7 @@ class _LeaderboardTile extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Center(
-                child: Text(entry.name[0],
+                child: Text(initial,
                     style: TextStyle(
                         fontFamily: 'Nunito',
                         fontSize: 18,
@@ -296,7 +279,7 @@ class _LeaderboardTile extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
-                    value: entry.xp / 1500,
+                    value: (entry.xp / 1500).clamp(0.0, 1.0),
                     minHeight: 5,
                     backgroundColor: AppColors.pistachioLight,
                     valueColor: AlwaysStoppedAnimation<Color>(
@@ -304,6 +287,19 @@ class _LeaderboardTile extends StatelessWidget {
                             ? AppColors.gold
                             : AppColors.pistachio),
                   ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(zone.icon, color: zone.color, size: 14),
+                    const SizedBox(width: 4),
+                    Text(zone.label,
+                        style: TextStyle(
+                            fontFamily: 'Nunito',
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: zone.color)),
+                  ],
                 ),
               ],
             ),
@@ -329,4 +325,111 @@ class _LeaderboardTile extends StatelessWidget {
       ),
     );
   }
+
+  _LeagueZone _zoneFor(int position, int total) {
+    if (position <= 2) {
+      return const _LeagueZone(
+        label: 'Повышение',
+        icon: Icons.arrow_upward_rounded,
+        color: AppColors.success,
+      );
+    }
+    if (total >= 5 && position == total) {
+      return const _LeagueZone(
+        label: 'Понижение',
+        icon: Icons.arrow_downward_rounded,
+        color: AppColors.error,
+      );
+    }
+    return const _LeagueZone(
+      label: 'Удержание',
+      icon: Icons.shield_rounded,
+      color: AppColors.textGrey,
+    );
+  }
+}
+
+class _LeagueRulesCard extends StatelessWidget {
+  final List<LeaderboardEntry> entries;
+
+  const _LeagueRulesCard({required this.entries});
+
+  @override
+  Widget build(BuildContext context) {
+    final current = _firstWhereOrNull(
+      entries,
+      (entry) => entry.isCurrentUser,
+    );
+    final nextXp = _nextTargetXp(current, entries);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.workspace_premium_rounded,
+                  color: AppColors.gold, size: 22),
+              SizedBox(width: 8),
+              Text('Правила сезона',
+                  style: TextStyle(
+                      fontFamily: 'Nunito',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textDark)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            nextXp == null
+                ? 'Ты сейчас в зоне повышения. Удерживай место до понедельника.'
+                : 'До следующего места нужно $nextXp XP. Топ-2 переходят выше, последнее место понижается.',
+            style: const TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 13,
+                height: 1.35,
+                color: AppColors.textGrey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  int? _nextTargetXp(LeaderboardEntry? current, List<LeaderboardEntry> entries) {
+    if (current == null || current.position <= 1) return null;
+    final above = _firstWhereOrNull(
+      entries,
+      (entry) => entry.position == current.position - 1,
+    );
+    if (above == null) return null;
+    return (above.xp - current.xp + 1).clamp(1, 9999).toInt();
+  }
+
+  LeaderboardEntry? _firstWhereOrNull(
+    List<LeaderboardEntry> entries,
+    bool Function(LeaderboardEntry entry) test,
+  ) {
+    for (final entry in entries) {
+      if (test(entry)) return entry;
+    }
+    return null;
+  }
+}
+
+class _LeagueZone {
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  const _LeagueZone({
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
 }

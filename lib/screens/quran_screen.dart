@@ -10,6 +10,7 @@ import '../services/quran_audio_player.dart';
 import '../services/quran_repository.dart';
 import '../utils/colors.dart';
 import '../widgets/cat_character.dart';
+import 'hafiz_mode_screen.dart';
 
 enum _QuranPlaybackMode { verse, chapter }
 
@@ -48,9 +49,11 @@ class _QuranScreenState extends State<QuranScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: AppColors.background,
         elevation: 0,
         title: const Text(
@@ -113,6 +116,8 @@ class _QuranScreenState extends State<QuranScreen> {
                   return _QuranHeader(
                     controller: _searchController,
                     onChanged: (value) => setState(() => _query = value),
+                    memorizedCount: appState.memorizedVerseCount,
+                    dueCount: appState.hafizDueCount,
                   );
                 }
                 if (index == filtered.length + 1) {
@@ -142,10 +147,14 @@ class _QuranScreenState extends State<QuranScreen> {
 class _QuranHeader extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
+  final int memorizedCount;
+  final int dueCount;
 
   const _QuranHeader({
     required this.controller,
     required this.onChanged,
+    required this.memorizedCount,
+    required this.dueCount,
   });
 
   @override
@@ -160,19 +169,19 @@ class _QuranHeader extends StatelessWidget {
             color: AppColors.navy,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Row(
+          child: Row(
             children: [
-              SizedBox(
+              const SizedBox(
                 width: 58,
                 height: 58,
                 child: CatCharacter(mood: CatMood.learning, size: 58),
               ),
-              SizedBox(width: 14),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       '114 сур • 6236 аятов',
                       style: TextStyle(
                         fontFamily: 'Nunito',
@@ -181,13 +190,23 @@ class _QuranHeader extends StatelessWidget {
                         color: Colors.white,
                       ),
                     ),
-                    SizedBox(height: 2),
-                    Text(
+                    const SizedBox(height: 2),
+                    const Text(
                       'Арабский текст, перевод смыслов и аудио',
                       style: TextStyle(
                         fontFamily: 'Nunito',
                         fontSize: 13,
                         color: Colors.white70,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      'Hafiz: $memorizedCount · к повторению: $dueCount',
+                      style: const TextStyle(
+                        fontFamily: 'Nunito',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.goldLight,
                       ),
                     ),
                   ],
@@ -592,6 +611,7 @@ class _QuranChapterScreenState extends State<QuranChapterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -644,12 +664,30 @@ class _QuranChapterScreenState extends State<QuranChapterScreen> {
                 return const _AttributionFooter();
               }
               final verse = chapter.verses[index - 2];
+              final hafizProgress = appState.hafizProgressFor(
+                chapter.summary.number,
+                verse.numberInChapter,
+              );
               return _VerseCard(
                 verse: verse,
                 isLoading: _loadingVerse == verse.numberInChapter,
                 isActive: _activeVerse == verse.numberInChapter,
                 isPlaying: _activeVerse == verse.numberInChapter && _isPlaying,
                 onPlay: () => _toggleAudio(verse),
+                masteryLabel: hafizProgress?.masteryLabel,
+                mastery: hafizProgress?.mastery,
+                onHafiz: () async {
+                  await _audioPlayer.stop();
+                  if (!context.mounted) return;
+                  await Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => HafizModeScreen(
+                        chapter: chapter.summary,
+                        verse: verse,
+                      ),
+                    ),
+                  );
+                },
               );
             },
           );
@@ -931,6 +969,9 @@ class _VerseCard extends StatelessWidget {
   final bool isActive;
   final bool isPlaying;
   final VoidCallback onPlay;
+  final VoidCallback onHafiz;
+  final String? masteryLabel;
+  final double? mastery;
 
   const _VerseCard({
     required this.verse,
@@ -938,6 +979,9 @@ class _VerseCard extends StatelessWidget {
     required this.isActive,
     required this.isPlaying,
     required this.onPlay,
+    required this.onHafiz,
+    required this.masteryLabel,
+    required this.mastery,
   });
 
   @override
@@ -1051,6 +1095,27 @@ class _VerseCard extends StatelessWidget {
               fontFamily: 'Nunito',
               fontSize: 11,
               color: AppColors.textLight,
+            ),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: onHafiz,
+            icon: Icon(
+              mastery == null
+                  ? Icons.psychology_alt_rounded
+                  : Icons.replay_rounded,
+            ),
+            label: Text(
+              mastery == null
+                  ? 'Учить наизусть'
+                  : '$masteryLabel · ${(mastery! * 100).round()}%',
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.navy,
+              side: const BorderSide(color: AppColors.sky),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
           ),
         ],

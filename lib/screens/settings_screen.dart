@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/app_state.dart';
+import '../services/app_install_service.dart';
+import '../services/notification_service.dart';
 import '../utils/colors.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -31,16 +33,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           const _SectionLabel('Язык'),
-          const _SettingsTile(
+          _SettingsTile(
             icon: Icons.language_rounded,
             label: 'Язык приложения',
             color: AppColors.pistachio,
-            trailing: Text('Русский',
-                style: TextStyle(
+            trailing: Text(state.nativeLanguage?.label ?? 'Русский',
+                style: const TextStyle(
                     fontFamily: 'Nunito',
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textGrey)),
+            onTap: () => _showLanguagePicker(context),
           ),
           const SizedBox(height: 12),
           const _SectionLabel('Аудио'),
@@ -52,6 +55,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 value: state.soundEnabled,
                 onChanged: state.setSoundEnabled,
                 activeThumbColor: AppColors.pistachio),
+          ),
+          const SizedBox(height: 12),
+          const _SectionLabel('Приложение'),
+          if (AppInstallService.isWebInstallExperience)
+            _SettingsTile(
+              icon: Icons.install_mobile_rounded,
+              label: AppInstallService.isInstalled
+                  ? 'Приложение установлено'
+                  : 'Установить на устройство',
+              subtitle: AppInstallService.isInstalled
+                  ? 'Muslingo работает в полноэкранном режиме'
+                  : 'Добавить иконку на главный экран',
+              color: AppColors.navy,
+              onTap: () => Navigator.pushNamed(context, '/install'),
+            ),
+          const _SectionLabel('Напоминания'),
+          _SettingsTile(
+            icon: Icons.notifications_active_rounded,
+            label: 'Ежедневный урок',
+            subtitle: _notificationSubtitle(state),
+            color: AppColors.coral,
+            trailing: Switch(
+              value: state.notificationsEnabled,
+              onChanged: (enabled) => _toggleNotifications(context, enabled),
+              activeThumbColor: AppColors.coral,
+            ),
+          ),
+          _SettingsTile(
+            icon: Icons.schedule_rounded,
+            label: 'Время напоминания',
+            subtitle: 'Каждый день по местному времени',
+            color: AppColors.gold,
+            trailing: Text(
+              _formatTime(state.reminderHour, state.reminderMinute),
+              style: const TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textDark,
+              ),
+            ),
+            onTap: () => _pickReminderTime(context),
+          ),
+          _SettingsTile(
+            icon: Icons.mark_email_read_rounded,
+            label: 'Проверить уведомление',
+            subtitle: 'Отправить тест прямо сейчас',
+            color: AppColors.sky,
+            onTap: () => _sendTestNotification(context),
           ),
           const SizedBox(height: 12),
           const _SectionLabel('Аккаунт'),
@@ -69,6 +121,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 32),
         ],
+      ),
+    );
+  }
+
+  String _notificationSubtitle(AppState state) {
+    if (state.notificationPermission == NotificationPermissionState.denied) {
+      return 'Разрешение отключено в настройках устройства';
+    }
+    if (!state.notificationsEnabled) return 'Выключены';
+    return state.notificationsRunInBackground
+        ? 'Работают даже когда приложение закрыто'
+        : 'Работают пока web-приложение открыто';
+  }
+
+  String _formatTime(int hour, int minute) =>
+      '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+
+  Future<void> _toggleNotifications(
+      BuildContext context, bool enabled) async {
+    final success =
+        await context.read<AppState>().setNotificationsEnabled(enabled);
+    if (!context.mounted || success || !enabled) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Разреши уведомления в настройках браузера или телефона.',
+        ),
+        backgroundColor: AppColors.error,
+      ),
+    );
+  }
+
+  Future<void> _pickReminderTime(BuildContext context) async {
+    final state = context.read<AppState>();
+    final selected = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: state.reminderHour,
+        minute: state.reminderMinute,
+      ),
+      helpText: 'Когда напомнить об уроке?',
+      cancelText: 'Отмена',
+      confirmText: 'Сохранить',
+    );
+    if (selected == null || !context.mounted) return;
+    await context
+        .read<AppState>()
+        .setReminderTime(selected.hour, selected.minute);
+  }
+
+  Future<void> _sendTestNotification(BuildContext context) async {
+    final sent = await context.read<AppState>().sendTestNotification();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(sent
+            ? 'Тестовое уведомление отправлено.'
+            : 'Не удалось показать уведомление. Проверь разрешение.'),
+        backgroundColor: sent ? AppColors.success : AppColors.error,
       ),
     );
   }
@@ -96,7 +207,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               final state = context.read<AppState>();
               final deleted = await state.deleteAccount();
               if (context.mounted && deleted) {
-                Navigator.pushReplacementNamed(context, '/carousel');
+                Navigator.pushReplacementNamed(context, '/onboarding');
               } else if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -112,6 +223,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _showLanguagePicker(BuildContext context) async {
+    final state = context.read<AppState>();
+    final selected = await showModalBottomSheet<NativeLanguage>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(8, 0, 8, 12),
+                child: Text('Выбери язык подсказок',
+                    style: TextStyle(
+                        fontFamily: 'Nunito',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textDark)),
+              ),
+              ...NativeLanguage.values.map(
+                (language) => _SettingsTile(
+                  icon: language == state.nativeLanguage
+                      ? Icons.check_circle_rounded
+                      : Icons.language_rounded,
+                  label: language.label,
+                  color: language == state.nativeLanguage
+                      ? AppColors.pistachio
+                      : AppColors.textGrey,
+                  onTap: () => Navigator.pop(sheetContext, language),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (selected == null || !context.mounted) return;
+    await context.read<AppState>().setNativeLanguage(selected);
   }
 }
 
@@ -136,6 +289,7 @@ class _SectionLabel extends StatelessWidget {
 class _SettingsTile extends StatelessWidget {
   final IconData icon;
   final String label;
+  final String? subtitle;
   final Color color;
   final Widget? trailing;
   final VoidCallback? onTap;
@@ -143,6 +297,7 @@ class _SettingsTile extends StatelessWidget {
   const _SettingsTile(
       {required this.icon,
       required this.label,
+      this.subtitle,
       required this.color,
       this.trailing,
       this.onTap});
@@ -171,6 +326,16 @@ class _SettingsTile extends StatelessWidget {
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textDark)),
+        subtitle: subtitle == null
+            ? null
+            : Text(
+                subtitle!,
+                style: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 12,
+                  color: AppColors.textGrey,
+                ),
+              ),
         trailing: trailing ??
             (onTap != null
                 ? const Icon(Icons.chevron_right_rounded,

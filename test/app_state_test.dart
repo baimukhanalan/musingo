@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:muslingo/models/lesson.dart';
 import 'package:muslingo/models/user.dart';
+import 'package:muslingo/models/learning_profile.dart';
+import 'package:muslingo/models/knowledge_state.dart';
 import 'package:muslingo/services/app_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -28,7 +30,33 @@ void main() {
 
     final restored = AppState();
     await _waitUntilInitialized(restored);
-    expect(restored.user, isNull);
+    expect(restored.user?.id, 'guest');
+    expect(
+      restored.getCourse(CourseType.rules)?.lessons.first.status,
+      LessonStatus.completed,
+    );
+  });
+
+  test('placement creates local profile and personal recommendation', () async {
+    final state = AppState();
+    await _waitUntilInitialized(state);
+
+    await state.completePlacement(
+      goal: LearningGoal.arabicReading,
+      level: 2,
+      recommendation: 'Начни с букв.',
+    );
+
+    expect(state.isGuest, isTrue);
+    expect(state.learningGoal, LearningGoal.arabicReading);
+    expect(state.placementLevel, 2);
+    expect(state.recommendedLesson?.course, CourseType.arabic);
+
+    final restored = AppState();
+    await _waitUntilInitialized(restored);
+    expect(restored.isGuest, isTrue);
+    expect(restored.learningGoal, LearningGoal.arabicReading);
+    expect(restored.learningRecommendation, 'Начни с букв.');
   });
 
   test('restores old user json with production progress defaults', () {
@@ -59,6 +87,136 @@ void main() {
     expect(state.user?.lessonAttempts, 1);
     expect(state.user?.rewardChestsOpened, 3);
     expect(state.user?.rewardHistory, hasLength(1));
+  });
+
+  test('memory engine persists weak steps and prioritizes due review', () async {
+    final state = AppState();
+    await _waitUntilInitialized(state);
+    await state.loginAsGuest();
+    final reviewedAt = DateTime.now().subtract(const Duration(days: 2));
+
+    await state.completeLesson(
+      'r1',
+      1,
+      weakStepIds: {'r1:1'},
+      completedAt: reviewedAt,
+    );
+
+    expect(state.knowledgeStates, hasLength(3));
+    expect(state.weakKnowledgeCount, 1);
+    expect(state.dueReviewCount, 3);
+    expect(state.recommendedLesson?.id, 'r1');
+
+    final restored = AppState();
+    await _waitUntilInitialized(restored);
+    expect(restored.knowledgeStates, hasLength(3));
+    expect(restored.recommendedLesson?.id, 'r1');
+  });
+
+  test('knowledge scheduling expands intervals after successful reviews', () {
+    final firstReview = DateTime(2026, 8, 1, 10);
+    final initial = KnowledgeState.initial(
+      id: 'r1:1',
+      lessonId: 'r1',
+      label: 'Намерение',
+      kind: KnowledgeKind.rule,
+      reviewedAt: firstReview,
+      wasWeak: false,
+    );
+    final secondReview = firstReview.add(const Duration(days: 1));
+    final reviewed = initial.reviewed(
+      wasWeak: false,
+      reviewedAt: secondReview,
+    );
+
+    expect(initial.nextReviewAt, firstReview.add(const Duration(days: 1)));
+    expect(reviewed.repetitions, 2);
+    expect(reviewed.nextReviewAt, secondReview.add(const Duration(days: 3)));
+    expect(reviewed.strength, greaterThan(initial.strength));
+  });
+
+  test('hafiz progress is persisted per verse and schedules repetition',
+      () async {
+    final state = AppState();
+    await _waitUntilInitialized(state);
+    await state.loginAsGuest();
+    final reviewedAt = DateTime(2026, 8, 3, 12);
+
+    final progress = await state.recordHafizAttempt(
+      surahNumber: 1,
+      surahName: 'Al-Fatihah',
+      verseNumber: 1,
+      globalVerseNumber: 1,
+      score: 92,
+      repetitions: 6,
+      reviewedAt: reviewedAt,
+    );
+
+    expect(progress, isNotNull);
+    expect(progress?.nextReviewAt, reviewedAt.add(const Duration(days: 7)));
+    expect(state.hafizProgressFor(1, 1)?.bestScore, 92);
+    expect(state.memorizedVerseCount, 1);
+
+    final restored = AppState();
+    await _waitUntilInitialized(restored);
+    expect(restored.hafizProgressFor(1, 1)?.bestScore, 92);
+  });
+
+  test('local leaderboard works without backend session', () async {
+    final state = AppState();
+    await _waitUntilInitialized(state);
+    await state.loginAsGuest();
+
+    final leaderboard = await state.fetchLeaderboard();
+
+    expect(leaderboard, isNotEmpty);
+    expect(leaderboard.any((entry) => entry.isCurrentUser), isTrue);
+    expect(leaderboard.map((entry) => entry.position), [1, 2, 3, 4, 5]);
+  });
+
+  test('local leaderboard uses weekly season xp', () async {
+    final state = AppState();
+    await _waitUntilInitialized(state);
+    await state.loginAsGuest();
+
+    var leaderboard = await state.fetchLeaderboard();
+    expect(
+      leaderboard.firstWhere((entry) => entry.isCurrentUser).xp,
+      0,
+    );
+
+    final result = await state.completeLesson('r1', 0);
+    leaderboard = await state.fetchLeaderboard();
+
+    expect(
+      leaderboard.firstWhere((entry) => entry.isCurrentUser).xp,
+      result['xpEarned'],
+    );
+  });
+
+  test('deleting a local account removes saved email login', () async {
+    final state = AppState();
+    await _waitUntilInitialized(state);
+
+    final registered = await state.registerWithEmail(
+      'Alan',
+      'alan@example.com',
+      'password123',
+    );
+    expect(registered, isTrue);
+
+    final deleted = await state.deleteAccount();
+    expect(deleted, isTrue);
+
+    final restored = AppState();
+    await _waitUntilInitialized(restored);
+    final loggedIn = await restored.loginWithPassword(
+      'alan@example.com',
+      'password123',
+    );
+
+    expect(loggedIn, isFalse);
+    expect(restored.error, contains('Аккаунт не найден'));
   });
 
   test('restoring a heart spends energy', () async {

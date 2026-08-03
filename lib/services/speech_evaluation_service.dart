@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/lesson.dart';
@@ -15,6 +16,7 @@ class SpeechEvaluationService {
   final http.Client _client;
   final String apiBaseUrl;
   final SpeechRecorder _recorder;
+  final bool _hasExplicitApiBaseUrl;
 
   SpeechEvaluationService({
     http.Client? client,
@@ -22,12 +24,19 @@ class SpeechEvaluationService {
     SpeechRecorder? recorder,
   })  : _client = client ?? http.Client(),
         _recorder = recorder ?? SpeechRecorder(),
+        _hasExplicitApiBaseUrl = apiBaseUrl != null && apiBaseUrl.isNotEmpty,
         apiBaseUrl = apiBaseUrl ??
             (_configuredSpeechApiUrl.isEmpty
                 ? BackendService.apiBaseUrl
                 : _configuredSpeechApiUrl);
 
   bool get isRecording => _recorder.isRecording;
+
+  bool get hasRemoteEvaluator =>
+      _hasExplicitApiBaseUrl ||
+      _configuredSpeechApiUrl.isNotEmpty ||
+      BackendService.hasConfiguredApiUrl ||
+      !kIsWeb;
 
   Future<void> record() => _recorder.start();
 
@@ -48,6 +57,14 @@ class SpeechEvaluationService {
         step.quranGlobalAyahNumber != null;
     final language = isQuranSpeech ? 'quran-ar' : 'arabic';
     try {
+      if (!hasRemoteEvaluator) {
+        return evaluateLocally(
+          transcript: transcript,
+          target: target,
+          phoneticTarget: phoneticTarget,
+          passScore: step.effectivePassScore,
+        );
+      }
       if (audioBytes != null && audioBytes.isNotEmpty) {
         final request = http.MultipartRequest(
           'POST',

@@ -52,8 +52,19 @@ class LessonData {
         LessonStep(
           type: LessonStepType.question,
           question: 'Что означает «Аль-Фатиха»?',
-          answers: ['Открывающая', 'Последняя', 'Лунная'],
-          correctAnswerIndex: 0,
+          answers: ['Собирающая', 'Открывающая', 'Защищающая'],
+          correctAnswerIndex: 1,
+        ),
+        LessonStep(
+          type: LessonStepType.matching,
+          question: 'Соедини фразу и смысл',
+          russianText:
+              'Подумай по контексту: фраза начинается с имени Аллаха и двух качеств милости.',
+          matchPairs: [
+            LessonMatchPair(prompt: 'بِسْمِ اللَّهِ', answer: 'Во имя Аллаха'),
+            LessonMatchPair(prompt: 'الرَّحْمَٰنِ', answer: 'Милостивого'),
+            LessonMatchPair(prompt: 'الرَّحِيمِ', answer: 'Милосердного'),
+          ],
         ),
         LessonStep(
           type: LessonStepType.speak,
@@ -94,11 +105,11 @@ class LessonData {
           type: LessonStepType.question,
           question: 'Какая главная тема аятов 2-3?',
           answers: [
+            'Просьба о прямом пути',
             'Хвала и милость Аллаха',
-            'Описание битвы',
-            'История пророка Нуха'
+            'Описание людей Писания'
           ],
-          correctAnswerIndex: 0,
+          correctAnswerIndex: 1,
         ),
         LessonStep(
           type: LessonStepType.speak,
@@ -138,8 +149,8 @@ class LessonData {
         LessonStep(
           type: LessonStepType.question,
           question: 'К кому обращена просьба о помощи в 5-м аяте?',
-          answers: ['К Аллаху', 'К людям', 'К ангелам'],
-          correctAnswerIndex: 0,
+          answers: ['К ангелам как свидетелям', 'К пророкам как наставникам', 'К Аллаху одному'],
+          correctAnswerIndex: 2,
         ),
       ],
     ),
@@ -175,7 +186,11 @@ class LessonData {
         LessonStep(
           type: LessonStepType.question,
           question: 'О чём просит верующий в конце Аль-Фатихи?',
-          answers: ['О прямом пути', 'О богатстве', 'О долгом сне'],
+          answers: [
+            'О прямом пути и защите от заблуждения',
+            'О земном достатке без испытаний',
+            'О победе в споре'
+          ],
           correctAnswerIndex: 0,
         ),
         LessonStep(
@@ -209,9 +224,22 @@ class LessonData {
         ),
         LessonStep(
           type: LessonStepType.question,
-          question: 'Сколько аятов в суре Аль-Ихлас?',
-          answers: ['4 аята', '7 аятов', '3 аята'],
-          correctAnswerIndex: 0,
+          question: 'Какой смысл объединяет первые аяты Аль-Ихлас?',
+          answers: [
+            'Просьба о защите от зла',
+            'Единство и самодостаточность Аллаха',
+            'Описание порядка намаза'
+          ],
+          correctAnswerIndex: 1,
+        ),
+        LessonStep(
+          type: LessonStepType.matching,
+          question: 'Сопоставь слова с их смыслом',
+          matchPairs: [
+            LessonMatchPair(prompt: 'أَحَدٌ', answer: 'Единый'),
+            LessonMatchPair(prompt: 'الصَّمَدُ', answer: 'Самодостаточный'),
+            LessonMatchPair(prompt: 'قُلْ', answer: 'Скажи'),
+          ],
         ),
         LessonStep(
           type: LessonStepType.speak,
@@ -239,8 +267,8 @@ class LessonData {
         LessonStep(
           type: LessonStepType.question,
           question: 'Что означает «Аль-Фалак»?',
-          answers: ['Рассвет', 'Закат', 'Полдень'],
-          correctAnswerIndex: 0,
+          answers: ['Утреннюю молитву', 'Господа рассвета', 'Название города'],
+          correctAnswerIndex: 1,
         ),
         LessonStep(
           type: LessonStepType.speak,
@@ -267,9 +295,13 @@ class LessonData {
         ),
         LessonStep(
           type: LessonStepType.question,
-          question: 'Чем является сура «Ан-Нас»?',
-          answers: ['Последней сурой Корана', 'Первой сурой', 'Средней сурой'],
-          correctAnswerIndex: 0,
+          question: 'Какой смысл у первого аята Ан-Нас?',
+          answers: [
+            'Молитва о дожде',
+            'Просьба о защите у Господа людей',
+            'Рассказ о начале творения'
+          ],
+          correctAnswerIndex: 1,
         ),
         LessonStep(
           type: LessonStepType.speak,
@@ -296,8 +328,12 @@ class LessonData {
         LessonStep(
           type: LessonStepType.question,
           question: 'Какая сура читается в каждом ракаате намаза?',
-          answers: ['Аль-Фатиха', 'Аль-Фалак', 'Ан-Нас'],
-          correctAnswerIndex: 0,
+          answers: [
+            'Аль-Ихлас, потому что короткая',
+            'Аль-Фатиха, потому что она основа молитвы',
+            'Ан-Нас, потому что последняя'
+          ],
+          correctAnswerIndex: 1,
         ),
         LessonStep(
           type: LessonStepType.speak,
@@ -356,8 +392,12 @@ class LessonData {
         ),
         LessonStep(
           type: LessonStepType.question,
-          question: 'Самая длинная сура Корана — это?',
-          answers: ['Аль-Бакара', 'Аль-Фатиха', 'Ясин'],
+          question: 'Что логически следует из аята «нет сомнения... руководство для богобоязненных»?',
+          answers: [
+            'Книга описана как руководство, которому доверяют',
+            'Смысл букв полностью раскрыт каждому',
+            'Сура говорит только о правилах торговли'
+          ],
           correctAnswerIndex: 0,
         ),
       ],
@@ -389,9 +429,9 @@ class LessonData {
         ),
         LessonStep(
           type: LessonStepType.question,
-          question: 'Какая буква называется «Ба»?',
-          answers: ['ب', 'ت', 'ا'],
-          correctAnswerIndex: 0,
+          question: 'Какая буква имеет одну точку снизу?',
+          answers: ['ت', 'ب', 'ا'],
+          correctAnswerIndex: 1,
         ),
         LessonStep(
           type: LessonStepType.speak,
@@ -417,9 +457,19 @@ class LessonData {
         ),
         LessonStep(
           type: LessonStepType.question,
-          question: 'Как читается «بِ»?',
-          answers: ['би', 'ба', 'бу'],
-          correctAnswerIndex: 0,
+          question: 'Если под буквой стоит касра, какой звук добавляется?',
+          answers: ['а', 'и', 'у'],
+          correctAnswerIndex: 1,
+        ),
+        LessonStep(
+          type: LessonStepType.matching,
+          question: 'Соедини знак и звук',
+          russianText: 'Здесь нужно вспомнить не слово целиком, а роль огласовки.',
+          matchPairs: [
+            LessonMatchPair(prompt: 'بَ', answer: 'ба'),
+            LessonMatchPair(prompt: 'بِ', answer: 'би'),
+            LessonMatchPair(prompt: 'بُ', answer: 'бу'),
+          ],
         ),
         LessonStep(
           type: LessonStepType.speak,
@@ -444,8 +494,8 @@ class LessonData {
         ),
         LessonStep(
           type: LessonStepType.question,
-          question: 'Какой вариант читается как «та»?',
-          answers: ['تَ', 'بَ', 'ا'],
+          question: 'Какой вариант отличается от «بَ» только буквой, а не гласной?',
+          answers: ['تَ', 'بَا', 'بُ'],
           correctAnswerIndex: 0,
         ),
         LessonStep(
@@ -477,8 +527,12 @@ class LessonData {
         LessonStep(
           type: LessonStepType.question,
           question: 'Что помогает начать обучение правильно?',
-          answers: ['Искреннее намерение', 'Спешка', 'Соревнование ради похвалы'],
-          correctAnswerIndex: 0,
+          answers: [
+            'Быстро закончить урок',
+            'Искреннее намерение и спокойная цель',
+            'Соревнование ради похвалы'
+          ],
+          correctAnswerIndex: 1,
         ),
         LessonStep(
           type: LessonStepType.speak,
@@ -507,8 +561,21 @@ class LessonData {
         LessonStep(
           type: LessonStepType.question,
           question: 'Какой порядок обучения безопаснее?',
-          answers: ['Слушать, читать, понимать, повторять', 'Только угадывать', 'Пропускать смысл'],
+          answers: [
+            'Сначала слушать и понимать, потом повторять',
+            'Сразу угадывать ответы без смысла',
+            'Пропускать арабский текст'
+          ],
           correctAnswerIndex: 0,
+        ),
+        LessonStep(
+          type: LessonStepType.matching,
+          question: 'Сопоставь действие и цель',
+          matchPairs: [
+            LessonMatchPair(prompt: 'Слушать', answer: 'Уловить произношение'),
+            LessonMatchPair(prompt: 'Понимать', answer: 'Связать текст со смыслом'),
+            LessonMatchPair(prompt: 'Повторять', answer: 'Закрепить чтение'),
+          ],
         ),
         LessonStep(
           type: LessonStepType.audio,
@@ -538,7 +605,11 @@ class LessonData {
         LessonStep(
           type: LessonStepType.question,
           question: 'Что должно сопровождать знание?',
-          answers: ['Хороший нрав', 'Грубость', 'Высокомерие'],
+          answers: [
+            'Хороший нрав и ответственность',
+            'Стремление спорить',
+            'Высокомерие перед новичками'
+          ],
           correctAnswerIndex: 0,
         ),
         LessonStep(
@@ -567,8 +638,12 @@ class LessonData {
         LessonStep(
           type: LessonStepType.question,
           question: 'Зачем Muslingo учит короткие суры?',
-          answers: ['Чтобы понимать и читать их в поклонении', 'Чтобы не слушать аудио', 'Чтобы пропускать перевод'],
-          correctAnswerIndex: 0,
+          answers: [
+            'Чтобы читать их быстрее без смысла',
+            'Чтобы понимать и читать их в поклонении',
+            'Чтобы заменить намаз тестами'
+          ],
+          correctAnswerIndex: 1,
         ),
         LessonStep(
           type: LessonStepType.speak,
@@ -596,8 +671,8 @@ class LessonData {
         LessonStep(
           type: LessonStepType.question,
           question: 'Что относится к адабу обучения?',
-          answers: ['Внимательность и уважение', 'Смех над ошибками', 'Чтение без слушания'],
-          correctAnswerIndex: 0,
+          answers: ['Громко спорить о переводах', 'Внимательность и уважение', 'Пропускать повторение'],
+          correctAnswerIndex: 1,
         ),
       ],
     ),
@@ -618,7 +693,11 @@ class LessonData {
         LessonStep(
           type: LessonStepType.question,
           question: 'Что важно помнить о переводе?',
-          answers: ['Он помогает, но не заменяет арабский текст', 'Он всегда равен оригиналу', 'Он не нужен вообще'],
+          answers: [
+            'Он помогает понять смысл, но не заменяет арабский текст',
+            'Он всегда равен оригиналу во всех деталях',
+            'Он делает учителя ненужным'
+          ],
           correctAnswerIndex: 0,
         ),
       ],
@@ -640,8 +719,21 @@ class LessonData {
         LessonStep(
           type: LessonStepType.question,
           question: 'Какой порядок будет в уроках сур?',
-          answers: ['Слушать, понимать, повторять, исправлять ошибки', 'Только читать быстро', 'Только проходить тест'],
+          answers: [
+            'Слушать, понять смысл, повторить и исправить ошибки',
+            'Только читать быстро',
+            'Только проходить тест без повторения'
+          ],
           correctAnswerIndex: 0,
+        ),
+        LessonStep(
+          type: LessonStepType.matching,
+          question: 'Собери логику закрепления',
+          matchPairs: [
+            LessonMatchPair(prompt: 'Ошибка', answer: 'Вернуться к шагу'),
+            LessonMatchPair(prompt: 'Образец', answer: 'Сначала прослушать'),
+            LessonMatchPair(prompt: 'Голос', answer: 'Проверить после записи'),
+          ],
         ),
         LessonStep(
           type: LessonStepType.speak,

@@ -1,5 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
-import 'package:pocketbase/pocketbase.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/leaderboard.dart';
@@ -8,10 +10,12 @@ import '../models/user.dart';
 class BackendProfile {
   final UserModel user;
   final Set<String> completedLessons;
+  final Map<String, dynamic> learningState;
 
   const BackendProfile({
     required this.user,
     required this.completedLessons,
+    this.learningState = const {},
   });
 }
 
@@ -27,49 +31,58 @@ class LessonCompletionResult {
   });
 }
 
+class BackendException implements Exception {
+  final int statusCode;
+  final String code;
+  final String message;
+
+  const BackendException(this.statusCode, this.code, this.message);
+
+  @override
+  String toString() => 'BackendException($statusCode, $code, $message)';
+}
+
 class BackendService {
-  static const _authStorageKey = 'pocketbase_auth';
+  static const _authStorageKey = 'muslingo_auth_token';
 
-  final PocketBase _client;
+  final http.Client _client;
+  final SharedPreferences _preferences;
+  String? _token;
 
-  BackendService._(this._client);
+  BackendService._(this._client, this._preferences, this._token);
 
-  static Future<BackendService> create() async {
+  static Future<BackendService> create({http.Client? client}) async {
     final preferences = await SharedPreferences.getInstance();
-    final authStore = AsyncAuthStore(
-      save: (data) async => preferences.setString(_authStorageKey, data),
-      clear: () async => preferences.remove(_authStorageKey),
-      initial: preferences.getString(_authStorageKey),
-    );
-
     return BackendService._(
-      PocketBase(
-        apiBaseUrl,
-        authStore: authStore,
-        lang: 'ru-RU',
-        reuseHTTPClient: true,
-      ),
+      client ?? http.Client(),
+      preferences,
+      preferences.getString(_authStorageKey),
     );
   }
 
   static String get apiBaseUrl {
     const configured = String.fromEnvironment('MUSLINGO_API_URL');
-    if (configured.isNotEmpty) return configured;
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    if (configured.isNotEmpty) return configured.replaceAll(RegExp(r'/$'), '');
+    if (kIsWeb) return Uri.base.origin;
+    if (defaultTargetPlatform == TargetPlatform.android) {
       return 'http://10.0.2.2:8090';
     }
     return 'http://127.0.0.1:8090';
   }
 
-  bool get isAuthenticated => _client.authStore.isValid;
+  static bool get hasConfiguredApiUrl =>
+      const String.fromEnvironment('MUSLINGO_API_URL').isNotEmpty;
+
+  bool get isAuthenticated => _token?.isNotEmpty == true;
+  String? get authToken => _token;
 
   Future<BackendProfile?> restoreSession() async {
     if (!isAuthenticated) return null;
     try {
-      await _client.collection('users').authRefresh();
-      return await _fetchProfile();
+      final response = await _request('GET', '/api/auth/me');
+      return _profileFromProgress(response);
     } catch (_) {
-      _client.authStore.clear();
+      await logout();
       return null;
     }
   }
@@ -79,32 +92,56 @@ class BackendService {
     required String email,
     required String password,
   }) async {
-    await _client.collection('users').create(body: {
-      'name': name,
-      'email': email,
-      'password': password,
-      'passwordConfirm': password,
-    });
-    await _client.collection('users').authWithPassword(email, password);
-    return _fetchProfile();
+    final response = await _request(
+      'POST',
+      '/api/auth/register',
+      authenticated: false,
+      body: {'name': name, 'email': email, 'password': password},
+    );
+    await _storeToken(response['token'] as String?);
+    return _profileFromProgress(
+      Map<String, dynamic>.from(response['profile'] as Map),
+    );
   }
 
   Future<BackendProfile> login({
     required String email,
     required String password,
   }) async {
-    await _client.collection('users').authWithPassword(email, password);
-    return _fetchProfile();
+    final response = await _request(
+      'POST',
+      '/api/auth/login',
+      authenticated: false,
+      body: {'email': email, 'password': password},
+    );
+    await _storeToken(response['token'] as String?);
+    return _profileFromProgress(
+      Map<String, dynamic>.from(response['profile'] as Map),
+    );
   }
 
-  Future<void> logout() async => _client.authStore.clear();
+  Future<void> logout() async {
+    _token = null;
+    await _preferences.remove(_authStorageKey);
+  }
 
   Future<void> deleteAccount() async {
-    await _client.send<void>(
-      '/api/muslingo/account',
-      method: 'DELETE',
+    await _request('DELETE', '/api/account', allowEmpty: true);
+    await logout();
+  }
+
+  Future<BackendProfile> syncLearningData(
+    Map<String, dynamic> state, {
+    bool importGuest = false,
+  }) async {
+    final response = await _request(
+      'POST',
+      '/api/progress/sync',
+      body: {'state': state, 'importGuest': importGuest},
     );
-    _client.authStore.clear();
+    return _profileFromProgress(
+      Map<String, dynamic>.from(response['profile'] as Map),
+    );
   }
 
   Future<LessonCompletionResult> completeLesson(
@@ -113,14 +150,18 @@ class BackendService {
     int speechAttempts,
     String rewardToken,
   ) async {
-    final response = await _client.send<Map<String, dynamic>>(
-      '/api/muslingo/progress/complete',
-      method: 'POST',
+    final now = DateTime.now();
+    final localDate =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final response = await _request(
+      'POST',
+      '/api/progress/complete',
       body: {
         'lessonId': lessonId,
         'errors': errors,
         'speechAttempts': speechAttempts,
         'rewardToken': rewardToken,
+        'localDate': localDate,
       },
     );
     return LessonCompletionResult(
@@ -133,41 +174,114 @@ class BackendService {
   }
 
   Future<BackendProfile> restoreHeart() async {
-    final response = await _client.send<Map<String, dynamic>>(
-      '/api/muslingo/progress/restore-heart',
-      method: 'POST',
-    );
+    final response = await _request('POST', '/api/progress/restore-heart');
     return _profileFromProgress(response);
   }
 
   Future<List<LeaderboardEntry>> getLeaderboard() async {
-    final response = await _client.send<List<dynamic>>(
-      '/api/muslingo/leaderboard',
-    );
-    final currentUserId = _client.authStore.record?.id;
+    final response = await _requestList('GET', '/api/leaderboard');
     return response.indexed.map((item) {
-      final index = item.$1;
       final data = Map<String, dynamic>.from(item.$2 as Map);
       final userId = data['user'] as String? ?? '';
       return LeaderboardEntry(
         userId: userId,
         name: data['displayName'] as String? ?? 'Ученик',
         xp: (data['xp'] as num?)?.toInt() ?? 0,
-        position: index + 1,
-        isCurrentUser: userId == currentUserId,
+        position: (data['position'] as num?)?.toInt() ?? item.$1 + 1,
+        isCurrentUser: data['isCurrentUser'] as bool? ?? false,
       );
     }).toList(growable: false);
   }
 
-  Future<BackendProfile> _fetchProfile() async {
-    final response = await _client.send<Map<String, dynamic>>(
-      '/api/muslingo/me',
+  Future<Map<String, dynamic>> _request(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+    bool authenticated = true,
+    bool allowEmpty = false,
+  }) async {
+    final response = await _send(
+      method,
+      path,
+      body: body,
+      authenticated: authenticated,
     );
-    return _profileFromProgress(response);
+    if (response.body.isEmpty && allowEmpty) return const {};
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map) {
+      throw const BackendException(500, 'invalid_response', 'Invalid server response.');
+    }
+    return Map<String, dynamic>.from(decoded);
+  }
+
+  Future<List<dynamic>> _requestList(String method, String path) async {
+    final response = await _send(method, path);
+    final decoded = jsonDecode(response.body);
+    if (decoded is! List) {
+      throw const BackendException(500, 'invalid_response', 'Invalid server response.');
+    }
+    return decoded;
+  }
+
+  Future<http.Response> _send(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+    bool authenticated = true,
+  }) async {
+    final headers = <String, String>{
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    };
+    if (authenticated && _token != null) {
+      headers['Authorization'] = 'Bearer $_token';
+    }
+    final uri = Uri.parse('$apiBaseUrl$path');
+    try {
+      final request = switch (method) {
+        'GET' => _client.get(uri, headers: headers),
+        'POST' => _client.post(
+            uri,
+            headers: headers,
+            body: body == null ? null : jsonEncode(body),
+          ),
+        'DELETE' => _client.delete(
+            uri,
+            headers: headers,
+            body: body == null ? null : jsonEncode(body),
+          ),
+        _ => throw ArgumentError('Unsupported HTTP method: $method'),
+      };
+      final response = await request.timeout(const Duration(seconds: 12));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        var code = 'request_failed';
+        var message = 'Request failed.';
+        try {
+          final error = jsonDecode(response.body);
+          if (error is Map) {
+            code = error['error'] as String? ?? code;
+            message = error['message'] as String? ?? message;
+          }
+        } catch (_) {}
+        throw BackendException(response.statusCode, code, message);
+      }
+      return response;
+    } on BackendException {
+      rethrow;
+    } catch (_) {
+      throw const BackendException(0, 'network_error', 'Server unavailable.');
+    }
+  }
+
+  Future<void> _storeToken(String? token) async {
+    if (token == null || token.isEmpty) {
+      throw const BackendException(500, 'invalid_response', 'Authentication token is missing.');
+    }
+    _token = token;
+    await _preferences.setString(_authStorageKey, token);
   }
 
   BackendProfile _profileFromProgress(Map<String, dynamic> progress) {
-    final authRecord = _client.authStore.record;
     final lastStudyDay = progress['lastStudyDay'] as String? ?? '';
     final completed =
         (progress['completedLessons'] as List<dynamic>? ?? const [])
@@ -175,9 +289,9 @@ class BackendService {
             .toSet();
     return BackendProfile(
       user: UserModel(
-        id: progress['user'] as String? ?? authRecord?.id ?? '',
+        id: progress['user'] as String? ?? '',
         name: progress['displayName'] as String? ?? 'Ученик',
-        email: authRecord?.data['email'] as String? ?? '',
+        email: progress['email'] as String? ?? '',
         xp: (progress['xp'] as num?)?.toInt() ?? 0,
         level: (progress['level'] as num?)?.toInt() ?? 1,
         streak: (progress['streak'] as num?)?.toInt() ?? 0,
@@ -202,6 +316,7 @@ class BackendService {
                 .toList(growable: false),
       ),
       completedLessons: completed,
+      learningState: Map<String, dynamic>.from(progress),
     );
   }
 
@@ -209,46 +324,31 @@ class BackendService {
 }
 
 String readableBackendError(Object error) {
-  if (error is ClientException) {
-    final data = error.response['data'];
-    if (data is Map) {
-      for (final value in data.values) {
-        if (value is Map && value['message'] is String) {
-          final fieldMessage = value['message'] as String;
-          if (_isUniqueConstraintMessage(fieldMessage)) {
-            return 'Аккаунт с таким email уже есть. Войди через email и пароль.';
-          }
-          return fieldMessage;
-        }
-      }
-    }
-    final message = error.response['message'];
-    if (message is String && message.isNotEmpty) {
-      if (_isUniqueConstraintMessage(message)) {
+  if (error is BackendException) {
+    switch (error.code) {
+      case 'network_error':
+        return 'Сервер недоступен. Проверь подключение и повтори.';
+      case 'already_exists':
         return 'Аккаунт с таким email уже есть. Войди через email и пароль.';
-      }
-      if (message.toLowerCase().contains('failed to authenticate')) {
+      case 'invalid_credentials':
         return 'Неверный email или пароль.';
-      }
-      if (message.toLowerCase().contains('not enough energy')) {
+      case 'not_enough_energy':
         return 'Нужно 20 энергии, чтобы восстановить жизнь.';
-      }
-      if (message.toLowerCase().contains('hearts are already full')) {
+      case 'hearts_full':
         return 'Жизни уже полные.';
-      }
-      return message;
-    }
-    if (error.statusCode == 0) {
-      return 'Сервер недоступен. Проверь подключение и повтори.';
+      case 'too_many_attempts':
+        return 'Слишком много попыток входа. Попробуй через 15 минут.';
+      case 'expired_session':
+      case 'invalid_session':
+        return 'Сессия истекла. Войди в аккаунт снова.';
+      default:
+        if (error.statusCode == 0) {
+          return 'Сервер недоступен. Проверь подключение и повтори.';
+        }
+        return error.message.isEmpty
+            ? 'Не удалось выполнить действие. Попробуй ещё раз.'
+            : error.message;
     }
   }
   return 'Не удалось выполнить действие. Попробуй ещё раз.';
-}
-
-bool _isUniqueConstraintMessage(String message) {
-  final normalized = message.toLowerCase();
-  return normalized.contains('value must be unique') ||
-      normalized.contains('must be unique') ||
-      normalized.contains('already exists') ||
-      normalized.contains('уже существует');
 }

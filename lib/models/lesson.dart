@@ -1,6 +1,6 @@
 enum LessonStatus { locked, available, inProgress, completed }
 
-enum LessonStepType { audio, text, question, speak }
+enum LessonStepType { audio, text, question, matching, speak }
 
 enum CourseType { quran, rules, arabic }
 
@@ -17,6 +17,7 @@ class LessonStep {
   final String? question;
   final List<String>? answers;
   final int? correctAnswerIndex;
+  final List<LessonMatchPair> matchPairs;
   final String? speechTarget;
   final SpeechMode speechMode;
   final int? passScore;
@@ -34,6 +35,7 @@ class LessonStep {
     this.question,
     this.answers,
     this.correctAnswerIndex,
+    this.matchPairs = const [],
     this.speechTarget,
     this.speechMode = SpeechMode.none,
     this.passScore,
@@ -60,6 +62,16 @@ class LessonStep {
         return 60;
     }
   }
+}
+
+class LessonMatchPair {
+  final String prompt;
+  final String answer;
+
+  const LessonMatchPair({
+    required this.prompt,
+    required this.answer,
+  });
 }
 
 class Lesson {

@@ -49,6 +49,7 @@ class UserModel {
   double get levelProgress => (xp % 500) / 500.0;
 
   UserModel copyWith({
+    String? id,
     String? name,
     String? email,
     String? avatarUrl,
@@ -71,7 +72,7 @@ class UserModel {
     List<String>? rewardHistory,
   }) {
     return UserModel(
-      id: id,
+      id: id ?? this.id,
       name: name ?? this.name,
       email: email ?? this.email,
       avatarUrl: avatarUrl ?? this.avatarUrl,

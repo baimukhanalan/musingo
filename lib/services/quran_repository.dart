@@ -276,6 +276,9 @@ class QuranRepository {
 
   String _proxiedAudioUrl(int globalAyahNumber) {
     const configured = String.fromEnvironment('MUSLINGO_API_URL');
+    if (kIsWeb && configured.isEmpty) {
+      return 'https://cdn.islamic.network/quran/audio/128/ar.alafasy/$globalAyahNumber.mp3';
+    }
     final baseUrl = configured.isNotEmpty
         ? configured
         : (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)

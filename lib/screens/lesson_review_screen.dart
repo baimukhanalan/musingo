@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
 import '../models/lesson.dart';
+import '../services/app_state.dart';
 import '../services/haptics_service.dart';
 import '../utils/colors.dart';
 import '../widgets/cat_character.dart';
@@ -26,7 +28,10 @@ class _LessonReviewScreenState extends State<LessonReviewScreen> {
     final heartsLost = result['heartsLost'] as int? ?? 0;
     final newStreak = result['newStreak'] as int? ?? 0;
     final energyEarned = result['energyEarned'] as int? ?? 0;
+    final weakKnowledgeCount = result['weakKnowledgeCount'] as int? ?? 0;
+    final nextReviewAt = result['nextReviewAt'] as DateTime?;
     final showChests = lesson?.course == CourseType.quran;
+    final isGuest = context.watch<AppState>().isGuest;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -93,6 +98,31 @@ class _LessonReviewScreenState extends State<LessonReviewScreen> {
                         fontWeight: FontWeight.w700,
                         color: AppColors.error)),
               ],
+              if (nextReviewAt != null) ...[
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.event_repeat_rounded,
+                        size: 18, color: AppColors.navy),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        weakKnowledgeCount > 0
+                            ? '$weakKnowledgeCount слабых мест вернутся ${_reviewDayLabel(nextReviewAt)}'
+                            : 'Повторение назначено ${_reviewDayLabel(nextReviewAt)}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               if (streakBonus > 0) ...[
                 const SizedBox(height: 16),
                 Container(
@@ -141,12 +171,17 @@ class _LessonReviewScreenState extends State<LessonReviewScreen> {
               ).animate().fadeIn(delay: 700.ms),
               const SizedBox(height: 12),
               CustomButton(
-                text: 'Повторить урок',
+                text: isGuest ? 'Сохранить прогресс' : 'Повторить урок',
                 isOutlined: true,
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                },
+                onPressed: isGuest
+                    ? () => Navigator.pushNamed(context, '/login')
+                    : lesson == null
+                        ? null
+                        : () => Navigator.pushReplacementNamed(
+                              context,
+                              '/lesson',
+                              arguments: lesson,
+                            ),
               ).animate().fadeIn(delay: 800.ms),
               const SizedBox(height: 16),
             ],
@@ -155,6 +190,16 @@ class _LessonReviewScreenState extends State<LessonReviewScreen> {
       ),
     );
   }
+}
+
+String _reviewDayLabel(DateTime date) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final target = DateTime(date.year, date.month, date.day);
+  final days = target.difference(today).inDays;
+  if (days <= 0) return 'сегодня';
+  if (days == 1) return 'завтра';
+  return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}';
 }
 
 class _ChestRewardRow extends StatelessWidget {

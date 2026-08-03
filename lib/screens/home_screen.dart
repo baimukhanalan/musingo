@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/lesson.dart';
+import '../models/learning_profile.dart';
 import '../services/app_state.dart';
+import '../services/app_install_service.dart';
 import '../services/haptics_service.dart';
 import '../utils/colors.dart';
 import '../widgets/cat_character.dart';
@@ -82,6 +84,34 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
+            if (AppInstallService.isWebInstallExperience &&
+                !AppInstallService.isInstalled)
+              SliverToBoxAdapter(
+                child: _InstallBanner(
+                  onTap: () => Navigator.pushNamed(context, '/install'),
+                ),
+              ),
+            if (state.recommendedLesson != null)
+              SliverToBoxAdapter(
+                child: _DailyPlanCard(
+                  lesson: state.recommendedLesson!,
+                  focus: state.learningGoal?.dailyFocus ??
+                      'Новый материал, повторение и короткая проверка',
+                  recommendation: state.learningRecommendation,
+                  isReview:
+                      state.isLessonDue(state.recommendedLesson!.id),
+                  onStart: () =>
+                      _openLesson(context, state.recommendedLesson!),
+                ),
+              ),
+            if (state.knowledgeStates.isNotEmpty)
+              SliverToBoxAdapter(
+                child: _MemoryStatus(
+                  dueCount: state.dueReviewCount,
+                  weakCount: state.weakKnowledgeCount,
+                  nextReviewAt: state.nextReviewAt,
+                ),
+              ),
             SliverToBoxAdapter(
               child: _ModeSwitch(
                 mode: _mode,
@@ -110,6 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _LessonPath(
                   lessons: rulesCourse.lessons,
                   icons: _rulesIcons,
+                  onOpenLesson: _openLesson,
                 ),
               ),
             ],
@@ -137,6 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _LessonPath(
                   lessons: activeCourse.lessons,
                   icons: activeIcons,
+                  onOpenLesson: _openLesson,
                 ),
               ),
             ],
@@ -154,6 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _LessonPath(
                   lessons: rulesCourse.lessons,
                   icons: _rulesIcons,
+                  onOpenLesson: _openLesson,
                 ),
               ),
             ],
@@ -202,6 +235,49 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _openLesson(BuildContext context, Lesson lesson) async {
+    final state = context.read<AppState>();
+    final user = state.user;
+    if (user == null) return;
+
+    if (lesson.status == LessonStatus.locked) {
+      _showLockedLessonDialog(context, lesson);
+      return;
+    }
+
+    if (!user.isPremium && user.hearts <= 0) {
+      final shouldRestore = await showModalBottomSheet<bool>(
+        context: context,
+        showDragHandle: true,
+        builder: (sheetContext) => _HeartRestoreSheet(
+          hearts: user.hearts,
+          energy: user.energy,
+          isPremium: user.isPremium,
+        ),
+      );
+      if (shouldRestore == true && context.mounted) {
+        final restored = await context.read<AppState>().restoreHeart();
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              restored
+                  ? 'Жизнь восстановлена. Теперь можно начать урок.'
+                  : context.read<AppState>().error ??
+                      'Не удалось восстановить жизнь.',
+            ),
+            backgroundColor: restored ? AppColors.navy : AppColors.error,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (context.mounted) {
+      Navigator.pushNamed(context, '/lesson', arguments: lesson);
+    }
+  }
+
   Future<void> _askNativeLanguage(BuildContext context) async {
     if (_languagePromptOpen) return;
     _languagePromptOpen = true;
@@ -223,6 +299,262 @@ class _HomeScreenState extends State<HomeScreen> {
       _languagePromptOpen = false;
     }
   }
+}
+
+class _InstallBanner extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _InstallBanner({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      child: Material(
+        color: AppColors.navy,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Icon(Icons.install_mobile_rounded, color: Colors.white),
+                SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Установить Muslingo',
+                        style: TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        'Добавь приложение на главный экран',
+                        style: TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 12,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: Colors.white),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DailyPlanCard extends StatelessWidget {
+  final Lesson lesson;
+  final String focus;
+  final String? recommendation;
+  final bool isReview;
+  final VoidCallback onStart;
+
+  const _DailyPlanCard({
+    required this.lesson,
+    required this.focus,
+    required this.recommendation,
+    required this.isReview,
+    required this.onStart,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 2),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.sky, width: 1.5),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                    isReview
+                        ? Icons.replay_circle_filled_rounded
+                        : Icons.auto_awesome_rounded,
+                    color: AppColors.navy, size: 20),
+                const SizedBox(width: 7),
+                Text(
+                  isReview ? 'ПОВТОРЕНИЕ ПО ПАМЯТИ' : 'ТВОЙ ПЛАН НА СЕГОДНЯ',
+                  style: const TextStyle(
+                    fontFamily: 'Nunito',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.navy,
+                  ),
+                ),
+                const Spacer(),
+                const Icon(Icons.schedule_rounded,
+                    color: AppColors.textGrey, size: 17),
+                const SizedBox(width: 4),
+                const Text(
+                  '6 мин',
+                  style: TextStyle(
+                    fontFamily: 'Nunito',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textGrey,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              lesson.title,
+              style: const TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textDark,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              focus,
+              style: const TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 13,
+                height: 1.35,
+                color: AppColors.textGrey,
+              ),
+            ),
+            if (recommendation?.isNotEmpty == true) ...[
+              const SizedBox(height: 9),
+              Text(
+                recommendation!,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 12,
+                  height: 1.35,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.navy,
+                ),
+              ),
+            ],
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onStart,
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: Text(isReview ? 'Повторить сейчас' : 'Начать урок'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.sky,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MemoryStatus extends StatelessWidget {
+  final int dueCount;
+  final int weakCount;
+  final DateTime? nextReviewAt;
+
+  const _MemoryStatus({
+    required this.dueCount,
+    required this.weakCount,
+    required this.nextReviewAt,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final nextLabel = _reviewDateLabel(nextReviewAt);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.navy.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.navy.withValues(alpha: 0.14)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.psychology_alt_rounded,
+                color: AppColors.navy, size: 24),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Память',
+                    style: TextStyle(
+                      fontFamily: 'Nunito',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    dueCount > 0
+                        ? 'Сегодня: $dueCount · слабых мест: $weakCount'
+                        : 'Слабых мест: $weakCount · следующее: $nextLabel',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Nunito',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textGrey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              dueCount > 0 ? Icons.priority_high_rounded : Icons.check_rounded,
+              color: dueCount > 0 ? AppColors.coral : AppColors.pistachio,
+              size: 21,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _reviewDateLabel(DateTime? date) {
+  if (date == null) return 'после урока';
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final target = DateTime(date.year, date.month, date.day);
+  final days = target.difference(today).inDays;
+  if (days <= 0) return 'сегодня';
+  if (days == 1) return 'завтра';
+  return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}';
 }
 
 class _ModeSwitch extends StatelessWidget {
@@ -674,8 +1006,13 @@ class _UnitHeader extends StatelessWidget {
 class _LessonPath extends StatelessWidget {
   final List<Lesson> lessons;
   final List<IconData> icons;
+  final void Function(BuildContext context, Lesson lesson) onOpenLesson;
 
-  const _LessonPath({required this.lessons, required this.icons});
+  const _LessonPath({
+    required this.lessons,
+    required this.icons,
+    required this.onOpenLesson,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -685,6 +1022,12 @@ class _LessonPath extends StatelessWidget {
         children: List.generate(lessons.length, (index) {
           final lesson = lessons[index];
           const offsets = [-0.42, -0.1, 0.28, 0.02, -0.34];
+          final nodeOffset = offsets[index % offsets.length];
+          final compact = MediaQuery.sizeOf(context).width < 430;
+          final mascotOffset = nodeOffset <= 0
+              ? nodeOffset + (compact ? 0.82 : 0.72)
+              : nodeOffset - (compact ? 0.82 : 0.72);
+          final mascotSize = compact ? 82.0 : 94.0;
           final isCurrent = lesson.status == LessonStatus.available ||
               lesson.status == LessonStatus.inProgress;
           return SizedBox(
@@ -693,24 +1036,24 @@ class _LessonPath extends StatelessWidget {
               alignment: Alignment.topCenter,
               children: [
                 Align(
-                  alignment: Alignment(offsets[index % offsets.length], -0.65),
+                  alignment: Alignment(nodeOffset, -0.65),
                   child: _PathNode(
                     lesson: lesson,
                     icon: icons[index % icons.length],
-                    onTap: lesson.status == LessonStatus.locked
-                        ? null
-                        : () => Navigator.pushNamed(context, '/lesson',
-                            arguments: lesson),
+                    onTap: () => onOpenLesson(context, lesson),
                   ),
                 ),
                 if (isCurrent)
                   Align(
-                    alignment:
-                        Alignment(offsets[index % offsets.length] + 0.58, 0.72),
-                    child: const SizedBox(
-                        width: 94,
-                        height: 94,
-                        child: CatCharacter(mood: CatMood.greet, size: 94)),
+                    alignment: Alignment(mascotOffset, compact ? 0.55 : 0.72),
+                    child: SizedBox(
+                      width: mascotSize,
+                      height: mascotSize,
+                      child: CatCharacter(
+                        mood: CatMood.greet,
+                        size: mascotSize,
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -719,6 +1062,73 @@ class _LessonPath extends StatelessWidget {
       ),
     );
   }
+}
+
+void _showLockedLessonDialog(BuildContext context, Lesson lesson) {
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (sheetContext) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 58,
+              height: 58,
+              decoration: const BoxDecoration(
+                color: AppColors.backgroundGrey,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.lock_rounded,
+                color: AppColors.textGrey,
+                size: 30,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              lesson.title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textDark,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Заверши предыдущий урок, чтобы открыть этот шаг.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 14,
+                color: AppColors.textGrey,
+              ),
+            ),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => Navigator.pop(sheetContext),
+                icon: const Icon(Icons.check_rounded),
+                label: const Text('Понятно'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.navy,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _PathNode extends StatelessWidget {

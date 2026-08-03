@@ -79,6 +79,14 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _continueLocally() async {
+    setState(() => _isLoading = true);
+    await context.read<AppState>().loginAsGuest();
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+  }
+
   void _showError(String? message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -174,6 +182,20 @@ class _LoginScreenState extends State<LoginScreen> {
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: AppColors.pistachioDark,
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        TextButton.icon(
+          onPressed: _isLoading ? null : _continueLocally,
+          icon: const Icon(Icons.phone_iphone_rounded),
+          label: const Text(
+            'Продолжить без аккаунта',
+            style: TextStyle(
+              fontFamily: 'Nunito',
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppColors.navy,
             ),
           ),
         ),

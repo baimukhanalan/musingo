@@ -6,8 +6,11 @@
 .claude/
 .packages
 build/
+node_modules/
 backend/pb_data/
 tools/pocketbase/pb_data/
 tools/pocketbase/pocketbase
 tools/pocketbase/CHANGELOG.md
 tools/pocketbase/LICENSE.md
+.env*
+!.env.example

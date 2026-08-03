@@ -1,8 +1,30 @@
 {
-  "installCommand": "git clone --depth 1 --branch stable https://github.com/flutter/flutter.git .vercel_flutter && ./.vercel_flutter/bin/flutter config --enable-web && ./.vercel_flutter/bin/flutter pub get",
-  "buildCommand": "./.vercel_flutter/bin/flutter build web --release --dart-define=MUSLINGO_API_URL=$MUSLINGO_API_URL --dart-define=MUSLINGO_SPEECH_API_URL=$MUSLINGO_SPEECH_API_URL",
+  "installCommand": "pnpm install --frozen-lockfile && git clone --depth 1 --branch stable https://github.com/flutter/flutter.git .vercel_flutter && ./.vercel_flutter/bin/flutter config --enable-web && ./.vercel_flutter/bin/flutter pub get",
+  "buildCommand": "pnpm test:api && ./.vercel_flutter/bin/flutter test && ./.vercel_flutter/bin/flutter build web --release --dart-define=MUSLINGO_API_URL=$MUSLINGO_API_URL --dart-define=MUSLINGO_SPEECH_API_URL=$MUSLINGO_SPEECH_API_URL",
   "outputDirectory": "build/web",
+  "regions": ["fra1"],
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 60
+    }
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
+        { "key": "Permissions-Policy", "value": "camera=(), geolocation=(), microphone=(self)" }
+      ]
+    }
+  ],
   "rewrites": [
+    {
+      "source": "/api/:route*",
+      "destination": "/api?route=:route*"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"

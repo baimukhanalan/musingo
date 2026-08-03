@@ -18,11 +18,12 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  test('login screen does not offer guest access', () {
+  test('login screen offers account and local learning paths', () {
     final source = File('lib/screens/login_screen.dart').readAsStringSync();
 
     expect(source, isNot(contains('Продолжить как гость')));
     expect(source, isNot(contains('_loginGuest')));
     expect(source, contains('Нет аккаунта? Зарегистрироваться'));
+    expect(source, contains('Продолжить без аккаунта'));
   });
 }

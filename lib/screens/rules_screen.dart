@@ -57,10 +57,21 @@ class RulesScreen extends StatelessWidget {
   }
 
   void _openLesson(BuildContext context, Lesson lesson) {
+    final state = context.read<AppState>();
+    final user = state.user;
     if (lesson.status == LessonStatus.locked) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Завершите предыдущий урок, чтобы открыть этот.'),
+        ),
+      );
+      return;
+    }
+    if (user != null && !user.isPremium && user.hearts <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Жизни закончились. Восстанови жизнь на главном экране.'),
+          backgroundColor: AppColors.error,
         ),
       );
       return;

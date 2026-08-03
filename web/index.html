@@ -18,19 +18,172 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Muslingo помогает изучать короткие суры, арабское чтение и основы ислама шаг за шагом.">
+  <meta name="theme-color" content="#62C5EE">
+  <meta property="og:title" content="Muslingo">
+  <meta property="og:description" content="Коран, арабский язык и основы ислама в формате коротких интерактивных уроков.">
+  <meta property="og:type" content="website">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="muslingo">
+  <meta name="apple-mobile-web-app-title" content="Muslingo">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>muslingo</title>
+  <title>Muslingo</title>
   <link rel="manifest" href="manifest.json">
+  <script>
+    (() => {
+      let installPrompt = null;
+
+      window.addEventListener('beforeinstallprompt', (event) => {
+        event.preventDefault();
+        installPrompt = event;
+        window.dispatchEvent(new CustomEvent('muslingo-install-ready'));
+      });
+
+      window.addEventListener('appinstalled', () => {
+        installPrompt = null;
+        window.dispatchEvent(new CustomEvent('muslingo-installed'));
+      });
+
+      window.muslingoIsInstalled = () =>
+        window.matchMedia('(display-mode: standalone)').matches ||
+        window.navigator.standalone === true;
+
+      window.muslingoCanInstall = () => installPrompt !== null;
+
+      window.muslingoNeedsIosInstallInstructions = () => {
+        const agent = window.navigator.userAgent.toLowerCase();
+        const ios = /iphone|ipad|ipod/.test(agent);
+        return ios && !window.muslingoIsInstalled();
+      };
+
+      window.muslingoInstall = async () => {
+        if (window.muslingoIsInstalled()) return 'accepted';
+        if (window.muslingoNeedsIosInstallInstructions()) {
+          return 'ios-instructions';
+        }
+        if (!installPrompt) return 'unavailable';
+        installPrompt.prompt();
+        const choice = await installPrompt.userChoice;
+        installPrompt = null;
+        return choice.outcome;
+      };
+    })();
+
+    (() => {
+      const pushWorkerUrl = '/push/muslingo_push_sw.js';
+      const pushScope = '/push/';
+
+      const applicationServerKey = (value) => {
+        const padding = '='.repeat((4 - value.length % 4) % 4);
+        const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const raw = atob(base64);
+        return Uint8Array.from([...raw].map((character) => character.charCodeAt(0)));
+      };
+
+      const installationId = () => {
+        const key = 'muslingo_push_installation_id';
+        let value = localStorage.getItem(key);
+        if (!value) {
+          value = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+          localStorage.setItem(key, value);
+        }
+        return value;
+      };
+
+      const registration = () =>
+        navigator.serviceWorker.register(pushWorkerUrl, { scope: pushScope });
+
+      window.muslingoPush = {
+        isSupported: () =>
+          window.isSecureContext &&
+          'serviceWorker' in navigator &&
+          'PushManager' in window &&
+          'Notification' in window,
+
+        subscribe: async (hour, minute, dueCount, learningGoal) => {
+          try {
+            if (!window.muslingoPush.isSupported() || Notification.permission !== 'granted') {
+              return false;
+            }
+            const worker = await registration();
+            let subscription = await worker.pushManager.getSubscription();
+            if (!subscription) {
+              const keyResponse = await fetch('/api/push/public-key', {
+                headers: { Accept: 'application/json' },
+              });
+              if (!keyResponse.ok) return false;
+              const { publicKey } = await keyResponse.json();
+              subscription = await worker.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: applicationServerKey(publicKey),
+              });
+            }
+            const response = await fetch('/api/push/subscribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              body: JSON.stringify({
+                subscription: subscription.toJSON(),
+                installationId: installationId(),
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+                hour,
+                minute,
+                dueCount,
+                learningGoal: learningGoal || null,
+              }),
+            });
+            return response.ok;
+          } catch (error) {
+            console.warn('Muslingo push subscription failed', error);
+            return false;
+          }
+        },
+
+        unsubscribe: async () => {
+          try {
+            if (!window.muslingoPush.isSupported()) return false;
+            const worker = await registration();
+            const subscription = await worker.pushManager.getSubscription();
+            if (!subscription) return true;
+            await fetch('/api/push/unsubscribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              body: JSON.stringify({ endpoint: subscription.endpoint }),
+            });
+            return subscription.unsubscribe();
+          } catch (error) {
+            console.warn('Muslingo push unsubscribe failed', error);
+            return false;
+          }
+        },
+
+        showTest: async (title, body) => {
+          try {
+            if (!window.muslingoPush.isSupported() || Notification.permission !== 'granted') {
+              return false;
+            }
+            const worker = await registration();
+            await worker.showNotification(title, {
+              body,
+              icon: '/icons/Icon-192.png',
+              badge: '/icons/Icon-192.png',
+              tag: 'muslingo-test-reminder',
+              data: { url: '/#/home' },
+            });
+            return true;
+          } catch (error) {
+            console.warn('Muslingo test notification failed', error);
+            return false;
+          }
+        },
+      };
+    })();
+  </script>
 </head>
 <body>
   <!--

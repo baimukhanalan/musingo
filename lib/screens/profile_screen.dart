@@ -52,6 +52,13 @@ class ProfileScreen extends StatelessWidget {
                   if (!user.isPremium) const SizedBox(height: 16),
                   _MenuSection(
                     items: [
+                      if (state.isGuest)
+                        _MenuItem(
+                            icon: Icons.cloud_upload_rounded,
+                            label: 'Сохранить прогресс',
+                            color: AppColors.navy,
+                            onTap: () =>
+                                Navigator.pushNamed(context, '/login')),
                       _MenuItem(
                           icon: Icons.emoji_events_rounded,
                           label: 'Достижения',
@@ -87,7 +94,9 @@ class ProfileScreen extends StatelessWidget {
                           onTap: () => Navigator.pushNamed(context, '/help')),
                       _MenuItem(
                           icon: Icons.logout_rounded,
-                          label: 'Выйти из аккаунта',
+                          label: state.isGuest
+                              ? 'Начать заново'
+                              : 'Выйти из аккаунта',
                           color: AppColors.error,
                           onTap: () => _confirmLogout(context, state)),
                     ],
@@ -129,7 +138,7 @@ class ProfileScreen extends StatelessWidget {
               Navigator.pop(ctx);
               await state.logout();
               if (context.mounted) {
-                Navigator.pushReplacementNamed(context, '/carousel');
+                Navigator.pushReplacementNamed(context, '/onboarding');
               }
             },
             child: const Text('Выйти',

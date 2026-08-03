@@ -1,12 +1,17 @@
 {
-    "name": "muslingo",
-    "short_name": "muslingo",
-    "start_url": ".",
+    "name": "Muslingo",
+    "short_name": "Muslingo",
+    "id": "/",
+    "start_url": "/",
+    "scope": "/",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+    "background_color": "#F7FAF8",
+    "theme_color": "#62C5EE",
+    "description": "Короткие интерактивные уроки Корана, арабского чтения и основ ислама.",
     "orientation": "portrait-primary",
+    "categories": ["education", "lifestyle"],
+    "lang": "ru",
     "prefer_related_applications": false,
     "icons": [
         {
