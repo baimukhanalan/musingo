@@ -13,6 +13,9 @@ permissions:
   contents: read
   id-token: write
 
+env:
+  MUSLINGO_APP_ORIGIN: https://muslingo-mobile.vercel.app
+
 concurrency:
   group: muslingo-push-reminders
   cancel-in-progress: false
@@ -39,4 +42,4 @@ jobs:
         run: |
           curl --fail --silent --show-error \
             -H "Authorization: Bearer ${OIDC_TOKEN}" \
-            https://muslingo-mobile.vercel.app/api/cron/reminders
+            "${MUSLINGO_APP_ORIGIN}/api/cron/reminders"
