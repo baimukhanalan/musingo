@@ -277,7 +277,7 @@ class AppState extends ChangeNotifier {
         localState: localState,
         importGuest: localState != null);
     if (serverSuccess) return true;
-    if (_isServerUnavailable || !BackendService.hasConfiguredApiUrl) {
+    if (!BackendService.hasConfiguredApiUrl) {
       return _registerLocalAccount(name, email, password);
     }
     return false;
@@ -292,7 +292,7 @@ class AppState extends ChangeNotifier {
         localState: localState,
         importGuest: isGuest);
     if (serverSuccess) return true;
-    if (_isServerUnavailable || !BackendService.hasConfiguredApiUrl) {
+    if (!BackendService.hasConfiguredApiUrl) {
       return _loginLocalAccount(email, password);
     }
     return false;
@@ -334,9 +334,6 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
   }
-
-  bool get _isServerUnavailable =>
-      (_error ?? '').toLowerCase().contains('сервер недоступен');
 
   Future<bool> _registerLocalAccount(
     String name,
