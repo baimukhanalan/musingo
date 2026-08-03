@@ -1025,8 +1025,8 @@ class _LessonPath extends StatelessWidget {
           final nodeOffset = offsets[index % offsets.length];
           final compact = MediaQuery.sizeOf(context).width < 430;
           final mascotOffset = nodeOffset <= 0
-              ? nodeOffset + (compact ? 0.82 : 0.72)
-              : nodeOffset - (compact ? 0.82 : 0.72);
+              ? nodeOffset + (compact ? 1.08 : 0.8)
+              : nodeOffset - (compact ? 1.08 : 0.8);
           final mascotSize = compact ? 82.0 : 94.0;
           final isCurrent = lesson.status == LessonStatus.available ||
               lesson.status == LessonStatus.inProgress;
