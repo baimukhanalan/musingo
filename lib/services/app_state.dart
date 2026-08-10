@@ -76,6 +76,14 @@ class AppState extends ChangeNotifier {
   Map<String, KnowledgeState> _knowledgeStates = {};
   Map<String, HafizProgress> _hafizProgress = {};
 
+  /// Слепок локального/гостевого прогресса, который не удалось влить на сервер
+  /// в момент входа/регистрации (сеть упала на syncLearningData). Держим его,
+  /// чтобы следующий успешный sync доимпортировал данные и НИЧЕГО не потерялось.
+  /// [_pendingImportIsGuest] сохраняет флаг слияния (гостевой импорт мержит по
+  /// принципу «серверное новее не перетираем»).
+  Map<String, dynamic>? _pendingSyncImport;
+  bool _pendingImportIsGuest = false;
+
   UserModel? get user => _user;
   List<Course> get courses => _courses;
   List<Achievement> get achievements => _achievements;
@@ -152,15 +160,30 @@ class AppState extends ChangeNotifier {
       .any((knowledge) => knowledge.lessonId == lessonId && knowledge.isDue(now));
 
   Lesson? get recommendedLesson {
+    // Приоритет 1 — просроченные интервальные повторения. Внутри due-очереди
+    // адаптивно поднимаем СЛАБЫЕ места (низкая сила/лапсы) вперёд сильных:
+    // сначала закрываем то, что хуже усвоено. При равной слабости — по силе
+    // (слабее раньше), затем по «просроченности» (кто дольше ждёт повторения —
+    // раньше). Так подбор учитывает и knowledgeStates.isWeak, и точность
+    // (strength), и интервальные повторения (isDue/nextReviewAt).
+    final now = DateTime.now();
     final dueLessons = _knowledgeStates.values
-        .where((knowledge) => knowledge.isDue())
+        .where((knowledge) => knowledge.isDue(now))
         .toList()
-      ..sort((a, b) => a.nextReviewAt.compareTo(b.nextReviewAt));
+      ..sort((a, b) {
+        if (a.isWeak != b.isWeak) return a.isWeak ? -1 : 1;
+        final byStrength = a.strength.compareTo(b.strength);
+        if (byStrength != 0) return byStrength;
+        return a.nextReviewAt.compareTo(b.nextReviewAt);
+      });
     for (final knowledge in dueLessons) {
       final lesson = _findLesson(knowledge.lessonId);
       if (lesson != null) return lesson;
     }
 
+    // Приоритет 2 — следующий незакрытый урок. Сначала по цели пользователя,
+    // затем любой доступный/в процессе. null только когда всё пройдено и нет
+    // просроченных повторений — инвариант, на который опираются тесты и хоум.
     final preferredType = switch (_learningGoal) {
       LearningGoal.arabicReading => CourseType.arabic,
       LearningGoal.islamBasics => CourseType.rules,
@@ -403,6 +426,17 @@ class AppState extends ChangeNotifier {
     await _saveUser();
   }
 
+  /// Изолирует одну запись в SharedPreferences: durability одного среза не
+  /// должна ронять сохранение остальных и уведомление UI. Прогресс уже лежит в
+  /// памяти, поэтому упавший ключ переедет в persistence на следующем save.
+  Future<void> _guardedSave(Future<void> Function() save) async {
+    try {
+      await save();
+    } catch (_) {
+      // Намеренно глушим: критичные срезы пишутся независимо друг от друга.
+    }
+  }
+
   Future<void> _saveUser() async {
     if (_user == null) return;
     final prefs = await SharedPreferences.getInstance();
@@ -499,8 +533,14 @@ class AppState extends ChangeNotifier {
             localState,
             importGuest: importGuest,
           );
+          _pendingSyncImport = null;
         } catch (_) {
-          // The authenticated session remains valid; local data will sync later.
+          // Сессия валидна, но импорт локального/гостевого прогресса не прошёл.
+          // Сохраняем ИМЕННО этот слепок (а не пересобранный из серверного
+          // состояния, которое ниже перетрёт память) — следующий _syncBackendProgress
+          // повторит импорт с тем же importGuest и данные не потеряются.
+          _pendingSyncImport = localState;
+          _pendingImportIsGuest = importGuest;
         }
       }
       _applyBackendProfile(profile);
@@ -1044,10 +1084,17 @@ class AppState extends ChangeNotifier {
     }
 
     _checkAchievements();
-    await _updateMemoryForLesson(completedLesson, weakStepIds, now);
-    await _saveCourseProgress();
-    await _addLocalLeagueXp(xpEarned + streakBonus);
+    // Durability: user (XP/сердца/стрик) — источник истины, пишем его первым и
+    // без глушения. Остальные срезы (память, прогресс курса, лиговый XP) пишем
+    // независимо через _guardedSave: SharedPreferences не даёт мульти-ключевой
+    // атомарности, поэтому сбой одного ключа не должен терять остальные и не
+    // должен мешать notifyListeners. Всё уже применено в памяти выше.
     await _saveUser();
+    await _guardedSave(
+      () => _updateMemoryForLesson(completedLesson, weakStepIds, now),
+    );
+    await _guardedSave(_saveCourseProgress);
+    await _guardedSave(() => _addLocalLeagueXp(xpEarned + streakBonus));
     notifyListeners();
 
     return {
@@ -1321,7 +1368,9 @@ class AppState extends ChangeNotifier {
             reviewedAt: now,
           );
     _hafizProgress[id] = progress;
-    await _saveHafizProgress();
+    // Durability: попытка уже применена в памяти; сбой записи не должен ронять
+    // возврат результата и уведомление UI — доедет на следующем сохранении/sync.
+    await _guardedSave(_saveHafizProgress);
     await _syncBackendProgress();
     notifyListeners();
     return progress;
@@ -1500,12 +1549,23 @@ class AppState extends ChangeNotifier {
 
   Future<void> _syncBackendProgress() async {
     if (!isBackendUser) return;
+    // Сначала добиваем незавершённый импорт локального/гостевого прогресса.
+    // Отправляем сохранённый слепок, а не текущее состояние: после неудачного
+    // входа память уже равна серверной, и пересбор потерял бы гостевые данные.
+    final pendingImport = _pendingSyncImport;
     try {
-      final profile = await _backend!.syncLearningData(_buildSyncState());
+      final profile = pendingImport != null
+          ? await _backend!.syncLearningData(
+              pendingImport,
+              importGuest: _pendingImportIsGuest,
+            )
+          : await _backend!.syncLearningData(_buildSyncState());
+      _pendingSyncImport = null;
       _applyBackendProfile(profile);
       await _cacheCurrentState();
     } catch (_) {
-      // Local data stays available and is merged on the next successful sync.
+      // Local data stays available and is merged on the next successful sync;
+      // отложенный импорт остаётся в _pendingSyncImport до следующей попытки.
     }
   }
 

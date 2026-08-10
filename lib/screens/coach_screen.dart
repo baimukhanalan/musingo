@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/coach.dart';
 import '../models/lesson.dart';
 import '../services/app_state.dart';
+import '../services/backend_service.dart';
 import '../services/coach_service.dart';
 import '../utils/colors.dart';
 import '../widgets/cat_character.dart';
@@ -23,6 +24,9 @@ class _CoachScreenState extends State<CoachScreen> {
   final _coach = CoachService();
   final List<CoachMessage> _messages = [];
   bool _sending = false;
+  // Свой экземпляр backend создаём лениво: он читает JWT из SharedPreferences,
+  // поэтому одинаково работает и для залогиненного (Bearer), и для анонима.
+  BackendService? _backend;
 
   @override
   void initState() {
@@ -34,6 +38,7 @@ class _CoachScreenState extends State<CoachScreen> {
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
+    _backend?.dispose();
     super.dispose();
   }
 
@@ -101,12 +106,28 @@ class _CoachScreenState extends State<CoachScreen> {
     });
     _scrollToBottom();
 
-    await Future<void>.delayed(const Duration(milliseconds: 260));
-    if (!mounted) return;
-    final response = _coach.answer(
+    final state = context.read<AppState>();
+    final coachContext = _contextFrom(state);
+    // Индикатор «печатает…» держится, пока ждём ответ (сеть или локальный
+    // движок). Backend передаём только если он сконфигурирован — иначе
+    // answerSmart сразу вернёт локальный ответ.
+    BackendService? backend;
+    if (BackendService.hasConfiguredApiUrl) {
+      backend = await _ensureBackend();
+      if (!mounted) return;
+    }
+
+    final response = await _coach.answerSmart(
       question,
-      _contextFrom(context.read<AppState>()),
+      coachContext,
+      backend: backend,
+      locale: state.locale.code,
+      catalog: _catalogFrom(state),
+      xp: state.user?.xp ?? 0,
+      streak: state.user?.streak ?? 0,
+      completedLessonIds: _completedLessonIds(state),
     );
+    if (!mounted) return;
     setState(() {
       _sending = false;
       _messages.add(CoachMessage(
@@ -121,6 +142,38 @@ class _CoachScreenState extends State<CoachScreen> {
       ));
     });
     _scrollToBottom();
+  }
+
+  Future<BackendService> _ensureBackend() async =>
+      _backend ??= await BackendService.create();
+
+  /// Каталог уроков для серверного коуча: id, заголовок, тип курса, порядок и
+  /// пройден ли урок. Позволяет модели ссылаться на реальные lessonId.
+  List<Map<String, dynamic>> _catalogFrom(AppState state) {
+    final catalog = <Map<String, dynamic>>[];
+    for (final course in state.courses) {
+      for (final lesson in course.lessons) {
+        catalog.add({
+          'id': lesson.id,
+          'title': lesson.title,
+          'subtitle': lesson.subtitle,
+          'course': course.type.name,
+          'order': lesson.order,
+          'completed': lesson.status == LessonStatus.completed,
+        });
+      }
+    }
+    return catalog;
+  }
+
+  List<String> _completedLessonIds(AppState state) {
+    final ids = <String>[];
+    for (final course in state.courses) {
+      for (final lesson in course.lessons) {
+        if (lesson.status == LessonStatus.completed) ids.add(lesson.id);
+      }
+    }
+    return ids;
   }
 
   void _scrollToBottom() {

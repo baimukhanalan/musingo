@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/coach.dart';
 import '../models/friend.dart';
 import '../models/user.dart';
 
@@ -219,6 +220,96 @@ class BackendService {
       body: {'action': 'remove', 'code': code},
       allowEmpty: true,
     );
+  }
+
+  /// Спрашивает серверного AI-коуча. JWT добавляется автоматически, если
+  /// пользователь залогинен (иначе анонимный запрос). Никогда не бросает
+  /// наружу: при 503 `coach_unavailable`, любой другой ошибке, таймауте или
+  /// недоступности сервера возвращает `null` — вызывающий откатывается на
+  /// локальный движок.
+  Future<CoachResponse?> askCoach({
+    required String question,
+    required String locale,
+    required Map<String, dynamic> context,
+    List<Map<String, dynamic>>? catalog,
+  }) async {
+    try {
+      final response = await _request(
+        'POST',
+        '/api/coach',
+        body: {
+          'question': question,
+          'locale': locale,
+          'context': context,
+          if (catalog != null) 'catalog': catalog,
+        },
+      );
+      return _coachResponseFromJson(response);
+    } catch (_) {
+      // 503/сеть/парсинг/недоступность — тихий откат на локальный движок.
+      return null;
+    }
+  }
+
+  CoachResponse? _coachResponseFromJson(Map<String, dynamic> json) {
+    final text = (json['text'] as String?)?.trim();
+    if (text == null || text.isEmpty) return null;
+
+    // action может прийти как строка ("startLesson") или объектом
+    // {type, lessonId, label} — поддерживаем оба варианта.
+    CoachActionType? actionType;
+    String? lessonId = json['lessonId'] as String?;
+    String? actionLabel = json['actionLabel'] as String?;
+    final rawAction = json['action'];
+    if (rawAction is String) {
+      actionType = _coachActionFromString(rawAction);
+    } else if (rawAction is Map) {
+      final action = Map<String, dynamic>.from(rawAction);
+      actionType = _coachActionFromString(action['type'] as String?);
+      lessonId = (action['lessonId'] as String?) ?? lessonId;
+      actionLabel = (action['label'] as String?) ??
+          (action['actionLabel'] as String?) ??
+          actionLabel;
+    }
+
+    final rawSources = json['sources'];
+    final sources = <CoachSource>[];
+    if (rawSources is List) {
+      for (final item in rawSources) {
+        if (item is! Map) continue;
+        final source = Map<String, dynamic>.from(item);
+        final title = (source['title'] as String?)?.trim();
+        if (title == null || title.isEmpty) continue;
+        final url = (source['url'] as String?)?.trim();
+        sources.add(CoachSource(
+          title: title,
+          category: (source['category'] as String?)?.trim() ?? '',
+          verification: (source['verification'] as String?)?.trim() ?? '',
+          url: (url == null || url.isEmpty) ? null : url,
+        ));
+      }
+    }
+
+    return CoachResponse(
+      text: text,
+      sources: sources,
+      actionType: actionType,
+      actionLabel: actionLabel,
+      lessonId: lessonId,
+    );
+  }
+
+  CoachActionType? _coachActionFromString(String? raw) {
+    switch (raw?.trim()) {
+      case 'startLesson':
+        return CoachActionType.startLesson;
+      case 'openQuran':
+        return CoachActionType.openQuran;
+      case 'contactSpecialist':
+        return CoachActionType.contactSpecialist;
+      default:
+        return null;
+    }
   }
 
   Future<Map<String, dynamic>> _request(

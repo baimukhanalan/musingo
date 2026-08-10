@@ -9,6 +9,7 @@ import '../utils/flags.dart';
 import '../widgets/cat_character.dart';
 import '../widgets/language_pills.dart';
 import '../widgets/premium_background.dart';
+import '../widgets/premium_button.dart';
 import '../widgets/premium_card.dart';
 import '../widgets/section_label.dart';
 import '../widgets/stat_badge.dart';
@@ -48,6 +49,16 @@ class ProfileScreen extends StatelessWidget {
                   suras: suras,
                   accuracy: accuracy,
                 ),
+                // Гостю показываем заметную премиум-карточку «Сохрани прогресс»:
+                // аккаунт нужен только чтобы синхронизировать облако и не потерять
+                // данные при смене/очистке устройства. Аккаунт не навязываем —
+                // гость продолжает жить на устройстве. Залогиненным не показываем.
+                if (state.isGuest) ...[
+                  const SizedBox(height: 16),
+                  _GuestSaveProgressCard(
+                    onTap: () => Navigator.pushNamed(context, '/login'),
+                  ),
+                ],
                 const SizedBox(height: 22),
                 SectionLabel(
                     text: state.tr(
@@ -854,6 +865,110 @@ class _PremiumUpsell extends StatelessWidget {
             ),
             const Icon(Icons.chevron_right_rounded,
                 color: Colors.white, size: 22),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Премиум-карточка для ГОСТЯ: мягко предлагает создать аккаунт ради облачной
+/// синхронизации, чтобы прогресс не потерялся при смене или очистке устройства.
+/// Ничего не навязывает — это опциональный апселл, гость остаётся на устройстве.
+class _GuestSaveProgressCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _GuestSaveProgressCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF5FC3EE), Color(0xFF3FA9DC), AppColors.navy],
+          ),
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.sky.withValues(alpha: 0.38),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.22),
+                  ),
+                  child: const Icon(Icons.cloud_upload_rounded,
+                      color: Colors.white, size: 26),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        state.tr(
+                            ru: 'Сохрани прогресс',
+                            kk: 'Прогресіңді сақта',
+                            en: 'Save your progress'),
+                        style: const TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        state.tr(
+                            ru: 'Создай аккаунт — данные синхронизируются в '
+                                'облако, и ты не потеряешь их при смене или '
+                                'очистке устройства.',
+                            kk: 'Аккаунт жаса — деректер бұлтқа синхрондалады, '
+                                'құрылғыны ауыстырғанда немесе тазалағанда '
+                                'жоғалмайды.',
+                            en: 'Create an account — your data syncs to the '
+                                'cloud so you won\'t lose it if you switch or '
+                                'wipe your device.'),
+                        style: const TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 12.5,
+                          height: 1.35,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            PremiumButton(
+              label: state.tr(
+                  ru: 'Создать аккаунт',
+                  kk: 'Аккаунт жасау',
+                  en: 'Create account'),
+              variant: PremiumButtonVariant.gold,
+              icon: Icons.arrow_forward_rounded,
+              onPressed: onTap,
+            ),
           ],
         ),
       ),

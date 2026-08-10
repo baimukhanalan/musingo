@@ -1,5 +1,6 @@
 import '../models/coach.dart';
 import '../models/learning_profile.dart';
+import 'backend_service.dart';
 
 class CoachService {
   static const suggestions = [
@@ -39,6 +40,73 @@ class CoachService {
   ];
 
   static const specialistUrl = 'https://www.muftyat.kz/kk/qa/';
+
+  /// Backend-first ответ с откатом на локальный движок.
+  ///
+  /// Если backend сконфигурирован ([BackendService.hasConfiguredApiUrl]) и
+  /// передан, пробуем серверного AI-коуча. При `null` (503 `coach_unavailable`,
+  /// сеть, недоступность) или любой ошибке — возвращаем локальный [answer].
+  /// Так экран всегда получает валидный [CoachResponse] с сохранённым
+  /// маппингом действий (startLesson/openQuran/contactSpecialist + lessonId).
+  Future<CoachResponse> answerSmart(
+    String question,
+    CoachContext context, {
+    BackendService? backend,
+    required String locale,
+    List<Map<String, dynamic>>? catalog,
+    int xp = 0,
+    int streak = 0,
+    List<String> completedLessonIds = const [],
+  }) async {
+    if (backend != null && BackendService.hasConfiguredApiUrl) {
+      try {
+        final remote = await backend.askCoach(
+          question: question,
+          locale: locale,
+          context: _contextPayload(
+            context,
+            xp: xp,
+            streak: streak,
+            completedLessonIds: completedLessonIds,
+          ),
+          catalog: catalog,
+        );
+        if (remote != null) return remote;
+      } catch (_) {
+        // Любой сбой backend — тихий откат на локальный движок ниже.
+      }
+    }
+    return answer(question, context);
+  }
+
+  /// Плоский JSON-снимок прогресса для серверного коуча.
+  Map<String, dynamic> _contextPayload(
+    CoachContext context, {
+    required int xp,
+    required int streak,
+    required List<String> completedLessonIds,
+  }) {
+    return {
+      'placementLevel': context.placementLevel,
+      'goal': context.goal?.title,
+      'recommendation': context.recommendation,
+      'recommendedLessonId': context.recommendedLessonId,
+      'recommendedLessonTitle': context.recommendedLessonTitle,
+      'dueReviewCount': context.dueReviewCount,
+      'xp': xp,
+      'streak': streak,
+      'completedLessonIds': completedLessonIds,
+      'weakKnowledge': context.weakKnowledge
+          .take(8)
+          .map((k) => {
+                'id': k.id,
+                'lessonId': k.lessonId,
+                'label': k.label,
+                'strength': k.strength,
+              })
+          .toList(growable: false),
+    };
+  }
 
   CoachResponse answer(String question, CoachContext context) {
     final normalized = question.trim().toLowerCase();

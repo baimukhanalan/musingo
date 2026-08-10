@@ -21,6 +21,8 @@ const quranIds = [
   'q_kawthar_1', 'q_kafirun_1', 'q_nasr_1', 'q_masad_1', 'q_review_short_surahs',
   'q_humaza_1', 'q_takathur_1', 'q_qaria_1', 'q_adiyat_1', 'q_zalzala_1',
   'q_qadr_1', 'q_tin_1', 'q_sharh_1', 'q_duha_1', 'q_ala_1',
+  'q_alaq_1', 'q_shams_1', 'q_layl_1', 'q_fajr_1', 'q_ghashiya_1',
+  'q_tariq_1', 'q_buruj_1',
 ];
 const rulesIds = [
   'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10',
@@ -75,6 +77,8 @@ test('ayatRewards matches the distinct quranGlobalAyahNumber count per lesson', 
     q_kawthar_1: 3, q_kafirun_1: 6, q_nasr_1: 3, q_masad_1: 5,
     q_humaza_1: 9, q_takathur_1: 8, q_qaria_1: 11, q_adiyat_1: 11, q_zalzala_1: 8,
     q_qadr_1: 5, q_tin_1: 8, q_sharh_1: 8, q_duha_1: 11, q_ala_1: 19,
+    q_alaq_1: 19, q_shams_1: 15, q_layl_1: 21, q_fajr_1: 30,
+    q_ghashiya_1: 26, q_tariq_1: 17, q_buruj_1: 22,
   };
   assert.deepEqual(ayatRewards, expected);
 });
