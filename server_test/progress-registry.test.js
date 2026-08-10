@@ -26,6 +26,7 @@ const quranIds = [
   'q_naba_1', 'q_naba_2', 'q_naziat_1', 'q_naziat_2',
   'q_abasa_1', 'q_abasa_2', 'q_takwir_1', 'q_infitar_1',
   'q_mutaffifin_1', 'q_mutaffifin_2', 'q_inshiqaq_1',
+  'q_balad_1', 'q_bayyina_1',
 ];
 const rulesIds = [
   'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10',
@@ -85,6 +86,7 @@ test('ayatRewards matches the distinct quranGlobalAyahNumber count per lesson', 
     q_naba_1: 20, q_naba_2: 20, q_naziat_1: 26, q_naziat_2: 20,
     q_abasa_1: 23, q_abasa_2: 19, q_takwir_1: 29, q_infitar_1: 19,
     q_mutaffifin_1: 20, q_mutaffifin_2: 16, q_inshiqaq_1: 25,
+    q_balad_1: 20, q_bayyina_1: 8,
   };
   assert.deepEqual(ayatRewards, expected);
 });
