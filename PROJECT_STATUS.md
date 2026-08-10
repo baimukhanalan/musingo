@@ -2,7 +2,7 @@
 
 **Обновлено:** 2026-08-11
 **Прод (web/PWA + API):** https://muslingo-mobile.vercel.app
-**Текущий production deployment:** `dpl_GdkvUqXNwDfiUuBbSeRaEgHBdm1N` (Ready)
+**Текущий production deployment:** `dpl_GHdD8GHwXSPCMpoMioofRFFjbVj1` (Ready)
 **Репозиторий:** github.com/baimukhanalan/musingo (локальная ветка готова к push; GitHub ждёт подтверждения входа владельцем)
 
 Это приложение для изучения Корана, арабского и основ ислама по системе Duolingo:
@@ -114,7 +114,7 @@ AI-коуч, Коран-ридер, Hafiz Mode, друзья, уведомлен
 
 ## 4. Верификация
 
-Каждый шаг проверялся: `flutter analyze` (чисто), **flutter-тесты** (98), **node-тесты** (138), `flutter build web`. Vercel гоняет те же тесты в `buildCommand` — «красная» сборка = упавший тест.
+Каждый шаг проверялся: `flutter analyze` (чисто), **Flutter-тесты** (99), **Node-тесты** (138), `flutter build web`. Vercel гоняет те же тесты в `buildCommand` — «красная» сборка = упавший тест.
 
 Последний повторный аудит 2026-08-11 также подтвердил:
 - production-сборка web проходит; предупреждения есть только у необязательного Wasm dry-run `flutter_tts`, обычная JS-сборка успешна;

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:muslingo/screens/friends_screen.dart';
 import 'package:muslingo/screens/home_screen.dart';
+import 'package:muslingo/screens/install_app_screen.dart';
 import 'package:muslingo/screens/league_screen.dart';
 import 'package:muslingo/screens/main_tab_screen.dart';
 import 'package:muslingo/services/app_state.dart';
@@ -132,6 +133,10 @@ void main() {
 
   testWidgets('Лига рендерится и честно требует аккаунт у гостя',
       (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final state = await guestState(tester);
 
     await tester.pumpWidget(
@@ -152,6 +157,31 @@ void main() {
     expect(find.text('Недельная лига'), findsWidgets);
     expect(find.text('Войди, чтобы участвовать'), findsOneWidget);
     expect(find.text('Войти или создать аккаунт'), findsOneWidget);
+
+    await teardown(tester);
+  });
+
+  testWidgets('Экран установки помещается на мобильном viewport',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final state = await guestState(tester);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppState>.value(
+        value: state,
+        child: const MaterialApp(home: InstallAppScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Установить Muslingo'), findsOneWidget);
+    // В VM используется native-stub: экран честно считает приложение уже
+    // установленным; web-ветку с двумя кнопками проверяет production smoke.
+    expect(find.text('Muslingo уже установлен'), findsOneWidget);
 
     await teardown(tester);
   });
