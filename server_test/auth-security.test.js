@@ -11,6 +11,8 @@ process.env.JWT_SECRET ??= 'unit-test-secret-unit-test-secret-0123456789';
 
 const {
   issueToken,
+  issueLessonAttempt,
+  verifyLessonAttempt,
   verifyToken,
   isUuid,
   hashPassword,
@@ -108,6 +110,25 @@ test('garbage and empty tokens are rejected, not crashed on', async () => {
   assert.equal((await caught(verifyToken('a.b.c'))).code, 'invalid_session');
   assert.equal((await caught(verifyToken(''))).code, 'invalid_session');
   assert.equal((await caught(verifyToken(null))).code, 'invalid_session');
+});
+
+test('lesson attempt is bound to the user and lesson', async () => {
+  const token = await issueLessonAttempt(UUID, 'q_fatiha_1');
+  const payload = await verifyLessonAttempt(token, {
+    userId: UUID,
+    lessonId: 'q_fatiha_1',
+    minAgeSeconds: 0,
+  });
+  assert.equal(payload.sub, UUID);
+  assert.equal(payload.lessonId, 'q_fatiha_1');
+  assert.equal(typeof payload.jti, 'string');
+
+  const error = await caught(verifyLessonAttempt(token, {
+    userId: UUID,
+    lessonId: 'q_ikhlas_1',
+    minAgeSeconds: 0,
+  }));
+  assert.equal(error.code, 'invalid_lesson_attempt');
 });
 
 // --- UUID validation (pre-DB guard) -------------------------------------

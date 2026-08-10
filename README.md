@@ -20,10 +20,9 @@ Muslingo — обучающее приложение в духе языковы�
 ## Готовые версии
 
 - **Web / PWA:** https://muslingo-mobile.vercel.app
-- **Android APK:** https://github.com/baimukhanalan/musingo/releases/latest/download/muslingo-android.apk
-
-APK предназначен для прямой тестовой установки на Android и подписан CI-ключом.
-Для публикации в Google Play нужен отдельный upload-keystore владельца.
+- **Android APK:** появится в GitHub Releases после добавления владельцем
+  release-keystore в GitHub Actions. Приложение не показывает неработающую
+  ссылку до публикации подписанного файла.
 
 Приложение **локально-первое**. Без заданного `MUSLINGO_API_URL` и без базы
 данных оно полностью работает на устройстве: гостевой вход, локальные

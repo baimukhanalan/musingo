@@ -48,11 +48,20 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
   // (ChangeNotifierProvider.value не диспоузит), чтобы навесить на него
   // наблюдатель жизненного цикла.
   final AppState _appState = AppState();
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _appState.setNotificationOpenHandler((route) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _navigatorKey.currentState?.pushNamedAndRemoveUntil(
+          route == '/home' ? route : '/home',
+          (existing) => false,
+        );
+      });
+    });
   }
 
   @override
@@ -81,6 +90,7 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
       // языка интерфейса (locale) и подхватывал новый Locale.
       child: Consumer<AppState>(
         builder: (context, appState, _) => MaterialApp(
+          navigatorKey: _navigatorKey,
           title: 'Muslingo',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light,

@@ -101,6 +101,14 @@ function createSchema() {
       attempts integer NOT NULL DEFAULT 0,
       window_started_at timestamptz NOT NULL DEFAULT now()
     )`);
+    await ignoreDuplicate(sql`CREATE TABLE IF NOT EXISTS muslingo_revoked_sessions (
+      jti text PRIMARY KEY,
+      user_id uuid NOT NULL REFERENCES muslingo_users(id) ON DELETE CASCADE,
+      expires_at timestamptz NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )`);
+    await ignoreDuplicate(sql`CREATE INDEX IF NOT EXISTS muslingo_revoked_sessions_expiry
+      ON muslingo_revoked_sessions (expires_at)`);
     await ignoreDuplicate(sql`CREATE TABLE IF NOT EXISTS muslingo_push_subscriptions (
       endpoint_hash text PRIMARY KEY,
       endpoint text NOT NULL,

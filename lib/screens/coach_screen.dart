@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -112,7 +113,7 @@ class _CoachScreenState extends State<CoachScreen> {
     // движок). Backend передаём только если он сконфигурирован — иначе
     // answerSmart сразу вернёт локальный ответ.
     BackendService? backend;
-    if (BackendService.hasConfiguredApiUrl) {
+    if (kIsWeb || BackendService.hasConfiguredApiUrl) {
       backend = await _ensureBackend();
       if (!mounted) return;
     }
@@ -239,7 +240,8 @@ class _CoachScreenState extends State<CoachScreen> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -462,7 +464,8 @@ class _MessageView extends StatelessWidget {
                       child: FilledButton.icon(
                         onPressed: onAction,
                         icon: Icon(
-                          message.actionType == CoachActionType.contactSpecialist
+                          message.actionType ==
+                                  CoachActionType.contactSpecialist
                               ? Icons.support_agent_rounded
                               : message.actionType == CoachActionType.openQuran
                                   ? Icons.menu_book_rounded
@@ -470,8 +473,7 @@ class _MessageView extends StatelessWidget {
                           size: 19,
                         ),
                         label: Text(message.actionLabel ??
-                            state.tr(
-                                ru: 'Открыть', kk: 'Ашу', en: 'Open')),
+                            state.tr(ru: 'Открыть', kk: 'Ашу', en: 'Open')),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.sky,
                           foregroundColor: Colors.white,

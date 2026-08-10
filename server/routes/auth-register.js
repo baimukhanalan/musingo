@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { hashPassword, issueToken } from '../lib/auth.js';
 import { sql, ensureSchema } from '../lib/db.js';
 import { ApiError, clientIp, method, readJson, text, withApi } from '../lib/http.js';
-import { assertRegisterAllowed, recordRegisterAttempt, registerKey } from '../lib/login-rate-limit.js';
+import { consumeRegisterAttempt, registerKey } from '../lib/login-rate-limit.js';
 import { defaultProgress, profile } from '../lib/progress.js';
 
 export default withApi(async (request, response) => {
@@ -14,8 +14,7 @@ export default withApi(async (request, response) => {
   // single address. The bucket is a hashed, "register:"-namespaced key that is
   // independent of the login limiter; assert the cap, then count this attempt.
   const rateKey = registerKey(clientIp(request));
-  await assertRegisterAllowed(rateKey);
-  await recordRegisterAttempt(rateKey);
+  await consumeRegisterAttempt(rateKey);
 
   const body = readJson(request);
   const name = text(body.name, { min: 2, max: 60, field: 'name' });

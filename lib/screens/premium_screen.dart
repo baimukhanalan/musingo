@@ -13,8 +13,8 @@ class PremiumScreen extends StatefulWidget {
 }
 
 class _PremiumScreenState extends State<PremiumScreen> {
-  // Purely visual plan highlight — no real billing happens here.
-  // 0 = год (по умолчанию выделен), 1 = месяц.
+  // Preview of the planned offer. Billing is intentionally not represented as
+  // active until the App Store / Google Play purchase flow exists.
   int _selectedPlan = 0;
 
   List<String> _features(AppState state) => [
@@ -47,9 +47,9 @@ class _PremiumScreenState extends State<PremiumScreen> {
           backgroundColor: AppColors.navyDark,
           content: Text(
             state.tr(
-                ru: 'Подписка Muslingo+ скоро откроется. Оплата пока не запущена.',
+                ru: 'Muslingo+ пока в подготовке. Сейчас все доступные уроки можно проходить бесплатно.',
                 kk: 'Muslingo+ жазылымы жақында ашылады. Төлем әзірше іске қосылмаған.',
-                en: 'Muslingo+ subscription is coming soon. Payments are not live yet.'),
+                en: 'Muslingo+ is still being prepared. All currently available lessons remain free.'),
             style: const TextStyle(
               fontFamily: 'Nunito',
               fontWeight: FontWeight.w700,
@@ -104,21 +104,19 @@ class _PremiumScreenState extends State<PremiumScreen> {
                 const SizedBox(height: 22),
                 PremiumButton(
                   label: state.tr(
-                      ru: 'Попробовать 7 дней бесплатно',
-                      kk: '7 күн тегін қолданып көру',
-                      en: 'Try 7 days free'),
+                      ru: 'Muslingo+ скоро',
+                      kk: 'Muslingo+ жақында',
+                      en: 'Muslingo+ coming soon'),
                   variant: PremiumButtonVariant.gold,
                   onPressed: _onTrialPressed,
                 ),
                 const SizedBox(height: 14),
                 Text(
                   state.tr(
-                    ru: 'Отмена в любой момент. Базовые уроки и Коран — '
-                        'бесплатно навсегда.',
+                    ru: 'Оплата и пробный период ещё не запущены. Доступные уроки и Коран остаются бесплатными.',
                     kk: 'Кез келген уақытта бас тартуға болады. Негізгі сабақтар '
                         'мен Құран — әрдайым тегін.',
-                    en: 'Cancel anytime. Basic lessons and the Quran are '
-                        'free forever.',
+                    en: 'Payments and the trial are not live yet. Available lessons and the Quran remain free.',
                   ),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
@@ -176,8 +174,8 @@ class _PremiumScreenState extends State<PremiumScreen> {
                         Icons.close_rounded,
                         color: AppColors.white,
                         size: 22,
-                        semanticLabel: state.tr(
-                            ru: 'Закрыть', kk: 'Жабу', en: 'Close'),
+                        semanticLabel:
+                            state.tr(ru: 'Закрыть', kk: 'Жабу', en: 'Close'),
                       ),
                     ),
                   ),

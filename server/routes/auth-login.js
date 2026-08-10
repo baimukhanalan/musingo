@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { issueToken, verifyLoginPassword } from '../lib/auth.js';
 import { sql, ensureSchema } from '../lib/db.js';
 import { ApiError, clientIp, method, readJson, text, withApi } from '../lib/http.js';
-import { assertLoginAllowed, clearLoginFailures, recordLoginFailure } from '../lib/login-rate-limit.js';
+import { clearLoginFailures, consumeLoginAttempt } from '../lib/login-rate-limit.js';
 import { profile } from '../lib/progress.js';
 
 // Per-ip cap catches password spraying across many emails from one address
@@ -28,8 +28,10 @@ export default withApi(async (request, response) => {
   // blocks password spraying across many emails from a single address.
   const pairKey = rateKey('pair', email, ip);
   const ipKey = rateKey('ip', ip);
-  await assertLoginAllowed(ipKey, ipAttemptLimit);
-  await assertLoginAllowed(pairKey);
+  // Consume both buckets atomically before password work. A separate
+  // read-then-increment let concurrent requests all pass the same cap.
+  await consumeLoginAttempt(ipKey, ipAttemptLimit);
+  await consumeLoginAttempt(pairKey);
 
   const rows = await sql`
     SELECT u.id, u.email, u.display_name, u.password_salt, u.password_hash, p.document
@@ -43,8 +45,6 @@ export default withApi(async (request, response) => {
   // unknown email and a wrong password are indistinguishable: same timing and
   // the same 401 invalid_credentials response.
   if (!(await verifyLoginPassword(user, password))) {
-    await recordLoginFailure(pairKey);
-    await recordLoginFailure(ipKey);
     throw new ApiError(401, 'invalid_credentials', 'Invalid email or password.');
   }
   // Only the pair key is cleared on success; the ip counter is left to expire so

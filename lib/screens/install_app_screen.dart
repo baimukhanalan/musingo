@@ -19,8 +19,8 @@ class InstallAppScreen extends StatefulWidget {
 }
 
 class _InstallAppScreenState extends State<InstallAppScreen> {
-  static final Uri _androidApkUri = Uri.parse(
-    'https://github.com/baimukhanalan/musingo/releases/latest/download/muslingo-android.apk',
+  static const _androidApkUrl = String.fromEnvironment(
+    'MUSLINGO_ANDROID_APK_URL',
   );
   bool _installing = false;
   bool _showIosInstructions = false;
@@ -61,8 +61,9 @@ class _InstallAppScreenState extends State<InstallAppScreen> {
   }
 
   Future<void> _downloadAndroidApk() async {
+    if (_androidApkUrl.isEmpty) return;
     final opened = await launchUrl(
-      _androidApkUri,
+      Uri.parse(_androidApkUrl),
       mode: LaunchMode.externalApplication,
     );
     if (!mounted || opened) return;
@@ -273,9 +274,13 @@ class _InstallAppScreenState extends State<InstallAppScreen> {
                         icon: Icons.download_rounded,
                         onPressed: _installing ? null : _install,
                       ),
-                    if (!installed && AppInstallService.isWebInstallExperience)
+                    if (!installed &&
+                        AppInstallService.isWebInstallExperience &&
+                        _androidApkUrl.isNotEmpty)
                       const SizedBox(height: 12),
-                    if (!installed && AppInstallService.isWebInstallExperience)
+                    if (!installed &&
+                        AppInstallService.isWebInstallExperience &&
+                        _androidApkUrl.isNotEmpty)
                       PremiumButton(
                         label: state.tr(
                           ru: 'Скачать APK для Android',
@@ -286,7 +291,9 @@ class _InstallAppScreenState extends State<InstallAppScreen> {
                         variant: PremiumButtonVariant.navy,
                         onPressed: _downloadAndroidApk,
                       ),
-                    if (!installed && AppInstallService.isWebInstallExperience)
+                    if (!installed &&
+                        AppInstallService.isWebInstallExperience &&
+                        _androidApkUrl.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
                         child: Text(

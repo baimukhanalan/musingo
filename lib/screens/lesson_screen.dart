@@ -30,20 +30,23 @@ String _stepTypeLabel(LessonStep step, AppState state) {
       return state.tr(ru: 'Новый аят', kk: 'Жаңа аят', en: 'New ayah');
     case LessonStepType.text:
       return state.tr(
-          ru: 'Изучаем фразу', kk: 'Тіркесті үйренеміз', en: 'Learn the phrase');
+          ru: 'Изучаем фразу',
+          kk: 'Тіркесті үйренеміз',
+          en: 'Learn the phrase');
     case LessonStepType.question:
       return state.tr(ru: 'Вопрос', kk: 'Сұрақ', en: 'Question');
     case LessonStepType.matching:
       return state.tr(
-          ru: 'Соедини пары', kk: 'Жұптарды сәйкестендір', en: 'Match the pairs');
+          ru: 'Соедини пары',
+          kk: 'Жұптарды сәйкестендір',
+          en: 'Match the pairs');
     case LessonStepType.speak:
       return state.tr(ru: 'Произношение', kk: 'Айтылым', en: 'Pronunciation');
     case LessonStepType.wordOrder:
       return state.tr(
           ru: 'Собери фразу', kk: 'Тіркесті құрастыр', en: 'Build the phrase');
     case LessonStepType.listenChoice:
-      return state.tr(
-          ru: 'Аудирование', kk: 'Тыңдалым', en: 'Listening');
+      return state.tr(ru: 'Аудирование', kk: 'Тыңдалым', en: 'Listening');
   }
 }
 
@@ -60,10 +63,12 @@ class _LessonScreenState extends State<LessonScreen> {
   CatMood _catMood = CatMood.greet;
   int? _selectedAnswer;
   bool _answered = false;
+
   /// Итог последней проверки — общий для всех оцениваемых типов шага
   /// (question / listenChoice / wordOrder). Раньше нижняя панель выводила
   /// правильность только из `_selectedAnswer`, что для wordOrder неприменимо.
   bool _lastAnswerCorrect = false;
+
   /// Слова, уже выставленные учеником в wordOrder-шаге: индексы в банке слов.
   List<int> _orderPicks = const [];
   bool _showHint = false;
@@ -105,6 +110,11 @@ class _LessonScreenState extends State<LessonScreen> {
     _speakPassed = _isSpeakPassed(_step);
     _matchingComplete = _isMatchingComplete(_step);
     _orderPicks = const [];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<AppState>().beginLessonAttempt(widget.lesson.id);
+      }
+    });
   }
 
   void _onCheck() {
@@ -339,12 +349,14 @@ class _LessonScreenState extends State<LessonScreen> {
               ? null
               : (position) {
                   HapticsService.tap();
-                  setState(() => _orderPicks = [..._orderPicks]..removeAt(position));
+                  setState(
+                      () => _orderPicks = [..._orderPicks]..removeAt(position));
                 },
         );
       case LessonStepType.matching:
         return _MatchingStep(
-          key: ValueKey('${widget.lesson.id}_${_stepIndex}_$_reviewingMistakes'),
+          key:
+              ValueKey('${widget.lesson.id}_${_stepIndex}_$_reviewingMistakes'),
           step: _step,
           onWrong: () {
             HapticsService.wrong();
@@ -435,8 +447,7 @@ class _LessonScreenState extends State<LessonScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(
-                state.tr(ru: 'Остаться', kk: 'Қалу', en: 'Stay'),
+            child: Text(state.tr(ru: 'Остаться', kk: 'Қалу', en: 'Stay'),
                 style: const TextStyle(
                     fontFamily: 'Nunito',
                     color: AppColors.pistachio,
@@ -447,8 +458,7 @@ class _LessonScreenState extends State<LessonScreen> {
               Navigator.pop(ctx);
               Navigator.pop(context);
             },
-            child: Text(
-                state.tr(ru: 'Выйти', kk: 'Шығу', en: 'Exit'),
+            child: Text(state.tr(ru: 'Выйти', kk: 'Шығу', en: 'Exit'),
                 style: const TextStyle(
                     fontFamily: 'Nunito',
                     color: AppColors.error,
@@ -784,8 +794,7 @@ class _AudioStepState extends State<_AudioStep> {
             onPointerDown: (_) => _toggleSpeech(),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
               decoration: BoxDecoration(
                 color: _played
                     ? AppColors.pistachioLight.withValues(alpha: 0.8)
@@ -818,7 +827,9 @@ class _AudioStepState extends State<_AudioStep> {
                   Text(
                     _speaking
                         ? state.tr(
-                            ru: 'Слушаю...', kk: 'Тыңдап тұрмын...', en: 'Playing...')
+                            ru: 'Слушаю...',
+                            kk: 'Тыңдап тұрмын...',
+                            en: 'Playing...')
                         : (_played
                             ? state.tr(
                                 ru: 'Слушать ещё раз',
@@ -1234,7 +1245,8 @@ class _AnswerOptionCard extends StatelessWidget {
               const Icon(Icons.check_circle_rounded,
                   color: AppColors.success, size: 24),
             if (answered && selected && !isCorrectOption)
-              const Icon(Icons.cancel_rounded, color: AppColors.error, size: 24),
+              const Icon(Icons.cancel_rounded,
+                  color: AppColors.error, size: 24),
           ],
         ),
       ),
@@ -1271,8 +1283,8 @@ List<String> wordOrderBank(LessonStep step) {
   final seed = buffer.toString().hashCode;
 
   for (var attempt = 0; attempt < 8; attempt++) {
-    final shuffled =
-        List<String>.of(bank)..shuffle(Random(Object.hash(seed, attempt)));
+    final shuffled = List<String>.of(bank)
+      ..shuffle(Random(Object.hash(seed, attempt)));
     if (shuffled.join(' ') != step.orderedAnswer) return shuffled;
   }
   return List<String>.of(bank.reversed);
@@ -1306,8 +1318,8 @@ List<int> matchingAnswerOrder(int count, int seed) {
   for (var attempt = 0; attempt < 8; attempt++) {
     // Мешаем seed с номером попытки хешем, а не сложением: иначе соседние
     // seed'ы разных шагов могли бы дать одинаковую перестановку через retry.
-    final shuffled =
-        List<int>.of(order)..shuffle(Random(Object.hash(seed, attempt)));
+    final shuffled = List<int>.of(order)
+      ..shuffle(Random(Object.hash(seed, attempt)));
     var hasFixedPoint = false;
     for (var i = 0; i < count; i++) {
       if (shuffled[i] == i) {
@@ -1348,7 +1360,8 @@ class _MatchingStepState extends State<_MatchingStep> {
   /// Порядок отображения правой колонки (ответов). Реально перемешан, но
   /// детерминирован в пределах одного показа шага — seed берётся из содержимого
   /// шага, поэтому на каждый rebuild порядок не «прыгает».
-  List<int> get _answerOrder => matchingAnswerOrder(_pairs.length, _shuffleSeed);
+  List<int> get _answerOrder =>
+      matchingAnswerOrder(_pairs.length, _shuffleSeed);
 
   /// Стабильный seed от содержимого шага: одинаков между перестроениями одного
   /// и того же шага, но различается для разных шагов.
@@ -1616,9 +1629,8 @@ class _WordOrderStep extends StatelessWidget {
                                 ? _WordChipTone.correct
                                 : _WordChipTone.wrong)
                             : _WordChipTone.picked,
-                        onTap: onUnpick == null
-                            ? null
-                            : () => onUnpick!(position),
+                        onTap:
+                            onUnpick == null ? null : () => onUnpick!(position),
                       );
                     }),
                   ),
@@ -1874,8 +1886,7 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
         const SizedBox(height: 18),
         Semantics(
           button: true,
-          label: state.tr(
-              ru: 'Прослушать', kk: 'Тыңдау', en: 'Play the audio'),
+          label: state.tr(ru: 'Прослушать', kk: 'Тыңдау', en: 'Play the audio'),
           child: GestureDetector(
             onTap: _play,
             child: AnimatedContainer(
@@ -1894,9 +1905,7 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
                 ],
               ),
               child: Icon(
-                  _playing
-                      ? Icons.stop_rounded
-                      : Icons.volume_up_rounded,
+                  _playing ? Icons.stop_rounded : Icons.volume_up_rounded,
                   size: 44,
                   color: AppColors.white),
             ),
@@ -2378,8 +2387,9 @@ class _SpeakStepState extends State<_SpeakStep> {
                         : (_samplePlayed
                             ? Icons.check_circle_rounded
                             : Icons.volume_up_rounded),
-                    color:
-                        _samplePlayed ? AppColors.pistachioDark : AppColors.navy,
+                    color: _samplePlayed
+                        ? AppColors.pistachioDark
+                        : AppColors.navy,
                     size: 24,
                   ),
                   const SizedBox(width: 10),
@@ -2454,15 +2464,16 @@ class _SpeakStepState extends State<_SpeakStep> {
                     ? Icons.hourglass_top_rounded
                     : _evaluating
                         ? Icons.hourglass_bottom_rounded
-                    : _recording
-                        ? Icons.stop_rounded
-                        : (_passed ? Icons.check_rounded : Icons.mic_rounded),
-                color:
-                    _recording || _passed
-                        ? Colors.white
-                        : (_samplePlayed
-                            ? AppColors.pistachio
-                            : AppColors.textGrey),
+                        : _recording
+                            ? Icons.stop_rounded
+                            : (_passed
+                                ? Icons.check_rounded
+                                : Icons.mic_rounded),
+                color: _recording || _passed
+                    ? Colors.white
+                    : (_samplePlayed
+                        ? AppColors.pistachio
+                        : AppColors.textGrey),
                 size: 42,
               ),
             ),
@@ -2480,33 +2491,33 @@ class _SpeakStepState extends State<_SpeakStep> {
                       ru: 'Проверяю произношение...',
                       kk: 'Айтылымды тексерудемін...',
                       en: 'Checking pronunciation...')
-              : _recording
-                  ? (_speechAvailable
-                      ? state.tr(
-                          ru: 'Говори...', kk: 'Сөйле...', en: 'Speak...')
-                      : state.tr(
-                          ru: 'Записываю голос...',
-                          kk: 'Дауысты жазудамын...',
-                          en: 'Recording your voice...'))
-                  : (_passed
-                      ? state.tr(
-                          ru: 'Произношение принято',
-                          kk: 'Айтылым қабылданды',
-                          en: 'Pronunciation accepted')
-                      : (_done
+                  : _recording
+                      ? (_speechAvailable
                           ? state.tr(
-                              ru: 'Нужно повторить',
-                              kk: 'Қайталау керек',
-                              en: 'Needs another try')
-                          : (_samplePlayed
+                              ru: 'Говори...', kk: 'Сөйле...', en: 'Speak...')
+                          : state.tr(
+                              ru: 'Записываю голос...',
+                              kk: 'Дауысты жазудамын...',
+                              en: 'Recording your voice...'))
+                      : (_passed
+                          ? state.tr(
+                              ru: 'Произношение принято',
+                              kk: 'Айтылым қабылданды',
+                              en: 'Pronunciation accepted')
+                          : (_done
                               ? state.tr(
-                                  ru: 'Нажми и говори',
-                                  kk: 'Басып сөйле',
-                                  en: 'Tap and speak')
-                              : state.tr(
-                                  ru: 'Прослушай образец перед записью',
-                                  kk: 'Жазудан бұрын үлгіні тыңда',
-                                  en: 'Listen to the sample before recording')))),
+                                  ru: 'Нужно повторить',
+                                  kk: 'Қайталау керек',
+                                  en: 'Needs another try')
+                              : (_samplePlayed
+                                  ? state.tr(
+                                      ru: 'Нажми и говори',
+                                      kk: 'Басып сөйле',
+                                      en: 'Tap and speak')
+                                  : state.tr(
+                                      ru: 'Прослушай образец перед записью',
+                                      kk: 'Жазудан бұрын үлгіні тыңда',
+                                      en: 'Listen to the sample before recording')))),
           style: TextStyle(
             fontFamily: 'Nunito',
             fontSize: 14,
@@ -2616,8 +2627,7 @@ class _SpeakStepState extends State<_SpeakStep> {
                   color: AppColors.goldLight,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                      color: AppColors.gold.withValues(alpha: 0.5),
-                      width: 1.5),
+                      color: AppColors.gold.withValues(alpha: 0.5), width: 1.5),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,

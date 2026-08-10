@@ -123,13 +123,22 @@ class BackendService {
   }
 
   Future<void> logout() async {
+    if (isAuthenticated) {
+      try {
+        await _request('POST', '/api/auth/logout', allowEmpty: true);
+      } catch (_) {
+        // Local cleanup must still complete when the session is already
+        // expired or the network is unavailable.
+      }
+    }
     _token = null;
     await _preferences.remove(_authStorageKey);
   }
 
   Future<void> deleteAccount() async {
     await _request('DELETE', '/api/account', allowEmpty: true);
-    await logout();
+    _token = null;
+    await _preferences.remove(_authStorageKey);
   }
 
   Future<BackendProfile> syncLearningData(
@@ -146,11 +155,28 @@ class BackendService {
     );
   }
 
+  Future<String> startLessonAttempt(String lessonId) async {
+    final response = await _request(
+      'POST',
+      '/api/progress/attempt',
+      body: {'lessonId': lessonId},
+    );
+    final token = response['attemptToken'] as String?;
+    if (token == null || token.isEmpty) {
+      throw const BackendException(
+        502,
+        'invalid_lesson_attempt',
+        'The server did not return a lesson attempt.',
+      );
+    }
+    return token;
+  }
+
   Future<LessonCompletionResult> completeLesson(
     String lessonId,
     int errors,
     int speechAttempts,
-    String rewardToken,
+    String attemptToken,
   ) async {
     final now = DateTime.now();
     final localDate =
@@ -168,7 +194,7 @@ class BackendService {
         'lessonId': lessonId,
         'errors': safeErrors,
         'speechAttempts': safeSpeechAttempts,
-        'rewardToken': rewardToken,
+        'attemptToken': attemptToken,
         'localDate': localDate,
       },
     );

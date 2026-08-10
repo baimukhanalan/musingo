@@ -14,10 +14,11 @@ external JSPromise<JSBoolean> _pushSubscribe(
   JSNumber minute,
   JSNumber dueCount,
   JSString learningGoal,
+  JSString authToken,
 );
 
 @JS('muslingoPush.unsubscribe')
-external JSPromise<JSBoolean> _pushUnsubscribe();
+external JSPromise<JSBoolean> _pushUnsubscribe(JSString authToken);
 
 @JS('muslingoPush.showTest')
 external JSPromise<JSBoolean> _pushShowTest(JSString title, JSString body);
@@ -47,6 +48,8 @@ class NotificationPlatform {
     return result.toDart == 'granted';
   }
 
+  void setOnOpenRoute(void Function(String route) callback) {}
+
   Future<void> scheduleDaily({
     required int hour,
     required int minute,
@@ -55,6 +58,7 @@ class NotificationPlatform {
     String learningGoal = '',
     String name = '',
     int streak = 0,
+    String authToken = '',
   }) async {
     // На web реальные локальные уведомления не планируем — контент собирает
     // серверный web-push. Сигнатура совпадает с остальными платформами;
@@ -65,6 +69,7 @@ class NotificationPlatform {
       minute.toJS,
       dueCount.toJS,
       learningGoal.toJS,
+      authToken.toJS,
     ).toDart)
         .toDart;
     if (!subscribed) {
@@ -72,9 +77,9 @@ class NotificationPlatform {
     }
   }
 
-  Future<void> cancelAll() async {
+  Future<void> cancelAll({String authToken = ''}) async {
     if (!supportsBackgroundScheduling) return;
-    await _pushUnsubscribe().toDart;
+    await _pushUnsubscribe(authToken.toJS).toDart;
   }
 
   Future<bool> showTest(ReminderMessage message) async {

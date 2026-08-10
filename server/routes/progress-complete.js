@@ -1,4 +1,4 @@
-import { requireUser } from '../lib/auth.js';
+import { requireUser, verifyLessonAttempt } from '../lib/auth.js';
 import { sql } from '../lib/db.js';
 import { ApiError, integer, method, readJson, text, withApi } from '../lib/http.js';
 import { isRewardReplay, leaderboardContribution, nextDailyProgress, profile } from '../lib/progress.js';
@@ -118,7 +118,12 @@ export default withApi(async (request, response) => {
   if (!lessons.has(lessonId)) throw new ApiError(400, 'unknown_lesson', 'Unknown lesson.');
   const errors = clampErrors(body.errors);
   const speechAttempts = integer(body.speechAttempts ?? 0, { min: 0, max: 50 });
-  const rewardToken = text(body.rewardToken ?? `${lessonId}:${Date.now()}`, { min: 1, max: 160, field: 'reward' });
+  const attemptToken = text(body.attemptToken, { min: 40, max: 4096, field: 'attempt' });
+  const attempt = await verifyLessonAttempt(attemptToken, {
+    userId: user.id,
+    lessonId,
+  });
+  const rewardToken = String(attempt.jti);
   const today = validLocalDay(body.localDate);
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -155,7 +160,14 @@ export default withApi(async (request, response) => {
     // Personal xp above is credited in full. Only the slice that reaches the
     // weekly leaderboard is clipped to the per-day cap (remaining budget for
     // `today`); the day-scoped counter is written back under the same version.
-    const leaderboard = leaderboardContribution({ current, today, earned: xpEarned + streakBonus });
+    // Replays remain useful practice and still earn 5 personal XP, but only a
+    // first completion can affect the public league. This removes repeat-farm
+    // incentives while preserving the local learning loop.
+    const leaderboard = leaderboardContribution({
+      current,
+      today,
+      earned: firstCompletion ? xpEarned + streakBonus : 0,
+    });
     const next = {
       ...current,
       xp,

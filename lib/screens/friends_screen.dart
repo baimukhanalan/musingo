@@ -51,25 +51,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
     super.dispose();
   }
 
-  /// Локальный аналог серверного кода: та же детерминированная функция (base32
-  /// Crockford от первых 40 бит id), поэтому оффлайн-фолбэк совпадает с тем, что
-  /// вернёт сервер. Арифметика через % и ~/ (не битовые операции) — чтобы
-  /// значение шире 32 бит корректно считалось и в вебе.
-  String _localFriendCode(String userId) {
-    const alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
-    final hex = userId.replaceAll('-', '').toLowerCase();
-    if (hex.length < 10) return '';
-    final parsed = int.tryParse(hex.substring(0, 10), radix: 16);
-    if (parsed == null) return '';
-    var value = parsed;
-    final digits = List<String>.filled(8, '0');
-    for (var i = 7; i >= 0; i -= 1) {
-      digits[i] = alphabet[value % 32];
-      value = value ~/ 32;
-    }
-    return digits.join();
-  }
-
   Future<void> _loadFriends() async {
     setState(() {
       _loading = true;
@@ -150,10 +131,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final user = state.user;
-    final isGuest = state.isGuest || user == null;
     final isBackend = state.isBackendUser && user != null;
-    // Реальный код с сервера, а до/вместо него — детерминированный локальный.
-    final code = isGuest ? '' : (_serverCode ?? _localFriendCode(user.id));
+    final code = _serverCode ?? '';
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -170,19 +149,17 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 onTap: () => Navigator.pushNamed(context, '/league'),
               ),
               const SizedBox(height: 16),
-              if (isGuest)
+              if (!isBackend)
                 _GuestPrompt(
                     onTap: () => Navigator.pushNamed(context, '/login'))
               else ...[
                 _InviteCard(code: code, name: user.name),
-                if (isBackend) ...[
-                  const SizedBox(height: 12),
-                  _AddFriendField(
-                    controller: _codeController,
-                    busy: _adding,
-                    onSubmit: _addFriend,
-                  ),
-                ],
+                const SizedBox(height: 12),
+                _AddFriendField(
+                  controller: _codeController,
+                  busy: _adding,
+                  onSubmit: _addFriend,
+                ),
               ],
               const SizedBox(height: 24),
               Text(

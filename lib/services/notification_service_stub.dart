@@ -11,6 +11,8 @@ class NotificationPlatform {
 
   Future<bool> requestPermission() async => false;
 
+  void setOnOpenRoute(void Function(String route) callback) {}
+
   Future<void> scheduleDaily({
     required int hour,
     required int minute,
@@ -19,9 +21,10 @@ class NotificationPlatform {
     String learningGoal = '',
     String name = '',
     int streak = 0,
+    String authToken = '',
   }) async {}
 
-  Future<void> cancelAll() async {}
+  Future<void> cancelAll({String authToken = ''}) async {}
 
   Future<bool> showTest(ReminderMessage message) async => false;
 }

@@ -162,7 +162,7 @@
           'PushManager' in window &&
           'Notification' in window,
 
-        subscribe: async (hour, minute, dueCount, learningGoal) => {
+        subscribe: async (hour, minute, dueCount, learningGoal, authToken) => {
           try {
             if (!window.muslingoPush.isSupported() || Notification.permission !== 'granted') {
               return false;
@@ -182,7 +182,11 @@
             }
             const response = await fetch('/api/push/subscribe', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+              },
               body: JSON.stringify({
                 subscription: subscription.toJSON(),
                 installationId: installationId(),
@@ -200,7 +204,7 @@
           }
         },
 
-        unsubscribe: async () => {
+        unsubscribe: async (authToken) => {
           try {
             if (!window.muslingoPush.isSupported()) return false;
             const worker = await registration();
@@ -208,7 +212,11 @@
             if (!subscription) return true;
             await fetch('/api/push/unsubscribe', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+              },
               // installationId обязателен: сервер по нему подтверждает, что
               // отписывается владелец подписки, а не случайный знающий endpoint.
               body: JSON.stringify({

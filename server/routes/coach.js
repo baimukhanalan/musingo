@@ -7,7 +7,8 @@
 // и клиент откатывается на локальный движок.
 import { optionalUser } from '../lib/auth.js';
 import { sql } from '../lib/db.js';
-import { method, readJson, withApi } from '../lib/http.js';
+import { clientIp, method, readJson, withApi } from '../lib/http.js';
+import { coachKey, consumeCoachAttempt } from '../lib/login-rate-limit.js';
 import { profile } from '../lib/progress.js';
 import { callGroq, hasGroqKey } from '../lib/groq.js';
 
@@ -194,6 +195,9 @@ export default withApi(async (request, response) => {
 
   // Гостю тоже отвечаем. Токен опционален.
   const user = await optionalUser(request);
+  await consumeCoachAttempt(coachKey(clientIp(request), user?.id), {
+    authenticated: Boolean(user),
+  });
   const body = readJson(request);
 
   const question = clampString(body.question, MAX_QUESTION);

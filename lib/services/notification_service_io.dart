@@ -42,6 +42,10 @@ class NotificationPlatform {
 
   bool get supportsBackgroundScheduling => _supported;
 
+  void setOnOpenRoute(void Function(String route) callback) {
+    onOpenRoute = callback;
+  }
+
   Future<void> initialize() async {
     if (_initialized || !_supported) return;
 
@@ -81,8 +85,13 @@ class NotificationPlatform {
       onDidReceiveNotificationResponse: _handleResponse,
       onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
+    final launch = await _plugin.getNotificationAppLaunchDetails();
     _configureDeviceTimeZone();
     _initialized = true;
+    if (launch?.didNotificationLaunchApp == true) {
+      final response = launch?.notificationResponse;
+      if (response != null) _handleResponse(response);
+    }
   }
 
   /// Обработка нажатий на переднем плане: по телу уведомления или по кнопке
@@ -154,6 +163,7 @@ class NotificationPlatform {
     String learningGoal = '',
     String name = '',
     int streak = 0,
+    String authToken = '',
   }) async {
     await initialize();
     if (!_supported || messages.isEmpty) return;
@@ -237,8 +247,7 @@ class NotificationPlatform {
           priority: Priority.high,
           category: AndroidNotificationCategory.reminder,
           styleInformation: BigTextStyleInformation(body),
-          largeIcon:
-              const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+          largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
           actions: _androidActions,
         ),
         iOS: const DarwinNotificationDetails(
@@ -266,7 +275,7 @@ class NotificationPlatform {
     return scheduled;
   }
 
-  Future<void> cancelAll() async {
+  Future<void> cancelAll({String authToken = ''}) async {
     if (!_supported) return;
     await initialize();
     await _plugin.cancelAll();

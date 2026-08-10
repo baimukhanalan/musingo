@@ -15,6 +15,7 @@ const scrypt = promisify(scryptCallback);
 const issuer = process.env.MUSLINGO_JWT_ISS ?? 'muslingo';
 const audience = process.env.MUSLINGO_JWT_AUD ?? 'muslingo-app';
 const tokenTtl = process.env.MUSLINGO_JWT_TTL ?? '30d';
+const lessonAudience = `${audience}:lesson-attempt`;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -64,6 +65,47 @@ export async function verifyToken(token) {
   }
 }
 
+export async function issueLessonAttempt(userId, lessonId) {
+  return new SignJWT({ lessonId: String(lessonId) })
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setSubject(String(userId))
+    .setIssuedAt()
+    .setNotBefore('0s')
+    .setIssuer(issuer)
+    .setAudience(lessonAudience)
+    .setJti(randomUUID())
+    .setExpirationTime('2h')
+    .sign(secretKey());
+}
+
+export async function verifyLessonAttempt(token, { userId, lessonId, minAgeSeconds = 1 }) {
+  try {
+    const { payload } = await jwtVerify(String(token ?? ''), secretKey(), {
+      issuer,
+      audience: lessonAudience,
+      algorithms: ['HS256'],
+    });
+    const issuedAt = Number(payload.iat ?? 0);
+    const age = Math.floor(Date.now() / 1000) - issuedAt;
+    if (
+      payload.sub !== String(userId) ||
+      payload.lessonId !== String(lessonId) ||
+      !payload.jti ||
+      !Number.isFinite(age) ||
+      age < minAgeSeconds
+    ) {
+      throw new ApiError(400, 'invalid_lesson_attempt', 'Lesson attempt is invalid.');
+    }
+    return payload;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    if (error?.code === 'ERR_JWT_EXPIRED') {
+      throw new ApiError(400, 'expired_lesson_attempt', 'Lesson attempt has expired.');
+    }
+    throw new ApiError(400, 'invalid_lesson_attempt', 'Lesson attempt is invalid.');
+  }
+}
+
 export async function hashPassword(password) {
   const salt = randomBytes(16).toString('base64url');
   const hash = await scrypt(password, salt, 64);
@@ -93,7 +135,7 @@ export function bearerToken(request) {
   return header.slice(7).trim();
 }
 
-export async function requireUser(request) {
+export async function requireSession(request) {
   await ensureSchema();
   const payload = await verifyToken(bearerToken(request));
   // Validate the UUID shape before touching Postgres. A validly-signed token
@@ -102,14 +144,25 @@ export async function requireUser(request) {
   if (!isUuid(payload.sub)) {
     throw new ApiError(401, 'invalid_session', 'Session is invalid.');
   }
+  if (!payload.jti) {
+    throw new ApiError(401, 'invalid_session', 'Session is invalid.');
+  }
   const rows = await sql`
     SELECT id, email, display_name
     FROM muslingo_users
     WHERE id = ${payload.sub}::uuid
+      AND NOT EXISTS (
+        SELECT 1 FROM muslingo_revoked_sessions
+        WHERE jti = ${payload.jti} AND expires_at > now()
+      )
     LIMIT 1
   `;
   if (rows.length === 0) throw new ApiError(401, 'invalid_session', 'Session is invalid.');
-  return rows[0];
+  return { user: rows[0], payload };
+}
+
+export async function requireUser(request) {
+  return (await requireSession(request)).user;
 }
 
 export async function optionalUser(request) {

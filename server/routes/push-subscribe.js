@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto';
 
 import { optionalUser } from '../lib/auth.js';
 import { sql, ensureSchema } from '../lib/db.js';
-import { ApiError, integer, method, readJson, text, withApi } from '../lib/http.js';
+import { ApiError, clientIp, integer, method, readJson, text, withApi } from '../lib/http.js';
+import { consumePushAttempt, pushKey } from '../lib/login-rate-limit.js';
 
 // Endpoint приходит от клиента и потом используется как адрес исходящего
 // запроса из cron-задачи. Без списка доверенных хостов сервер можно заставить
@@ -55,6 +56,9 @@ export default withApi(async (request, response) => {
   const p256dh = text(keys.p256dh, { min: 20, max: 512, field: 'p256dh' });
   const authSecret = text(keys.auth, { min: 8, max: 256, field: 'auth' });
   const installationId = text(body.installationId, { min: 8, max: 128, field: 'installation' });
+  if (!user) {
+    await consumePushAttempt(pushKey(clientIp(request), installationId));
+  }
   const timezone = text(body.timezone ?? 'UTC', { min: 1, max: 80, field: 'timezone' });
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: timezone }).format(new Date());

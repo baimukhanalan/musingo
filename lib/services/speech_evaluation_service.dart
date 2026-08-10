@@ -64,11 +64,9 @@ class SpeechEvaluationService {
           passScore: step.effectivePassScore,
         );
       }
-      // The /api/speech/evaluate endpoint only parses JSON and only performs a
-      // text (Levenshtein) comparison; it ignores any uploaded audio. The old
-      // multipart request therefore always failed with 400 invalid_json before
-      // silently retrying as text. We send a single JSON request instead.
-      // Real audio-based AI scoring is a separate, unimplemented feature.
+      // The current production evaluator scores the recognized transcript.
+      // Audio stays on-device; the UI labels this as an educational estimate,
+      // not a phoneme-level tajwid verdict.
       final response = await _client.post(
         Uri.parse('$apiBaseUrl/api/speech/evaluate'),
         headers: const {
@@ -157,11 +155,6 @@ class SpeechEvaluationService {
 
   double _similarity(String spoken, String target) {
     if (spoken.isEmpty || target.isEmpty) return 0;
-    // A full normalized match already scores 1.0 through the edit metric below
-    // (distance 0). We intentionally do NOT short-circuit on substring
-    // containment: a single recognized letter that happens to appear in the
-    // target must not score a long ayah at 100%. Partial overlap flows through
-    // to the regular Levenshtein / character-set similarity instead.
     final distance = _levenshteinDistance(spoken, target);
     final longest = spoken.length > target.length ? spoken.length : target.length;
     final editSimilarity = longest == 0 ? 0.0 : 1 - (distance / longest);
@@ -170,7 +163,11 @@ class SpeechEvaluationService {
     final overlap = spokenRunes.intersection(targetRunes).length;
     final total = targetRunes.union(spokenRunes).length;
     final setSimilarity = total == 0 ? 0.0 : overlap / total;
-    return editSimilarity > setSimilarity ? editSimilarity : setSimilarity;
+    final shortest = spoken.length < target.length ? spoken.length : target.length;
+    final coverage = longest == 0 ? 0.0 : shortest / longest;
+    final coveragePenalty = (coverage * 1.15).clamp(0.0, 1.0);
+    final raw = editSimilarity > setSimilarity ? editSimilarity : setSimilarity;
+    return raw * coveragePenalty;
   }
 
   int _levenshteinDistance(String a, String b) {

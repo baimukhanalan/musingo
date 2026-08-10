@@ -5,15 +5,21 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
-// Play App Signing (upload key). Реальные значения лежат в android/key.properties —
-// файл в .gitignore, в репозиторий не попадает. Если файла нет (локальная разработка,
-// CI без секретов, web-сборка на Vercel), релиз откатывается на debug-подпись, чтобы
-// `flutter run --release` и `flutter build web` не падали. Шаблон — key.properties.example.
+// Play App Signing (upload key). Real values live in ignored key.properties.
+// A release must never silently fall back to the debug key.
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file("key.properties")
 def hasReleaseKeystore = keystorePropertiesFile.exists()
 if (hasReleaseKeystore) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+def requestsRelease = gradle.startParameter.taskNames.any {
+    it.toLowerCase().contains("release")
+}
+if (requestsRelease && !hasReleaseKeystore) {
+    throw new GradleException(
+        "Android release signing is not configured. Add android/key.properties and the upload keystore."
+    )
 }
 
 android {
@@ -43,8 +49,6 @@ android {
 
     signingConfigs {
         release {
-            // Заполняется только когда key.properties присутствует; иначе конфиг
-            // остаётся пустым и не используется (см. buildTypes.release ниже).
             if (hasReleaseKeystore) {
                 keyAlias = keystoreProperties["keyAlias"]
                 keyPassword = keystoreProperties["keyPassword"]
@@ -56,10 +60,7 @@ android {
 
     buildTypes {
         release {
-            // С upload-keystore (key.properties) подписываем им — Google Play App
-            // Signing затем перешифрует финальным ключом. Без файла откат на debug,
-            // чтобы локальные release-прогоны и web-сборка не требовали секрета.
-            signingConfig = hasReleaseKeystore ? signingConfigs.release : signingConfigs.debug
+            signingConfig = signingConfigs.release
         }
     }
 }

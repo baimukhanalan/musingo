@@ -75,6 +75,7 @@ class AppState extends ChangeNotifier {
   String? _learningRecommendation;
   Map<String, KnowledgeState> _knowledgeStates = {};
   Map<String, HafizProgress> _hafizProgress = {};
+  final Map<String, Future<String>> _lessonAttempts = {};
 
   /// Слепок локального/гостевого прогресса, который не удалось влить на сервер
   /// в момент входа/регистрации (сеть упала на syncLearningData). Держим его,
@@ -107,6 +108,11 @@ class AppState extends ChangeNotifier {
       _notificationPermission;
   bool get notificationsRunInBackground =>
       _notificationService.supportsBackgroundScheduling;
+
+  void setNotificationOpenHandler(void Function(String route) callback) {
+    _notificationService.setOnOpenRoute(callback);
+  }
+
   LearningGoal? get learningGoal => _learningGoal;
   int get placementLevel => _placementLevel;
   String? get learningRecommendation => _learningRecommendation;
@@ -124,8 +130,11 @@ class AppState extends ChangeNotifier {
     if (u == null) return 0;
     final last = u.lastStudyDate;
     if (last == null) return 0;
-    return _calendarDaysBetween(last, DateTime.now()) == 0 ? u.dailyProgress : 0;
+    return _calendarDaysBetween(last, DateTime.now()) == 0
+        ? u.dailyProgress
+        : 0;
   }
+
   List<KnowledgeState> get knowledgeStates =>
       _knowledgeStates.values.toList(growable: false);
   List<HafizProgress> get hafizProgress {
@@ -133,20 +142,18 @@ class AppState extends ChangeNotifier {
       ..sort((a, b) => b.lastReviewedAt.compareTo(a.lastReviewedAt));
     return items;
   }
+
   int get hafizDueCount =>
       _hafizProgress.values.where((item) => item.isDue()).length;
-  int get memorizedVerseCount => _hafizProgress.values
-      .where((item) => item.mastery >= 0.7)
-      .length;
+  int get memorizedVerseCount =>
+      _hafizProgress.values.where((item) => item.mastery >= 0.7).length;
 
   HafizProgress? hafizProgressFor(int surahNumber, int verseNumber) =>
       _hafizProgress['$surahNumber:$verseNumber'];
-  int get dueReviewCount => _knowledgeStates.values
-      .where((knowledge) => knowledge.isDue())
-      .length;
-  int get weakKnowledgeCount => _knowledgeStates.values
-      .where((knowledge) => knowledge.isWeak)
-      .length;
+  int get dueReviewCount =>
+      _knowledgeStates.values.where((knowledge) => knowledge.isDue()).length;
+  int get weakKnowledgeCount =>
+      _knowledgeStates.values.where((knowledge) => knowledge.isWeak).length;
   DateTime? get nextReviewAt {
     if (_knowledgeStates.isEmpty) return null;
     final dates = _knowledgeStates.values
@@ -156,8 +163,9 @@ class AppState extends ChangeNotifier {
     return dates.first;
   }
 
-  bool isLessonDue(String lessonId, [DateTime? now]) => _knowledgeStates.values
-      .any((knowledge) => knowledge.lessonId == lessonId && knowledge.isDue(now));
+  bool isLessonDue(String lessonId, [DateTime? now]) =>
+      _knowledgeStates.values.any((knowledge) =>
+          knowledge.lessonId == lessonId && knowledge.isDue(now));
 
   Lesson? get recommendedLesson {
     // Приоритет 1 — просроченные интервальные повторения. Внутри due-очереди
@@ -328,7 +336,7 @@ class AppState extends ChangeNotifier {
     return result;
   }
 
-  static const _pbkdf2Iterations = 12000;
+  static const _pbkdf2Iterations = 120000;
 
   String _hashLocalPassword(String password, {String? saltB64}) {
     final salt = saltB64 != null
@@ -360,6 +368,13 @@ class AppState extends ChangeNotifier {
     return stored == password;
   }
 
+  bool _localPasswordNeedsUpgrade(String stored) {
+    if (!stored.startsWith('pbkdf2\$')) return true;
+    final parts = stored.split('\$');
+    return parts.length != 4 ||
+        (int.tryParse(parts[1]) ?? 0) < _pbkdf2Iterations;
+  }
+
   Future<void> _init() async {
     try {
       _courses = LessonData.getCourses();
@@ -378,18 +393,6 @@ class AppState extends ChangeNotifier {
       _placementLevel = preferences.getInt(_placementLevelKey) ?? 1;
       _learningRecommendation =
           preferences.getString(_learningRecommendationKey);
-      try {
-        await _notificationService.initialize();
-        _notificationPermission =
-            await _notificationService.permissionState();
-        if (_notificationsEnabled &&
-            _notificationPermission == NotificationPermissionState.granted) {
-          await _scheduleLearningReminders();
-        }
-      } catch (_) {
-        _notificationPermission = NotificationPermissionState.unsupported;
-        _notificationsEnabled = false;
-      }
       _backend = await BackendService.create();
       final profile = await _backend!.restoreSession();
       if (profile != null) {
@@ -401,6 +404,17 @@ class AppState extends ChangeNotifier {
         await _loadKnowledgeStates();
         await _loadHafizProgress();
         _checkAchievements();
+      }
+      try {
+        await _notificationService.initialize();
+        _notificationPermission = await _notificationService.permissionState();
+        if (_notificationsEnabled &&
+            _notificationPermission == NotificationPermissionState.granted) {
+          await _scheduleLearningReminders();
+        }
+      } catch (_) {
+        _notificationPermission = NotificationPermissionState.unsupported;
+        _notificationsEnabled = false;
       }
     } catch (error) {
       _error = error.toString();
@@ -485,11 +499,12 @@ class AppState extends ChangeNotifier {
     String password,
   ) async {
     final localState = _user == null ? null : _buildSyncState();
-    final serverSuccess = await _authenticate(() => _backend!.register(
-          name: name,
-          email: email,
-          password: password,
-        ),
+    final serverSuccess = await _authenticate(
+        () => _backend!.register(
+              name: name,
+              email: email,
+              password: password,
+            ),
         localState: localState,
         importGuest: localState != null);
     if (serverSuccess) return true;
@@ -501,10 +516,11 @@ class AppState extends ChangeNotifier {
 
   Future<bool> loginWithPassword(String email, String password) async {
     final localState = _user == null ? null : _buildSyncState();
-    final serverSuccess = await _authenticate(() => _backend!.login(
-          email: email,
-          password: password,
-        ),
+    final serverSuccess = await _authenticate(
+        () => _backend!.login(
+              email: email,
+              password: password,
+            ),
         localState: localState,
         importGuest: isGuest);
     if (serverSuccess) return true;
@@ -515,12 +531,10 @@ class AppState extends ChangeNotifier {
   }
 
   Future<bool> _authenticate(
-    Future<BackendProfile> Function() operation,
-    {
+    Future<BackendProfile> Function() operation, {
     Map<String, dynamic>? localState,
     bool importGuest = false,
-    }
-  ) async {
+  }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -572,8 +586,7 @@ class AppState extends ChangeNotifier {
         preferences.getString(_localAccountsKey),
       );
       if (accounts.containsKey(normalizedEmail)) {
-        _error =
-            'Аккаунт с таким email уже есть. Войди через email и пароль.';
+        _error = 'Аккаунт с таким email уже есть. Войди через email и пароль.';
         return false;
       }
 
@@ -609,8 +622,7 @@ class AppState extends ChangeNotifier {
       if (guestMemory != null) {
         await preferences.setString('$_memoryEnginePrefix$userId', guestMemory);
       }
-      final guestHafiz =
-          preferences.getString('${_hafizProgressPrefix}guest');
+      final guestHafiz = preferences.getString('${_hafizProgressPrefix}guest');
       if (guestHafiz != null) {
         await preferences.setString(
           '$_hafizProgressPrefix$userId',
@@ -650,13 +662,15 @@ class AppState extends ChangeNotifier {
             'Аккаунт не найден. Зарегистрируйся на этом устройстве или подключи сервер.';
         return false;
       }
-      final stored = (account['passwordHash'] ?? account['password']) as String?;
+      final stored =
+          (account['passwordHash'] ?? account['password']) as String?;
       if (stored == null || !_verifyLocalPassword(password, stored)) {
         _error = 'Неверный email или пароль.';
         return false;
       }
-      // Миграция: аккаунт с паролем в открытом виде пересохраняем хешем.
-      if (account['passwordHash'] == null) {
+      // Migrate plaintext and old low-iteration hashes after a valid login.
+      if (account['passwordHash'] == null ||
+          _localPasswordNeedsUpgrade(stored)) {
         final migrated = Map<String, dynamic>.from(account as Map)
           ..remove('password')
           ..['passwordHash'] = _hashLocalPassword(password);
@@ -723,6 +737,12 @@ class AppState extends ChangeNotifier {
 
   Future<void> logout() async {
     final currentUser = _user;
+    if (_notificationsEnabled) {
+      await _notificationService.cancelAll(
+        authToken: _backend?.authToken ?? '',
+      );
+      _notificationsEnabled = false;
+    }
     await _backend?.logout();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('user');
@@ -746,6 +766,16 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     try {
       final currentUser = _user;
+      try {
+        await _notificationService.cancelAll(
+          authToken: _backend?.authToken ?? '',
+        );
+      } catch (_) {
+        // Account deletion remains authoritative on the server, which also
+        // removes user-owned push rows. A platform plugin failure must not
+        // block the user's deletion request.
+      }
+      _notificationsEnabled = false;
       if (isBackendUser) await _backend!.deleteAccount();
       final preferences = await SharedPreferences.getInstance();
       if (currentUser != null) {
@@ -863,7 +893,9 @@ class AppState extends ChangeNotifier {
       _notificationsEnabled = true;
     } else {
       _notificationsEnabled = false;
-      await _notificationService.cancelAll();
+      await _notificationService.cancelAll(
+        authToken: _backend?.authToken ?? '',
+      );
     }
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(
@@ -911,6 +943,7 @@ class AppState extends ChangeNotifier {
       learningGoal: goal,
       name: name,
       streak: streak,
+      authToken: _backend?.authToken ?? '',
     );
   }
 
@@ -925,7 +958,17 @@ class AppState extends ChangeNotifier {
     if (isBackendUser) {
       try {
         final completedLesson = _findLesson(lessonId);
-        final rewardToken = _rewardTokenFor(completedLesson, errors);
+        final attemptFuture = _lessonAttempts.putIfAbsent(
+          lessonId,
+          () => _backend!.startLessonAttempt(lessonId),
+        );
+        late final String attemptToken;
+        try {
+          attemptToken = await attemptFuture;
+        } catch (_) {
+          _lessonAttempts.remove(lessonId);
+          rethrow;
+        }
         final speechAttempts = completedLesson?.steps
                 .where((step) => step.type == LessonStepType.speak)
                 .length ??
@@ -934,8 +977,9 @@ class AppState extends ChangeNotifier {
           lessonId,
           errors,
           speechAttempts,
-          rewardToken,
+          attemptToken,
         );
+        _lessonAttempts.remove(lessonId);
         final energyEarned = (12 - (errors * 2)).clamp(4, 12).toInt();
         _applyBackendProfile(result.profile);
         await _updateMemoryForLesson(
@@ -956,7 +1000,7 @@ class AppState extends ChangeNotifier {
           'newLevel': _user!.level,
           'heartsLost': errors,
           'energyEarned': energyEarned,
-          'rewardToken': rewardToken,
+          'rewardToken': attemptToken,
           'weakKnowledgeCount': weakKnowledgeCount,
           'nextReviewAt': nextReviewAt,
         };
@@ -1109,6 +1153,17 @@ class AppState extends ChangeNotifier {
       'weakKnowledgeCount': weakKnowledgeCount,
       'nextReviewAt': nextReviewAt,
     };
+  }
+
+  Future<void> beginLessonAttempt(String lessonId) async {
+    if (!isBackendUser || _lessonAttempts.containsKey(lessonId)) return;
+    final attempt = _backend!.startLessonAttempt(lessonId);
+    _lessonAttempts[lessonId] = attempt;
+    try {
+      await attempt;
+    } catch (_) {
+      _lessonAttempts.remove(lessonId);
+    }
   }
 
   void addXp(int amount) {
@@ -1581,7 +1636,8 @@ class AppState extends ChangeNotifier {
     await _saveHafizProgress();
     final preferences = await SharedPreferences.getInstance();
     if (_learningGoal != null) {
-      await preferences.setString(_learningGoalKey, _learningGoal!.storageValue);
+      await preferences.setString(
+          _learningGoalKey, _learningGoal!.storageValue);
     }
     await preferences.setInt(_placementLevelKey, _placementLevel);
     if (_learningRecommendation != null) {

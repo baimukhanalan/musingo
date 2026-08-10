@@ -58,7 +58,7 @@ class CoachService {
     int streak = 0,
     List<String> completedLessonIds = const [],
   }) async {
-    if (backend != null && BackendService.hasConfiguredApiUrl) {
+    if (backend != null) {
       try {
         final remote = await backend.askCoach(
           question: question,
@@ -125,7 +125,8 @@ class CoachService {
           CoachSource(
             title: 'Вопросы и ответы КМДБ',
             category: 'Экспертная консультация',
-            verification: 'Официальный сайт Духовного управления мусульман Казахстана',
+            verification:
+                'Официальный сайт Духовного управления мусульман Казахстана',
             url: specialistUrl,
           ),
         ],

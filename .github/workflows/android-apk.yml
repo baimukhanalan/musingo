@@ -1,64 +1,113 @@
-name: Build Android APK
-
-# Собирает устанавливаемый (debug-signed) APK в облаке GitHub Actions.
-# Локальный Android SDK не нужен — раннер ставит его сам.
-# Запуск: вкладка Actions → "Build Android APK" → Run workflow (workflow_dispatch),
-# либо пуш тега вида v1.0.0 (тогда APK ещё и прикрепится к Release).
-#
-# Подпись: без android/key.properties build.gradle откатывается на debug-ключ —
-# такой APK НЕ годится для Google Play, но отлично ставится на телефон для теста
-# (включи «Установка из неизвестных источников»). Для Play нужен upload-keystore
-# (см. android/key.properties.example) и загрузка его в секреты репозитория.
+name: Build signed Android APK
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-    tags:
-      - 'v*'
+    branches: [main]
+    tags: ['v*']
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      built: ${{ steps.signing.outputs.built }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
           java-version: '17'
 
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
+          flutter-version: '3.44.6'
           channel: stable
           cache: true
 
-      - name: flutter pub get
+      - name: Configure release signing
+        id: signing
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [[ -z "$KEYSTORE_BASE64" || -z "$STORE_PASSWORD" || -z "$KEY_PASSWORD" || -z "$KEY_ALIAS" ]]; then
+            echo "Android signing secrets are not configured; signed release was skipped."
+            echo "built=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          {
+            printf 'storePassword=%s\n' "$STORE_PASSWORD"
+            printf 'keyPassword=%s\n' "$KEY_PASSWORD"
+            printf 'keyAlias=%s\n' "$KEY_ALIAS"
+            printf 'storeFile=upload-keystore.jks\n'
+          } > android/key.properties
+          echo "built=true" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        if: steps.signing.outputs.built == 'true'
         run: flutter pub get
 
-      - name: Build release APK (backend = прод на Vercel)
+      - name: Build signed release APK
+        if: steps.signing.outputs.built == 'true'
         run: >
           flutter build apk --release
           --dart-define=MUSLINGO_API_URL=https://muslingo-mobile.vercel.app
           --dart-define=MUSLINGO_SPEECH_API_URL=https://muslingo-mobile.vercel.app
+          --dart-define=MUSLINGO_ANDROID_APK_URL=https://github.com/baimukhanalan/musingo/releases/latest/download/muslingo-android.apk
 
-      - name: Give APK a stable public filename
-        run: cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/muslingo-android.apk
+      - name: Prepare release files
+        if: steps.signing.outputs.built == 'true'
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/muslingo-android.apk
+          cd build/app/outputs/flutter-apk
+          sha256sum muslingo-android.apk > muslingo-android.apk.sha256
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload signed artifact
+        if: steps.signing.outputs.built == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: muslingo-apk
-          path: build/app/outputs/flutter-apk/muslingo-android.apk
+          name: muslingo-android-signed
+          path: |
+            build/app/outputs/flutter-apk/muslingo-android.apk
+            build/app/outputs/flutter-apk/muslingo-android.apk.sha256
           if-no-files-found: error
+          retention-days: 14
 
-      # На пуш тега v* — прикрепить APK к GitHub Release (постоянная ссылка).
-      - name: Attach APK to Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+      - name: Remove signing material
+        if: always()
+        run: rm -f android/key.properties android/app/upload-keystore.jks
+
+  publish-release:
+    needs: build-apk
+    if: needs.build-apk.outputs.built == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          files: build/app/outputs/flutter-apk/muslingo-android.apk
+          name: muslingo-android-signed
+
+      - name: Publish downloadable release
+        uses: softprops/action-gh-release@fe965f7af51af5f2602596916f38a38df2e33de0 # v3.0.2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'android-latest' }}
+          name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'Latest Android build' }}
+          make_latest: true
+          prerelease: false
+          files: |
+            muslingo-android.apk
+            muslingo-android.apk.sha256

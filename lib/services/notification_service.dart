@@ -19,6 +19,9 @@ class NotificationService {
 
   Future<bool> requestPermission() => _platform.requestPermission();
 
+  void setOnOpenRoute(void Function(String route) callback) =>
+      _platform.setOnOpenRoute(callback);
+
   Future<void> scheduleDaily({
     required int hour,
     required int minute,
@@ -27,6 +30,7 @@ class NotificationService {
     String learningGoal = '',
     String name = '',
     int streak = 0,
+    String authToken = '',
   }) =>
       _platform.scheduleDaily(
         hour: hour,
@@ -36,10 +40,11 @@ class NotificationService {
         learningGoal: learningGoal,
         name: name,
         streak: streak,
+        authToken: authToken,
       );
 
-  Future<void> cancelAll() => _platform.cancelAll();
+  Future<void> cancelAll({String authToken = ''}) =>
+      _platform.cancelAll(authToken: authToken);
 
-  Future<bool> showTest(ReminderMessage message) =>
-      _platform.showTest(message);
+  Future<bool> showTest(ReminderMessage message) => _platform.showTest(message);
 }
