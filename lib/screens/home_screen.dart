@@ -15,7 +15,6 @@ import '../widgets/premium_button.dart';
 import '../widgets/premium_card.dart';
 import '../widgets/progress_ring.dart';
 import '../widgets/section_label.dart';
-import '../widgets/stat_badge.dart';
 
 enum _LearningMode { quran, arabic }
 
@@ -123,7 +122,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           kk: 'Жаңа материал, қайталау және қысқа тексеру',
                           en: 'New material, review and a short check',
                         ),
-                    recommendation: state.learningRecommendation,
                     isReview: state.isLessonDue(recommendedLesson.id),
                     onStart: () => _openLesson(context, recommendedLesson),
                   ),
@@ -145,6 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // (5) Совет наставника.
               SliverToBoxAdapter(
                 child: _MentorTipCard(
+                  text: state.learningRecommendation,
                   onTap: () => Navigator.pushNamed(context, '/coach'),
                 ),
               ),
@@ -318,7 +317,8 @@ class _HomeScreenState extends State<HomeScreen> {
               restored
                   ? messenger.tr(
                       ru: 'Жизнь восстановлена. Теперь можно начать урок.',
-                      kk: 'Жан қалпына келтірілді. Енді сабақты бастауға болады.',
+                      kk:
+                          'Жан қалпына келтірілді. Енді сабақты бастауға болады.',
                       en: 'Life restored. You can start the lesson now.')
                   : messenger.error ??
                       messenger.tr(
@@ -424,14 +424,77 @@ class _GreetingHeader extends StatelessWidget {
 
   static String _todayLabel(String localeCode) {
     const weekdaysByLocale = {
-      'ru': ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'],
-      'kk': ['дүйсенбі', 'сейсенбі', 'сәрсенбі', 'бейсенбі', 'жұма', 'сенбі', 'жексенбі'],
-      'en': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+      'ru': [
+        'понедельник',
+        'вторник',
+        'среда',
+        'четверг',
+        'пятница',
+        'суббота',
+        'воскресенье'
+      ],
+      'kk': [
+        'дүйсенбі',
+        'сейсенбі',
+        'сәрсенбі',
+        'бейсенбі',
+        'жұма',
+        'сенбі',
+        'жексенбі'
+      ],
+      'en': [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday'
+      ],
     };
     const monthsByLocale = {
-      'ru': ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'],
-      'kk': ['қаңтар', 'ақпан', 'наурыз', 'сәуір', 'мамыр', 'маусым', 'шілде', 'тамыз', 'қыркүйек', 'қазан', 'қараша', 'желтоқсан'],
-      'en': ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+      'ru': [
+        'января',
+        'февраля',
+        'марта',
+        'апреля',
+        'мая',
+        'июня',
+        'июля',
+        'августа',
+        'сентября',
+        'октября',
+        'ноября',
+        'декабря'
+      ],
+      'kk': [
+        'қаңтар',
+        'ақпан',
+        'наурыз',
+        'сәуір',
+        'мамыр',
+        'маусым',
+        'шілде',
+        'тамыз',
+        'қыркүйек',
+        'қазан',
+        'қараша',
+        'желтоқсан'
+      ],
+      'en': [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December'
+      ],
     };
     final weekdays = weekdaysByLocale[localeCode] ?? weekdaysByLocale['ru']!;
     final months = monthsByLocale[localeCode] ?? monthsByLocale['ru']!;
@@ -463,59 +526,57 @@ class _StatBadgesRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
-      child: PremiumCard(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-        radius: 20,
-        child: Row(
-          children: [
-            Expanded(
-              child: _TapStat(
-                onTap: onStreakTap,
-                semanticLabel: state.tr(
-                  ru: 'Дней подряд: $streak. Открыть серию.',
-                  kk: 'Қатарынан күн: $streak. Серияны ашу.',
-                  en: 'Day streak: $streak. Open streak.',
-                ),
-                child: StatBadge(
-                  icon: Icons.local_fire_department_rounded,
-                  value: '$streak',
-                  label: state.tr(
-                      ru: 'дней подряд', kk: 'қатарынан күн', en: 'day streak'),
-                  accent: AppColors.gold,
-                ),
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: _TapStat(
+              onTap: onStreakTap,
+              semanticLabel: state.tr(
+                ru: 'Дней подряд: $streak. Открыть серию.',
+                kk: 'Қатарынан күн: $streak. Серияны ашу.',
+                en: 'Day streak: $streak. Open streak.',
+              ),
+              child: _CompactStatCard(
+                icon: Icons.local_fire_department_rounded,
+                value: '$streak',
+                label: state.tr(
+                    ru: 'дней подряд', kk: 'қатарынан күн', en: 'day streak'),
+                accent: AppColors.gold,
               ),
             ),
-            Expanded(
-              child: StatBadge(
-                icon: Icons.bolt_rounded,
-                value: _formatXp(xp),
-                label: 'XP',
-                accent: AppColors.sky,
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: _CompactStatCard(
+              icon: Icons.auto_awesome_rounded,
+              value: _formatXp(xp),
+              label: 'XP',
+              accent: AppColors.sky,
+            ),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: _TapStat(
+              onTap: onHeartsTap,
+              semanticLabel: isPremium
+                  ? state.tr(
+                      ru: 'Жизни: безлимит.',
+                      kk: 'Жандар: шексіз.',
+                      en: 'Lives: unlimited.')
+                  : state.tr(
+                      ru: 'Жизни: $hearts. Восстановить жизнь.',
+                      kk: 'Жандар: $hearts. Жанды қалпына келтіру.',
+                      en: 'Lives: $hearts. Restore a life.'),
+              child: _CompactStatCard(
+                icon: Icons.favorite_rounded,
+                value: isPremium ? '∞' : '$hearts',
+                label: state.tr(ru: 'жизни', kk: 'жандар', en: 'lives'),
+                accent: AppColors.coral,
               ),
             ),
-            Expanded(
-              child: _TapStat(
-                onTap: onHeartsTap,
-                semanticLabel: isPremium
-                    ? state.tr(
-                        ru: 'Жизни: безлимит.',
-                        kk: 'Жандар: шексіз.',
-                        en: 'Lives: unlimited.')
-                    : state.tr(
-                        ru: 'Жизни: $hearts. Восстановить жизнь.',
-                        kk: 'Жандар: $hearts. Жанды қалпына келтіру.',
-                        en: 'Lives: $hearts. Restore a life.'),
-                child: StatBadge(
-                  icon: Icons.favorite_rounded,
-                  value: isPremium ? '∞' : '$hearts',
-                  label: state.tr(ru: 'жизни', kk: 'жандар', en: 'lives'),
-                  accent: AppColors.coral,
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -530,6 +591,74 @@ class _StatBadgesRow extends StatelessWidget {
       buffer.write(digits[i]);
     }
     return buffer.toString();
+  }
+}
+
+class _CompactStatCard extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color accent;
+
+  const _CompactStatCard({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 66,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: accent, size: 21),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    value,
+                    style: const TextStyle(
+                      fontFamily: 'Nunito',
+                      fontSize: 16.5,
+                      height: 1,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  label.toUpperCase(),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Nunito',
+                    fontSize: 8.5,
+                    height: 1,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textLight,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -657,8 +786,7 @@ class _AcademyEntryCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        state.tr(
-                            ru: 'Академия', kk: 'Академия', en: 'Academy'),
+                        state.tr(ru: 'Академия', kk: 'Академия', en: 'Academy'),
                         style: const TextStyle(
                           fontFamily: 'Nunito',
                           fontSize: 16,
@@ -700,14 +828,12 @@ class _AcademyEntryCard extends StatelessWidget {
 class _DailyPlanCard extends StatelessWidget {
   final Lesson lesson;
   final String focus;
-  final String? recommendation;
   final bool isReview;
   final VoidCallback onStart;
 
   const _DailyPlanCard({
     required this.lesson,
     required this.focus,
-    required this.recommendation,
     required this.isReview,
     required this.onStart,
   });
@@ -717,89 +843,150 @@ class _DailyPlanCard extends StatelessWidget {
     final state = context.watch<AppState>();
     final minutes = _estimatedMinutes(lesson.steps.length);
     final minLabel = state.tr(ru: 'мин', kk: 'мин', en: 'min');
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
-      child: PremiumCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                    isReview
-                        ? Icons.replay_circle_filled_rounded
-                        : Icons.auto_awesome_rounded,
-                    color: AppColors.navy,
-                    size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: SectionLabel(
-                    text: isReview
-                        ? '${state.tr(ru: 'Повторение', kk: 'Қайталау', en: 'Review')} · $minutes $minLabel'
-                        : '${state.tr(ru: 'Сегодня', kk: 'Бүгін', en: 'Today')} · $minutes $minLabel',
+    final newCount =
+        lesson.steps.where((step) => step.type == LessonStepType.audio).length;
+    final practiceCount = lesson.steps
+        .where((step) =>
+            step.type == LessonStepType.question ||
+            step.type == LessonStepType.matching ||
+            step.type == LessonStepType.wordOrder ||
+            step.type == LessonStepType.listenChoice)
+        .length;
+    final speakingCount =
+        lesson.steps.where((step) => step.type == LessonStepType.speak).length;
+    return Semantics(
+      button: true,
+      label: '${lesson.title}. $focus',
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 14, 18, 6),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 206),
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF5FC3EE), Color(0xFF3FA9DC)],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF3FA9DC).withValues(alpha: 0.4),
+                blurRadius: 34,
+                offset: const Offset(0, 16),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                top: -46,
+                right: -46,
+                child: Container(
+                  width: 150,
+                  height: 150,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.white.withValues(alpha: 0.13),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              lesson.title,
-              style: const TextStyle(
-                fontFamily: 'Nunito',
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textDark,
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              focus,
-              style: const TextStyle(
-                fontFamily: 'Nunito',
-                fontSize: 13.5,
-                height: 1.35,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textGrey,
-              ),
-            ),
-            if (recommendation?.isNotEmpty == true) ...[
-              const SizedBox(height: 10),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppColors.skyLight.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(12),
+              Positioned(
+                right: 2,
+                bottom: -6,
+                child: Image.asset(
+                  'assets/images/cat_learning_real.png',
+                  width: 112,
+                  height: 112,
+                  fit: BoxFit.contain,
                 ),
-                child: Text(
-                  recommendation!,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 12.5,
-                    height: 1.35,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.navy,
-                  ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isReview
+                          ? '${state.tr(ru: 'Повторение', kk: 'Қайталау', en: 'Review')} · $minutes $minLabel'
+                          : '${state.tr(ru: 'Сегодня', kk: 'Бүгін', en: 'Today')} · $minutes $minLabel',
+                      style: TextStyle(
+                        fontFamily: 'Nunito',
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.4,
+                        color: AppColors.white.withValues(alpha: 0.86),
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 94),
+                      child: Text(
+                        lesson.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 18,
+                          height: 1.3,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 94),
+                      child: Text(
+                        '${state.tr(ru: 'новых', kk: 'жаңа', en: 'new')} $newCount · '
+                        '${state.tr(ru: 'практика', kk: 'жаттығу', en: 'practice')} $practiceCount · '
+                        '${state.tr(ru: 'произношение', kk: 'айтылым', en: 'speaking')} $speakingCount',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 11.5,
+                          height: 1.35,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.white.withValues(alpha: 0.88),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    Material(
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      child: InkWell(
+                        onTap: onStart,
+                        borderRadius: BorderRadius.circular(14),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 22, vertical: 12),
+                          child: Text(
+                            isReview
+                                ? state.tr(
+                                    ru: 'Повторить',
+                                    kk: 'Қайталау',
+                                    en: 'Review')
+                                : state.tr(
+                                    ru: 'Начать урок',
+                                    kk: 'Сабақты бастау',
+                                    en: 'Start lesson'),
+                            style: const TextStyle(
+                              fontFamily: 'Nunito',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF1E7FB4),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
-            const SizedBox(height: 16),
-            PremiumButton(
-              label: isReview
-                  ? state.tr(
-                      ru: 'Повторить сейчас',
-                      kk: 'Қазір қайталау',
-                      en: 'Review now')
-                  : state.tr(
-                      ru: 'Начать урок',
-                      kk: 'Сабақты бастау',
-                      en: 'Start lesson'),
-              icon: Icons.play_arrow_rounded,
-              onPressed: onStart,
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -912,8 +1099,7 @@ class _MemoryEngineCard extends StatelessWidget {
             if (hasReview) ...[
               const SizedBox(height: 16),
               PremiumButton(
-                label: state.tr(
-                    ru: 'Повторить', kk: 'Қайталау', en: 'Review'),
+                label: state.tr(ru: 'Повторить', kk: 'Қайталау', en: 'Review'),
                 icon: Icons.replay_rounded,
                 variant: PremiumButtonVariant.navy,
                 onPressed: onReview,
@@ -928,9 +1114,10 @@ class _MemoryEngineCard extends StatelessWidget {
 
 /// Mentor tip card with the mascot and a link into the AI Coach.
 class _MentorTipCard extends StatelessWidget {
+  final String? text;
   final VoidCallback onTap;
 
-  const _MentorTipCard({required this.onTap});
+  const _MentorTipCard({required this.text, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -969,14 +1156,16 @@ class _MentorTipCard extends StatelessWidget {
                               en: 'Mentor tip')),
                       const SizedBox(height: 5),
                       Text(
-                        state.tr(
-                          ru: 'Учись понемногу каждый день — пять минут регулярно '
-                              'работают лучше часа раз в неделю.',
-                          kk: 'Күн сайын аз-аздан үйрен — тұрақты бес минут '
-                              'аптасына бір сағаттан тиімдірек.',
-                          en: 'Learn a little every day — five regular minutes '
-                              'beat an hour once a week.',
-                        ),
+                        text?.trim().isNotEmpty == true
+                            ? text!
+                            : state.tr(
+                                ru: 'Учись понемногу каждый день — пять минут регулярно '
+                                    'работают лучше часа раз в неделю.',
+                                kk: 'Күн сайын аз-аздан үйрен — тұрақты бес минут '
+                                    'аптасына бір сағаттан тиімдірек.',
+                                en: 'Learn a little every day — five regular minutes '
+                                    'beat an hour once a week.',
+                              ),
                         style: const TextStyle(
                           fontFamily: 'Nunito',
                           fontSize: 13,
@@ -1025,8 +1214,7 @@ class _ModeSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final arabicLabel =
-        state.tr(ru: 'Арабский', kk: 'Араб тілі', en: 'Arabic');
+    final arabicLabel = state.tr(ru: 'Арабский', kk: 'Араб тілі', en: 'Arabic');
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
       child: Container(
@@ -1229,7 +1417,8 @@ class _HeartRestoreSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Icon(Icons.favorite_rounded, color: AppColors.error, size: 46),
+            const Icon(Icons.favorite_rounded,
+                color: AppColors.error, size: 46),
             const SizedBox(height: 8),
             Text(
               state.tr(
@@ -1270,8 +1459,7 @@ class _HeartRestoreSheet extends StatelessWidget {
                 Expanded(
                   child: _MiniResource(
                     icon: Icons.battery_charging_full_rounded,
-                    label:
-                        state.tr(ru: 'Энергия', kk: 'Энергия', en: 'Energy'),
+                    label: state.tr(ru: 'Энергия', kk: 'Энергия', en: 'Energy'),
                     value: '$energy',
                     color: AppColors.navy,
                   ),
@@ -1280,9 +1468,7 @@ class _HeartRestoreSheet extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             FilledButton.icon(
-              onPressed: canRestore
-                  ? () => Navigator.pop(context, true)
-                  : null,
+              onPressed: canRestore ? () => Navigator.pop(context, true) : null,
               icon: const Icon(Icons.bolt_rounded),
               label: Text(state.tr(
                   ru: 'Восстановить за 20 энергии',
@@ -1602,8 +1788,8 @@ void _showLockedLessonDialog(BuildContext context, Lesson lesson) {
               child: FilledButton.icon(
                 onPressed: () => Navigator.pop(sheetContext),
                 icon: const Icon(Icons.check_rounded),
-                label: Text(state.tr(
-                    ru: 'Понятно', kk: 'Түсінікті', en: 'Got it')),
+                label: Text(
+                    state.tr(ru: 'Понятно', kk: 'Түсінікті', en: 'Got it')),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.navy,
                   foregroundColor: Colors.white,
@@ -1641,7 +1827,8 @@ class _PathNode extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: '${lesson.title}. ${locked ? state.tr(ru: 'Закрыто', kk: 'Жабық', en: 'Locked') : state.tr(ru: 'Открыть урок', kk: 'Сабақты ашу', en: 'Open lesson')}',
+      label:
+          '${lesson.title}. ${locked ? state.tr(ru: 'Закрыто', kk: 'Жабық', en: 'Locked') : state.tr(ru: 'Открыть урок', kk: 'Сабақты ашу', en: 'Open lesson')}',
       child: GestureDetector(
         onTap: onTap,
         child: Column(

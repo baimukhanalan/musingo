@@ -41,6 +41,10 @@ void main() {
 
   testWidgets('Главная рендерится без ошибок верстки и показывает уроки',
       (tester) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final state = await guestState(tester);
 
     await tester.pumpWidget(
@@ -64,6 +68,21 @@ void main() {
     expect(find.byType(CustomScrollView), findsOneWidget);
     // Виден премиум-хедер с приветствием (стабильно при любом гейтинге секций).
     expect(find.textContaining('Ассаляму алейкум'), findsOneWidget);
+    // Три компактные карточки статистики и голубой daily plan из референса.
+    expect(find.text('ДНЕЙ ПОДРЯД'), findsOneWidget);
+    expect(find.text('XP'), findsOneWidget);
+    expect(find.text('ЖИЗНИ'), findsOneWidget);
+    expect(find.text('Начать урок'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Image &&
+            widget.image is AssetImage &&
+            (widget.image as AssetImage).assetName ==
+                'assets/images/cat_learning_real.png',
+      ),
+      findsOneWidget,
+    );
 
     await teardown(tester);
   });

@@ -98,9 +98,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           [
             state.tr(ru: 'Пока нет', kk: 'Әзірге жоқ', en: 'Not yet'),
             state.tr(
-                ru: 'Некоторые слова',
-                kk: 'Кейбір сөздерді',
-                en: 'Some words'),
+                ru: 'Некоторые слова', kk: 'Кейбір сөздерді', en: 'Some words'),
             state.tr(
                 ru: 'Понимаю общий смысл',
                 kk: 'Жалпы мағынасын түсінемін',
@@ -222,54 +220,58 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
         ),
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(28, 8, 28, 8),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(height: 12),
-                const _MascotGlow(),
-                const SizedBox(height: 28),
-                Text(
-                  state.tr(
-                    ru: 'Твой путь к Корану',
-                    kk: 'Құранға апарар жолың',
-                    en: 'Your path to the Quran',
-                  ),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 32,
-                    height: 1.1,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.navyDark,
-                  ),
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const _MascotGlow(),
+                    const SizedBox(height: 10),
+                    Text(
+                      state.tr(
+                        ru: 'Твой путь к Корану',
+                        kk: 'Құранға апарар жолың',
+                        en: 'Your path to the Quran',
+                      ),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontFamily: 'Nunito',
+                        fontSize: 30,
+                        height: 1.12,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.navyDark,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      state.tr(
+                        ru: 'Личный AI-наставник: определит уровень, поведёт шаг '
+                            'за шагом и услышит твоё произношение.',
+                        kk: 'Жеке AI-ұстаз: деңгейіңді анықтайды, қадам-қадам '
+                            'жетелейді және айтылымыңды тыңдайды.',
+                        en: 'A personal AI mentor: it determines your level, guides '
+                            'you step by step and listens to your pronunciation.',
+                      ),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontFamily: 'Nunito',
+                        fontSize: 14.5,
+                        height: 1.55,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textGrey,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 14),
-                Text(
-                  state.tr(
-                    ru: 'Личный AI-наставник: определит уровень, поведёт шаг '
-                        'за шагом и услышит твоё произношение.',
-                    kk: 'Жеке AI-ұстаз: деңгейіңді анықтайды, қадам-қадам '
-                        'жетелейді және айтылымыңды тыңдайды.',
-                    en: 'A personal AI mentor: it determines your level, guides '
-                        'you step by step and listens to your pronunciation.',
-                  ),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 15.5,
-                    height: 1.45,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textGrey,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 40),
           child: Column(
             children: [
               PremiumButton(
@@ -352,8 +354,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(6),
                   child: LinearProgressIndicator(
-                    value:
-                        _showingResult ? 1 : _step / (_questionCount + 1),
+                    value: _showingResult ? 1 : _step / (_questionCount + 1),
                     minHeight: 10,
                     color: AppColors.sky,
                     backgroundColor: AppColors.border,
@@ -422,34 +423,98 @@ class _Wordmark extends StatelessWidget {
   }
 }
 
-/// Маскот в мягком круге-глоу.
-class _MascotGlow extends StatelessWidget {
+/// Exact intro composition from the premium reference: two concentric sky
+/// rings, a soft radial glow and the greeting mascot at 212pt.
+class _MascotGlow extends StatefulWidget {
   const _MascotGlow();
 
   @override
+  State<_MascotGlow> createState() => _MascotGlowState();
+}
+
+class _MascotGlowState extends State<_MascotGlow>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ringController;
+
+  @override
+  void initState() {
+    super.initState();
+    _ringController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ringController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final int cache =
-        (168 * MediaQuery.of(context).devicePixelRatio).round();
-    return Container(
-      width: 220,
-      height: 220,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [
-            AppColors.sky.withValues(alpha: 0.22),
-            AppColors.skyLight.withValues(alpha: 0.0),
-          ],
-        ),
+    final int cache = (212 * MediaQuery.of(context).devicePixelRatio).round();
+    return SizedBox.square(
+      dimension: 236,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 192,
+            height: 192,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  AppColors.skyLight.withValues(alpha: 0.9),
+                  AppColors.skyLight.withValues(alpha: 0),
+                ],
+                stops: const [0, 0.7],
+              ),
+            ),
+          ),
+          _PingRing(animation: _ringController, phase: 0),
+          _PingRing(animation: _ringController, phase: 0.65),
+          Image.asset(
+            'assets/images/cat_greet_real.png',
+            key: const ValueKey('premium-intro-mascot'),
+            width: 212,
+            height: 212,
+            fit: BoxFit.contain,
+            cacheWidth: cache,
+            cacheHeight: cache,
+          ),
+        ],
       ),
-      child: Image.asset(
-        'assets/images/muslingo_cat.png',
-        width: 168,
-        height: 168,
-        fit: BoxFit.contain,
-        cacheWidth: cache,
-        cacheHeight: cache,
+    );
+  }
+}
+
+class _PingRing extends StatelessWidget {
+  final Animation<double> animation;
+  final double phase;
+
+  const _PingRing({required this.animation, required this.phase});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        final progress = (animation.value + phase) % 1;
+        final scale = 0.9 + 1.3 * Curves.easeOut.transform(progress);
+        return Opacity(
+          opacity: 0.55 * (1 - progress),
+          child: Transform.scale(scale: scale, child: child),
+        );
+      },
+      child: Container(
+        width: 192,
+        height: 192,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.sky, width: 1.5),
+        ),
       ),
     );
   }
@@ -635,8 +700,7 @@ class _ResultStep extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.auto_awesome_rounded,
-                      color: AppColors.navy),
+                  const Icon(Icons.auto_awesome_rounded, color: AppColors.navy),
                   const SizedBox(width: 8),
                   Text(
                     state.tr(

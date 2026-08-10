@@ -1,46 +1,46 @@
 **Comparison Target**
 
-- Source visual truth: `/tmp/duolingo-refs/01.webp` (current Duolingo onboarding reference captured from ScreensDesign).
-- Implementation: `/Users/alanbaimukhan/Documents/main/Muslingo mobile/build/muslingo-duolingo-carousel.png`.
-- Combined comparison: `/Users/alanbaimukhan/Documents/main/Muslingo mobile/build/design-qa-comparison.png`.
-- Additional states: `/Users/alanbaimukhan/Documents/main/Muslingo mobile/build/muslingo-login.png`, `/Users/alanbaimukhan/Documents/main/Muslingo mobile/build/muslingo-duolingo-home.png`, and `/Users/alanbaimukhan/Documents/main/Muslingo mobile/build/muslingo-home-desktop.png`.
-- Viewports: 390x844 mobile and 1280x800 desktop, with the app surface constrained to 600 px on wide screens.
-- State: first onboarding slide, guest sign-in, and initial lesson path.
-
-**Full-View Comparison Evidence**
-
-- The combined image confirms the intended Duolingo interaction language: sparse onboarding composition, mascot-led communication, progress indicator, bold rounded Nunito typography, bordered content surface, and a fixed high-emphasis CTA with a bottom edge shadow.
-- Muslingo intentionally replaces Duolingo's dark/green identity with the supplied mascot's ivory, sky blue, navy, coral, and gold palette.
-- A focused crop was not required because the 1560x1688 combined comparison keeps typography, mascot edges, borders, spacing, and button treatment clearly readable.
+- Source visual truth: `/Users/alanbaimukhan/Downloads/Muslingo премиум айн.zip`, rendered from `/tmp/muslingo-premium-GTYGuq/Muslingo Phone.dc.html` and `/tmp/muslingo-premium-GTYGuq/Muslingo App.dc.html`.
+- Source capture: `/tmp/muslingo-premium-reference.png` (1400 x 1000 px design canvas containing the 402 x 874 px phone).
+- Implementation captures: `/tmp/muslingo-premium-implemented-final.png`, `/tmp/muslingo-home-implemented.png`, `/tmp/muslingo-lesson-implemented.png`, `/tmp/muslingo-quran-implemented.png`, `/tmp/muslingo-coach-implemented.png`, `/tmp/muslingo-hafiz-implemented.png`, and `/tmp/muslingo-profile-implemented.png`.
+- Combined full-view evidence: `/tmp/muslingo-design-comparison-final.png`.
+- Viewport: 402 x 874 CSS px at device pixel ratio 1.
+- State: Russian locale, new user intro; guest state for Home, Lesson, Quran, Coach, Hafiz, and Profile.
+- Density normalization: the source phone content is displayed at its native 402 x 874 size beside a native 402 x 874 browser capture. The source iOS status bar, bezel, and home indicator are template-owned and excluded from app-content findings.
 
 **Findings**
 
-- No actionable P0, P1, or P2 findings remain.
-- Fonts and typography: Nunito is loaded from one valid variable font asset; headings, labels, and CTA weights preserve a clear hierarchy without clipping or unintended letter spacing.
-- Spacing and layout rhythm: onboarding, login, path nodes, stats, and five-tab navigation fit at 390 px; the 1280 px check remains centered and does not stretch the mobile product surface.
-- Colors and visual tokens: the full visible UI uses the mascot-derived palette with distinct semantic coral, gold, blue, navy, and neutral roles.
-- Image quality and asset fidelity: the exact supplied cat image is used throughout with high-quality filtering and a stable aspect ratio. The existing ivory raster background blends with the current surface; a transparent master remains optional P3 polish.
-- Copy and content: onboarding and navigation are adapted to Quran study, Islamic rules, audio repetition, streaks, and leagues; no Duolingo brand copy remains inside the app.
-- Icons and behavior: Material icons are consistent, tap targets are practical, guest login reaches the lesson path, and the browser console reports no errors or warnings.
+- No actionable P0, P1, or P2 differences remain.
+- Fonts and typography: Nunito and Amiri, headline/body weights, line heights, wrapping, and hierarchy match the source direction.
+- Spacing and layout rhythm: mobile width, horizontal margins, intro composition, bottom CTA, three Home stat cards, Today card, and tab bar match the reference structure without clipping or overlap.
+- Colors and visual tokens: sky, navy, ivory, gold, coral, borders, shadows, and the Today gradient use the supplied premium palette.
+- Image quality and asset fidelity: the exact ZIP mascot PNGs are used. The intro greeting asset is sharp and the two pulse rings reproduce the source timing and scale.
+- Copy and content: intro, diagnostic, daily-plan, Coach, Hafiz, Quran, and Profile copy is coherent and localized; dynamic lesson content intentionally reflects the real user state.
+- Icons and interaction states: primary CTA, diagnostic choices, bottom navigation, lesson progression, and guest install banner were exercised in the browser and remained usable.
 
-**Patches Made During QA**
+**Focused Region Evidence**
 
-- Prevented wide-screen stretching with a centered 600 px app surface.
-- Fixed the mobile skip-label wrap and verified the 390 px header.
-- Replaced the splash emoji with the supplied mascot asset.
-- Removed remaining Duolingo wording from splash and login copy.
-- Removed the splash animation timer that caused the widget test to fail.
+- Intro hero and CTA were inspected at full native resolution in `/tmp/muslingo-design-comparison-final.png`; text, mascot transparency, rings, button elevation, and language selector were readable enough that no additional crop was required.
+- Home daily-plan density and stat cards were inspected in `/tmp/muslingo-home-implemented.png` against screen 1b of `/tmp/muslingo-premium-app-reference.png`.
+- Lesson, Quran, Coach, Hafiz, and Profile were inspected in their individual 402 x 874 captures for typography, card geometry, image sharpness, tab selection, empty states, and viewport overflow.
+
+**Comparison History**
+
+- Pass 1: P2 intro pulse-ring mismatch. The implementation used two compact static rings while the source animates 192 px rings from scale 0.9 to 2.2 over 2.6 seconds.
+- Fix: replaced the static rings with two phased Flutter animations using the source scale, opacity, and duration values.
+- Post-fix evidence: `/tmp/muslingo-premium-implemented-final.png` and `/tmp/muslingo-design-comparison-final.png` show the expanded pulse field, correct mascot, headline, supporting copy, and CTA in the same mobile composition.
 
 **Implementation Checklist**
 
-- [x] Mobile onboarding verified.
-- [x] Login and guest transition verified.
-- [x] Main lesson path and navigation verified.
-- [x] Desktop containment verified.
-- [x] Analyzer, widget tests, web build, Android debug APK, and unsigned iOS device build passed.
+- [x] Exact supplied mascot assets used.
+- [x] Intro geometry and animated pulse treatment restored.
+- [x] Home stats and Today lesson card restored.
+- [x] Core premium tabs checked at 402 x 874.
+- [x] Mobile widget regressions added.
+- [x] Flutter analysis, tests, server tests, and release build passed.
 
 **Follow-up Polish**
 
-- P3: replace the current square-background mascot file with transparent pose and motion masters when supplied.
+- Recheck safe-area padding on physical iPhone and Android devices because the source board includes template-owned device chrome while the browser capture does not.
 
 final result: passed

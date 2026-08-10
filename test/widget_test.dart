@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:muslingo/main.dart';
 import 'package:muslingo/screens/login_screen.dart';
+import 'package:muslingo/screens/onboarding_screen.dart';
 import 'package:muslingo/services/app_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -19,6 +20,37 @@ void main() {
 
     expect(find.text('muslingo'), findsOneWidget);
     expect(find.byIcon(Icons.add), findsNothing);
+
+    await _teardown(tester);
+  });
+
+  testWidgets('Премиум-интро помещается в эталонный viewport 402x874',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final state = AppState();
+    await tester.runAsync(() => _waitUntilInitialized(state));
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppState>.value(
+        value: state,
+        child: MaterialApp(
+          home: const OnboardingScreen(),
+          onGenerateRoute: (settings) => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => const SizedBox.shrink(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Твой путь к Корану'), findsOneWidget);
+    expect(find.text('Начать — 2 минуты'), findsOneWidget);
+    expect(find.byKey(const ValueKey('premium-intro-mascot')), findsOneWidget);
 
     await _teardown(tester);
   });

@@ -99,7 +99,9 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
             color: AppColors.backgroundGrey,
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
+                // The premium reference is a 402pt mobile composition. Keep a
+                // phone-like canvas on desktop while still filling real phones.
+                constraints: const BoxConstraints(maxWidth: 430),
                 child: child ?? const SizedBox.shrink(),
               ),
             ),
