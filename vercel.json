@@ -17,7 +17,7 @@
         { "key": "X-Frame-Options", "value": "DENY" },
         { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
         { "key": "Permissions-Policy", "value": "camera=(), geolocation=(), microphone=(self)" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://cdn.islamic.network https://everyayah.com; media-src 'self' blob: https://cdn.islamic.network https://everyayah.com https://server8.mp3quran.net; connect-src 'self' https://api.alquran.cloud https://alquran.api.alislam.ru https://server8.mp3quran.net https://cdn.islamic.network https://everyayah.com https://www.gstatic.com; worker-src 'self' blob:; manifest-src 'self'" }
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://cdn.islamic.network https://everyayah.com; media-src 'self' blob: https://cdn.islamic.network https://everyayah.com https://server8.mp3quran.net; connect-src 'self' https://api.alquran.cloud https://alquran.api.alislam.ru https://server8.mp3quran.net https://cdn.islamic.network https://everyayah.com https://www.gstatic.com; worker-src 'self' blob:; manifest-src 'self'" }
       ]
     }
   ],
