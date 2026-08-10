@@ -147,7 +147,7 @@ void main() {
     expect(total, 6236);
   });
 
-  test('every Juz Tabarak lesson ayah matches Tanzil text exactly', () async {
+  test('every new Juz lesson ayah matches Tanzil text exactly', () async {
     final content = await rootBundle.loadString(
       'assets/data/quran-uthmani-tanzil.txt',
     );
@@ -161,7 +161,7 @@ void main() {
     }
 
     final ayahSteps = LessonData.quranCourse.lessons
-        .where((lesson) => lesson.order >= 49 && lesson.order <= 59)
+        .where((lesson) => lesson.order >= 49 && lesson.order <= 68)
         .expand((lesson) => lesson.steps)
         .where((step) =>
             step.quranGlobalAyahNumber != null &&

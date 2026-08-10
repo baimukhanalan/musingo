@@ -65,7 +65,7 @@ void main() {
     // переполнение узла урока и т.п.) — раньше из-за этого экран был пустым.
     expect(tester.takeException(), isNull);
     // И скролл-вью уроков реально построился, а не пустой экран.
-    expect(find.byType(CustomScrollView), findsOneWidget);
+    expect(find.byType(CustomScrollView), findsNWidgets(2));
     // Виден премиум-хедер с приветствием (стабильно при любом гейтинге секций).
     expect(find.textContaining('Ассаляму алейкум'), findsOneWidget);
     // Три компактные карточки статистики и голубой daily plan из референса.
@@ -83,6 +83,64 @@ void main() {
       ),
       findsOneWidget,
     );
+
+    await teardown(tester);
+  });
+
+  testWidgets(
+      'Курсы прокручиваются внутри панели и переключаются без блокирующего окна',
+      (tester) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final state = await guestState(tester);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppState>.value(
+        value: state,
+        child: MaterialApp(
+          home: const HomeScreen(),
+          onGenerateRoute: (settings) => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => const SizedBox.shrink(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final outerScroll = find.byType(CustomScrollView).first;
+    for (var i = 0; i < 4; i++) {
+      await tester.drag(outerScroll, const Offset(0, -420));
+      await tester.pump(const Duration(milliseconds: 120));
+      if (find
+          .byKey(const ValueKey('learning-path-panel'))
+          .evaluate()
+          .isNotEmpty) {
+        break;
+      }
+    }
+
+    expect(find.byKey(const ValueKey('learning-path-panel')), findsOneWidget);
+    expect(find.byKey(const ValueKey('course-path-quran')), findsOneWidget);
+    expect(find.byType(CustomScrollView), findsNWidgets(2));
+    expect(find.text('68 уроков'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('course-mode-arabic')));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byKey(const ValueKey('course-path-quran')), findsNothing);
+    expect(find.byKey(const ValueKey('course-path-arabic')), findsOneWidget);
+    expect(find.text('22 урока'), findsOneWidget);
+    expect(find.text('Выбрать язык объяснений'), findsOneWidget);
+    expect(find.text('Выбери родной язык'), findsNothing);
+    expect(tester.takeException(), isNull);
+
+    // Академия стоит сразу после фиксированной панели, а не после 68 узлов.
+    await tester.drag(outerScroll, const Offset(0, -440));
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(find.text('Академия'), findsOneWidget);
 
     await teardown(tester);
   });
@@ -108,13 +166,12 @@ void main() {
     expect(tester.takeException(), isNull);
     // Новый таббар прототипа: Главная · Коран · Coach · Hafiz · Профиль.
     expect(find.text('Главная'), findsOneWidget);
-    expect(find.text('Коран'), findsOneWidget);
+    expect(find.bySemanticsLabel('Коран'), findsOneWidget);
     expect(find.text('Hafiz'), findsOneWidget);
     expect(find.text('Профиль'), findsOneWidget);
     // Лига доступна отдельной страницей из «Друзей», но не перегружает таббар;
-    // «Основы» переехали разделом на главную; «Уроки» → «Главная».
+    // «Основы» переехали во внутреннюю вкладку на главной; «Уроки» → «Главная».
     expect(find.text('Лига'), findsNothing);
-    expect(find.text('Основы'), findsNothing);
     expect(find.text('Уроки'), findsNothing);
 
     await teardown(tester);

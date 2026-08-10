@@ -16,18 +16,44 @@ void main() {
     'q_insan_1',
     'q_mursalat_1',
   ];
+  const juzMujadilaIds = <String>[
+    'q_mujadila_1',
+    'q_hashr_1',
+    'q_mumtahanah_1',
+    'q_saff_1',
+    'q_jumuah_1',
+    'q_munafiqun_1',
+    'q_taghabun_1',
+    'q_talaq_1',
+    'q_tahrim_1',
+  ];
+  const advancedArabicIds = <String>[
+    'a17',
+    'a18',
+    'a19',
+    'a20',
+    'a21',
+    'a22',
+  ];
 
-  test('curriculum contains 85 lessons including ordered Juz Tabarak', () {
+  test('curriculum contains exactly 100 ordered lessons', () {
     final courses = LessonData.getCourses();
-    expect(courses.expand((course) => course.lessons), hasLength(85));
-    expect(LessonData.quranCourse.lessons, hasLength(59));
-    expect(LessonData.arabicCourse.lessons, hasLength(16));
+    expect(courses.expand((course) => course.lessons), hasLength(100));
+    expect(LessonData.quranCourse.lessons, hasLength(68));
+    expect(LessonData.arabicCourse.lessons, hasLength(22));
     expect(LessonData.rulesCourse.lessons, hasLength(10));
 
     final quran = LessonData.quranCourse.lessons;
-    expect(quran.skip(48).map((lesson) => lesson.id), juzTabarakIds);
-    expect(quran.skip(48).map((lesson) => lesson.order),
+    expect(quran.skip(48).take(11).map((lesson) => lesson.id), juzTabarakIds);
+    expect(quran.skip(48).take(11).map((lesson) => lesson.order),
         List<int>.generate(11, (index) => 49 + index));
+    expect(quran.skip(59).map((lesson) => lesson.id), juzMujadilaIds);
+    expect(quran.skip(59).map((lesson) => lesson.order),
+        List<int>.generate(9, (index) => 60 + index));
+    expect(
+      LessonData.arabicCourse.lessons.skip(16).map((lesson) => lesson.id),
+      advancedArabicIds,
+    );
   });
 
   test('every Juz Tabarak lesson follows the rich learning loop', () {
@@ -57,6 +83,34 @@ void main() {
       expect(
         lesson.steps.where((step) => step.type == LessonStepType.question),
         hasLength(2),
+      );
+    }
+  });
+
+  test('new Quran and Arabic lessons follow the rich learning loop', () {
+    final ids = <String>{...juzMujadilaIds, ...advancedArabicIds};
+    final lessons = LessonData.getCourses()
+        .expand((course) => course.lessons)
+        .where((lesson) => ids.contains(lesson.id));
+    const requiredTypes = <LessonStepType>{
+      LessonStepType.text,
+      LessonStepType.audio,
+      LessonStepType.listenChoice,
+      LessonStepType.wordOrder,
+      LessonStepType.question,
+      LessonStepType.matching,
+      LessonStepType.speak,
+    };
+
+    expect(lessons, hasLength(ids.length));
+    for (final lesson in lessons) {
+      final types = lesson.steps.map((step) => step.type).toSet();
+      expect(types.containsAll(requiredTypes), isTrue, reason: lesson.id);
+      expect(lesson.steps.length, greaterThanOrEqualTo(8), reason: lesson.id);
+      expect(
+        lesson.steps.every((step) => step.sourceRefs.isNotEmpty),
+        isTrue,
+        reason: '${lesson.id}: source metadata is incomplete',
       );
     }
   });

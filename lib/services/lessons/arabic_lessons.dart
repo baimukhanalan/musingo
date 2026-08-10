@@ -1,4 +1,5 @@
 import '../../models/lesson.dart';
+import 'advanced_arabic_lessons.dart';
 
 final List<Lesson> arabicLessons = [
     const Lesson(
@@ -962,4 +963,5 @@ final List<Lesson> arabicLessons = [
         ),
       ],
     ),
+    ...advancedArabicLessons,
 ];

@@ -8,9 +8,10 @@ import { isRewardReplay, leaderboardContribution, nextDailyProgress, profile } f
 // be present, or POST /api/progress/complete rejects it with 400 unknown_lesson
 // and a signed-in user's progress for that lesson is silently dropped.
 export const lessons = new Set([
-  // arabic_lessons.dart (a1–a16)
+  // arabic_lessons.dart (a1–a22)
   'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8',
   'a9', 'a10', 'a11', 'a12', 'a13', 'a14', 'a15', 'a16',
+  'a17', 'a18', 'a19', 'a20', 'a21', 'a22',
   // quran_lessons.dart
   'q_fatiha_1', 'q_fatiha_2', 'q_fatiha_3', 'q_fatiha_4',
   'q_ikhlas_1', 'q_falaq_1', 'q_nas_1', 'q_review_5_surahs',
@@ -28,6 +29,10 @@ export const lessons = new Set([
   'q_mulk_1', 'q_qalam_1', 'q_haqqah_1', 'q_maarij_1', 'q_nuh_1',
   'q_jinn_1', 'q_muzzammil_1', 'q_muddaththir_1', 'q_qiyamah_1',
   'q_insan_1', 'q_mursalat_1',
+  // juz_mujadila_lessons.dart (surahs 58-66)
+  'q_mujadila_1', 'q_hashr_1', 'q_mumtahanah_1', 'q_saff_1',
+  'q_jumuah_1', 'q_munafiqun_1', 'q_taghabun_1', 'q_talaq_1',
+  'q_tahrim_1',
   // rules_lessons.dart (r1–r10)
   'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10',
 ]);
@@ -52,6 +57,9 @@ export const ayatRewards = {
   q_mulk_1: 2, q_qalam_1: 2, q_haqqah_1: 2, q_maarij_1: 2, q_nuh_1: 2,
   q_jinn_1: 2, q_muzzammil_1: 2, q_muddaththir_1: 2, q_qiyamah_1: 2,
   q_insan_1: 2, q_mursalat_1: 2,
+  q_mujadila_1: 2, q_hashr_1: 2, q_mumtahanah_1: 2, q_saff_1: 2,
+  q_jumuah_1: 2, q_munafiqun_1: 2, q_taghabun_1: 2, q_talaq_1: 2,
+  q_tahrim_1: 2,
 };
 
 // M2: first-completion xp must equal the lesson's own xpReward (lib/services/
@@ -61,6 +69,7 @@ export const ayatRewards = {
 export const lessonXp = {
   a1: 20, a2: 20, a3: 25, a4: 20, a5: 25, a6: 25, a7: 20, a8: 20,
   a9: 25, a10: 25, a11: 20, a12: 20, a13: 25, a14: 25, a15: 25, a16: 25,
+  a17: 30, a18: 30, a19: 30, a20: 30, a21: 30, a22: 30,
   q_fatiha_1: 25, q_fatiha_2: 25, q_fatiha_3: 25, q_fatiha_4: 25,
   q_ikhlas_1: 25, q_falaq_1: 25, q_nas_1: 25, q_review_5_surahs: 45,
   q_baqara_1: 25, q_asr_1: 25, q_fil_1: 25, q_quraysh_1: 25, q_maun_1: 25,
@@ -76,6 +85,9 @@ export const lessonXp = {
   q_mulk_1: 25, q_qalam_1: 25, q_haqqah_1: 25, q_maarij_1: 25, q_nuh_1: 25,
   q_jinn_1: 25, q_muzzammil_1: 25, q_muddaththir_1: 25, q_qiyamah_1: 25,
   q_insan_1: 25, q_mursalat_1: 25,
+  q_mujadila_1: 25, q_hashr_1: 25, q_mumtahanah_1: 25, q_saff_1: 25,
+  q_jumuah_1: 25, q_munafiqun_1: 25, q_taghabun_1: 25, q_talaq_1: 25,
+  q_tahrim_1: 25,
   r1: 25, r2: 25, r3: 25, r4: 25, r5: 25, r6: 25, r7: 25, r8: 25, r9: 25, r10: 25,
 };
 

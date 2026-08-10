@@ -16,7 +16,7 @@ import '../widgets/premium_card.dart';
 import '../widgets/progress_ring.dart';
 import '../widgets/section_label.dart';
 
-enum _LearningMode { quran, arabic }
+enum _LearningMode { basics, quran, arabic }
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -64,10 +64,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final quranCourse = state.getCourse(CourseType.quran);
     final arabicCourse = state.getCourse(CourseType.arabic);
     final rulesCourse = state.getCourse(CourseType.rules);
-    final activeCourse =
-        _mode == _LearningMode.arabic ? arabicCourse : quranCourse;
-    final activeIcons =
-        _mode == _LearningMode.arabic ? _arabicIcons : _quranIcons;
+    final activeCourse = switch (_mode) {
+      _LearningMode.basics => rulesCourse,
+      _LearningMode.quran => quranCourse,
+      _LearningMode.arabic => arabicCourse,
+    };
+    final activeIcons = switch (_mode) {
+      _LearningMode.basics => _rulesIcons,
+      _LearningMode.quran => _quranIcons,
+      _LearningMode.arabic => _arabicIcons,
+    };
     // recommendedLesson делает where().toList()..sort() и проходы по курсам —
     // считаем его один раз за build и переиспользуем во всех местах ниже,
     // чтобы не гонять расчёт 4 раза и исключить рассинхрон между вызовами.
@@ -147,85 +153,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   onTap: () => Navigator.pushNamed(context, '/coach'),
                 ),
               ),
-              // Переключатель курса (суры / арабский) — существующая логика.
-              SliverToBoxAdapter(
-                child: _ModeSwitch(
-                  mode: _mode,
-                  nativeLanguage: state.nativeLanguage,
-                  onChanged: (mode) async {
-                    HapticsService.tap();
-                    setState(() => _mode = mode);
-                    if (mode == _LearningMode.arabic &&
-                        state.nativeLanguage == null) {
-                      await _askNativeLanguage(context);
-                    }
-                  },
-                ),
-              ),
-              // (6) РАЗДЕЛ 1 · ОСНОВЫ — путь курса rules (всегда доступен).
-              if (rulesCourse != null) ...[
+              // Один компактный учебный экран с собственной прокруткой. Даже
+              // при сотне уроков следующие разделы остаются рядом, а не после
+              // десятков экранов длинного пути.
+              if (activeCourse != null)
                 SliverToBoxAdapter(
-                  child: _SectionHeader(
-                    kicker: state.tr(
-                        ru: 'Раздел 1 · Основы',
-                        kk: 'Бөлім 1 · Негіздер',
-                        en: 'Section 1 · Basics'),
-                    title: state.tr(
-                        ru: 'Основы ислама',
-                        kk: 'Ислам негіздері',
-                        en: 'Basics of Islam'),
-                    subtitle: state.tr(
-                        ru: 'Вера, Коран и пять столпов',
-                        kk: 'Иман, Құран және бес парыз',
-                        en: 'Faith, Quran and the five pillars'),
+                  child: _LearningPathPanel(
+                    mode: _mode,
+                    course: activeCourse,
+                    icons: activeIcons,
+                    nativeLanguage: state.nativeLanguage,
+                    onModeChanged: (mode) {
+                      HapticsService.tap();
+                      setState(() => _mode = mode);
+                    },
+                    onChooseNativeLanguage: () => _askNativeLanguage(context),
+                    onOpenLesson: _openLesson,
                   ),
                 ),
-                _LessonPath(
-                  lessons: rulesCourse.lessons,
-                  icons: _rulesIcons,
-                  onOpenLesson: _openLesson,
-                ),
-              ],
-              // (7) РАЗДЕЛ 2 · СУРЫ / АРАБСКИЙ — активный курс с кольцом прогресса.
-              if (activeCourse != null) ...[
-                SliverToBoxAdapter(
-                  child: _SectionHeader(
-                    kicker: _mode == _LearningMode.arabic
-                        ? state.tr(
-                            ru: 'Раздел 2 · Арабский',
-                            kk: 'Бөлім 2 · Араб тілі',
-                            en: 'Section 2 · Arabic')
-                        : state.tr(
-                            ru: 'Раздел 2 · Суры',
-                            kk: 'Бөлім 2 · Сүрелер',
-                            en: 'Section 2 · Surahs'),
-                    title: _mode == _LearningMode.arabic
-                        ? state.tr(
-                            ru: 'Арабский язык',
-                            kk: 'Араб тілі',
-                            en: 'Arabic language')
-                        : state.tr(
-                            ru: 'Короткие суры',
-                            kk: 'Қысқа сүрелер',
-                            en: 'Short surahs'),
-                    subtitle: _mode == _LearningMode.arabic
-                        ? state.tr(
-                            ru: 'Буквы, чтение и произношение',
-                            kk: 'Әріптер, оқу және айтылым',
-                            en: 'Letters, reading and pronunciation')
-                        : state.tr(
-                            ru: 'Слушай, повторяй и понимай смысл',
-                            kk: 'Тыңда, қайтала және мағынасын түсін',
-                            en: 'Listen, repeat and understand the meaning'),
-                    progress: activeCourse.progress,
-                  ),
-                ),
-                _LessonPath(
-                  lessons: activeCourse.lessons,
-                  icons: activeIcons,
-                  onOpenLesson: _openLesson,
-                ),
-              ],
               SliverToBoxAdapter(
                 child: _AcademyEntryCard(
                   onTap: () => Navigator.pushNamed(context, '/academy'),
@@ -344,8 +289,8 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       await showModalBottomSheet<void>(
         context: context,
-        isDismissible: false,
-        enableDrag: false,
+        isDismissible: true,
+        enableDrag: true,
         backgroundColor: Colors.transparent,
         builder: (sheetContext) => _NativeLanguageSheet(
           onSelected: (language) async {
@@ -1200,55 +1145,303 @@ String _reviewDateLabel(DateTime? date) {
   return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}';
 }
 
+String _lessonCountRu(int count) {
+  final mod100 = count % 100;
+  final mod10 = count % 10;
+  final word = mod100 >= 11 && mod100 <= 14
+      ? 'уроков'
+      : switch (mod10) {
+          1 => 'урок',
+          2 || 3 || 4 => 'урока',
+          _ => 'уроков',
+        };
+  return '$count $word';
+}
+
+class _LearningPathPanel extends StatefulWidget {
+  final _LearningMode mode;
+  final Course course;
+  final List<IconData> icons;
+  final NativeLanguage? nativeLanguage;
+  final ValueChanged<_LearningMode> onModeChanged;
+  final VoidCallback onChooseNativeLanguage;
+  final void Function(BuildContext context, Lesson lesson) onOpenLesson;
+
+  const _LearningPathPanel({
+    required this.mode,
+    required this.course,
+    required this.icons,
+    required this.nativeLanguage,
+    required this.onModeChanged,
+    required this.onChooseNativeLanguage,
+    required this.onOpenLesson,
+  });
+
+  @override
+  State<_LearningPathPanel> createState() => _LearningPathPanelState();
+}
+
+class _LearningPathPanelState extends State<_LearningPathPanel> {
+  final Map<String, ScrollController> _controllers = {};
+
+  ScrollController get _activeController =>
+      _controllers.putIfAbsent(widget.course.id, ScrollController.new);
+
+  @override
+  void dispose() {
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final panelHeight = (MediaQuery.sizeOf(context).height * 0.59)
+        .clamp(460.0, 550.0)
+        .toDouble();
+    final (kicker, title, subtitle) = switch (widget.mode) {
+      _LearningMode.basics => (
+          state.tr(ru: 'Основы', kk: 'Негіздер', en: 'Basics'),
+          state.tr(
+              ru: 'Основы ислама',
+              kk: 'Ислам негіздері',
+              en: 'Basics of Islam'),
+          state.tr(
+              ru: 'Вера, Коран и пять столпов',
+              kk: 'Иман, Құран және бес парыз',
+              en: 'Faith, Quran and the five pillars'),
+        ),
+      _LearningMode.quran => (
+          state.tr(ru: 'Коран', kk: 'Құран', en: 'Quran'),
+          state.tr(
+              ru: 'Путь по сурам',
+              kk: 'Сүрелер жолы',
+              en: 'Surah learning path'),
+          state.tr(
+              ru: 'Слушай, понимай и повторяй',
+              kk: 'Тыңда, түсін және қайтала',
+              en: 'Listen, understand and repeat'),
+        ),
+      _LearningMode.arabic => (
+          state.tr(ru: 'Арабский', kk: 'Араб тілі', en: 'Arabic'),
+          state.tr(
+              ru: 'Арабское чтение', kk: 'Арабша оқу', en: 'Arabic reading'),
+          state.tr(
+              ru: 'От букв к кораническим фразам',
+              kk: 'Әріптен Құран сөз тіркестеріне дейін',
+              en: 'From letters to Quranic phrases'),
+        ),
+    };
+    final controller = _activeController;
+
+    return Container(
+      key: const ValueKey('learning-path-panel'),
+      height: panelHeight,
+      margin: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.navyDark.withValues(alpha: 0.07),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            child: _ModeSwitch(
+              mode: widget.mode,
+              onChanged: widget.onModeChanged,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          SectionLabel(text: kicker),
+                          const SizedBox(width: 8),
+                          Text(
+                            state.tr(
+                              ru: _lessonCountRu(widget.course.lessons.length),
+                              kk: '${widget.course.lessons.length} сабақ',
+                              en: '${widget.course.lessons.length} lessons',
+                            ),
+                            style: const TextStyle(
+                              fontFamily: 'Nunito',
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textGrey,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 19,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.navyDark,
+                        ),
+                      ),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textGrey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                ProgressRing(
+                  percent: widget.course.progress,
+                  size: 46,
+                  color: AppColors.sky,
+                  child: Text(
+                    '${(widget.course.progress * 100).round()}%',
+                    style: const TextStyle(
+                      fontFamily: 'Nunito',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (widget.mode == _LearningMode.arabic)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: SizedBox(
+                width: double.infinity,
+                height: 34,
+                child: OutlinedButton.icon(
+                  key: const ValueKey('choose-native-language'),
+                  onPressed: widget.onChooseNativeLanguage,
+                  icon: const Icon(Icons.language_rounded, size: 17),
+                  label: Text(
+                    widget.nativeLanguage == null
+                        ? state.tr(
+                            ru: 'Выбрать язык объяснений',
+                            kk: 'Түсіндіру тілін таңдау',
+                            en: 'Choose explanation language')
+                        : state.tr(
+                            ru: 'Язык объяснений: ${widget.nativeLanguage!.label}',
+                            kk: 'Түсіндіру тілі: ${widget.nativeLanguage!.label}',
+                            en: 'Explanation language: ${widget.nativeLanguage!.label}'),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.navy,
+                    side: const BorderSide(color: AppColors.border),
+                    textStyle: const TextStyle(
+                      fontFamily: 'Nunito',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          const Divider(height: 1, color: AppColors.border),
+          Expanded(
+            child: Scrollbar(
+              controller: controller,
+              thumbVisibility: true,
+              radius: const Radius.circular(8),
+              child: CustomScrollView(
+                key: ValueKey('course-path-${widget.course.id}'),
+                controller: controller,
+                primary: false,
+                slivers: [
+                  _LessonPath(
+                    lessons: widget.course.lessons,
+                    icons: widget.icons,
+                    onOpenLesson: widget.onOpenLesson,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ModeSwitch extends StatelessWidget {
   final _LearningMode mode;
-  final NativeLanguage? nativeLanguage;
   final ValueChanged<_LearningMode> onChanged;
 
   const _ModeSwitch({
     required this.mode,
-    required this.nativeLanguage,
     required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final arabicLabel = state.tr(ru: 'Арабский', kk: 'Араб тілі', en: 'Arabic');
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: AppColors.border, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.navyDark.withValues(alpha: 0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            _ModeSegment(
-              selected: mode == _LearningMode.quran,
-              label: state.tr(ru: 'Суры', kk: 'Сүрелер', en: 'Surahs'),
-              icon: Icons.menu_book_rounded,
-              onTap: () => onChanged(_LearningMode.quran),
-            ),
-            _ModeSegment(
-              selected: mode == _LearningMode.arabic,
-              label: nativeLanguage == null
-                  ? arabicLabel
-                  : '$arabicLabel · ${nativeLanguage!.label}',
-              icon: Icons.translate_rounded,
-              onTap: () => onChanged(_LearningMode.arabic),
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: AppColors.border, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.navyDark.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          _ModeSegment(
+            key: const ValueKey('course-mode-basics'),
+            selected: mode == _LearningMode.basics,
+            label: state.tr(ru: 'Основы', kk: 'Негіздер', en: 'Basics'),
+            icon: Icons.account_balance_rounded,
+            onTap: () => onChanged(_LearningMode.basics),
+          ),
+          _ModeSegment(
+            key: const ValueKey('course-mode-quran'),
+            selected: mode == _LearningMode.quran,
+            label: state.tr(ru: 'Коран', kk: 'Құран', en: 'Quran'),
+            icon: Icons.menu_book_rounded,
+            onTap: () => onChanged(_LearningMode.quran),
+          ),
+          _ModeSegment(
+            key: const ValueKey('course-mode-arabic'),
+            selected: mode == _LearningMode.arabic,
+            label: state.tr(ru: 'Арабский', kk: 'Араб тілі', en: 'Arabic'),
+            icon: Icons.translate_rounded,
+            onTap: () => onChanged(_LearningMode.arabic),
+          ),
+        ],
       ),
     );
   }
@@ -1261,6 +1454,7 @@ class _ModeSegment extends StatelessWidget {
   final VoidCallback onTap;
 
   const _ModeSegment({
+    super.key,
     required this.selected,
     required this.label,
     required this.icon,
@@ -1293,7 +1487,7 @@ class _ModeSegment extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontFamily: 'Nunito',
-                    fontSize: 14,
+                    fontSize: 11,
                     fontWeight: FontWeight.w900,
                     color: selected ? Colors.white : AppColors.textLight,
                   ),
@@ -1584,79 +1778,6 @@ class _LanguageButton extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// Small-caps section header (kicker + title + subtitle) with an optional
-/// course-progress ring on the right.
-class _SectionHeader extends StatelessWidget {
-  final String kicker;
-  final String title;
-  final String subtitle;
-  final double? progress;
-
-  const _SectionHeader({
-    required this.kicker,
-    required this.title,
-    required this.subtitle,
-    this.progress,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SectionLabel(text: kicker),
-                const SizedBox(height: 6),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 21,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.navyDark,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textGrey,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (progress != null) ...[
-            const SizedBox(width: 12),
-            ProgressRing(
-              percent: progress!,
-              size: 54,
-              color: AppColors.sky,
-              child: Text(
-                '${(progress! * 100).round()}%',
-                style: const TextStyle(
-                  fontFamily: 'Nunito',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.navy,
-                ),
-              ),
-            ),
-          ],
-        ],
       ),
     );
   }

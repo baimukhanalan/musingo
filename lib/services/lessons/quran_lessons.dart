@@ -1,4 +1,5 @@
 import '../../models/lesson.dart';
+import 'juz_mujadila_lessons.dart';
 import 'juz_tabarak_lessons.dart';
 
 final List<Lesson> quranLessons = [
@@ -8110,4 +8111,5 @@ final List<Lesson> quranLessons = [
       ],
     ),
     ...juzTabarakLessons,
+    ...juzMujadilaLessons,
 ];

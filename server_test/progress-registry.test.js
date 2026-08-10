@@ -13,6 +13,7 @@ import { ayatRewards, clampErrors, lessons, lessonXp } from '../server/routes/pr
 const arabicIds = [
   'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8',
   'a9', 'a10', 'a11', 'a12', 'a13', 'a14', 'a15', 'a16',
+  'a17', 'a18', 'a19', 'a20', 'a21', 'a22',
 ];
 const quranIds = [
   'q_fatiha_1', 'q_fatiha_2', 'q_fatiha_3', 'q_fatiha_4',
@@ -30,6 +31,9 @@ const quranIds = [
   'q_mulk_1', 'q_qalam_1', 'q_haqqah_1', 'q_maarij_1', 'q_nuh_1',
   'q_jinn_1', 'q_muzzammil_1', 'q_muddaththir_1', 'q_qiyamah_1',
   'q_insan_1', 'q_mursalat_1',
+  'q_mujadila_1', 'q_hashr_1', 'q_mumtahanah_1', 'q_saff_1',
+  'q_jumuah_1', 'q_munafiqun_1', 'q_taghabun_1', 'q_talaq_1',
+  'q_tahrim_1',
 ];
 const rulesIds = [
   'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10',
@@ -93,6 +97,9 @@ test('ayatRewards matches the distinct quranGlobalAyahNumber count per lesson', 
     q_mulk_1: 2, q_qalam_1: 2, q_haqqah_1: 2, q_maarij_1: 2, q_nuh_1: 2,
     q_jinn_1: 2, q_muzzammil_1: 2, q_muddaththir_1: 2, q_qiyamah_1: 2,
     q_insan_1: 2, q_mursalat_1: 2,
+    q_mujadila_1: 2, q_hashr_1: 2, q_mumtahanah_1: 2, q_saff_1: 2,
+    q_jumuah_1: 2, q_munafiqun_1: 2, q_taghabun_1: 2, q_talaq_1: 2,
+    q_tahrim_1: 2,
   };
   assert.deepEqual(ayatRewards, expected);
 });
@@ -116,6 +123,8 @@ test('lessonXp mirrors the client xpReward values', () => {
   assert.equal(lessonXp.a11, 20);
   assert.equal(lessonXp.a12, 20);
   assert.equal(lessonXp.a3, 25);
+  assert.equal(lessonXp.a17, 30);
+  assert.equal(lessonXp.a22, 30);
   assert.equal(lessonXp.q_review_5_surahs, 45);
   assert.equal(lessonXp.q_review_short_surahs, 45);
   assert.equal(lessonXp.q_asr_1, 25);
