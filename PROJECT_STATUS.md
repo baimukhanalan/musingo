@@ -2,7 +2,7 @@
 
 **Обновлено:** 2026-08-11
 **Прод (web/PWA + API):** https://muslingo-mobile.vercel.app
-**Текущий production deployment:** `dpl_H1pBDXvvYE19oUYEwQj5DVhDxmKh` (Ready)
+**Текущий production deployment:** `dpl_6BmW7jqDJEfV3npC8VSJCp6X5iYS` (Ready)
 **Репозиторий:** github.com/baimukhanalan/musingo (локальная ветка готова к push; GitHub ждёт подтверждения входа владельцем)
 
 Это приложение для изучения Корана, арабского и основ ислама по системе Duolingo:
