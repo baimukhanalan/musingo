@@ -38,6 +38,12 @@ String _stepTypeLabel(LessonStep step, AppState state) {
           ru: 'Соедини пары', kk: 'Жұптарды сәйкестендір', en: 'Match the pairs');
     case LessonStepType.speak:
       return state.tr(ru: 'Произношение', kk: 'Айтылым', en: 'Pronunciation');
+    case LessonStepType.wordOrder:
+      return state.tr(
+          ru: 'Собери фразу', kk: 'Тіркесті құрастыр', en: 'Build the phrase');
+    case LessonStepType.listenChoice:
+      return state.tr(
+          ru: 'Аудирование', kk: 'Тыңдалым', en: 'Listening');
   }
 }
 
@@ -54,6 +60,12 @@ class _LessonScreenState extends State<LessonScreen> {
   CatMood _catMood = CatMood.greet;
   int? _selectedAnswer;
   bool _answered = false;
+  /// Итог последней проверки — общий для всех оцениваемых типов шага
+  /// (question / listenChoice / wordOrder). Раньше нижняя панель выводила
+  /// правильность только из `_selectedAnswer`, что для wordOrder неприменимо.
+  bool _lastAnswerCorrect = false;
+  /// Слова, уже выставленные учеником в wordOrder-шаге: индексы в банке слов.
+  List<int> _orderPicks = const [];
   bool _showHint = false;
   int _errors = 0;
   bool _speakPassed = false;
@@ -76,6 +88,15 @@ class _LessonScreenState extends State<LessonScreen> {
   bool _isMatchingComplete(LessonStep step) =>
       step.type != LessonStepType.matching || step.matchPairs.isEmpty;
 
+  /// Гейт wordOrder: продолжить можно, когда выставлены все слова ответа.
+  /// Шаг без orderTokens (данные неполны) не должен блокировать урок — как и
+  /// пустой matching.
+  bool get _orderComplete {
+    if (_step.type != LessonStepType.wordOrder) return true;
+    if (_step.orderTokens.isEmpty) return true;
+    return _orderPicks.length == _step.orderTokens.length;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -83,32 +104,53 @@ class _LessonScreenState extends State<LessonScreen> {
     // или пустого matching, кнопка «Продолжить» не должна быть залочена.
     _speakPassed = _isSpeakPassed(_step);
     _matchingComplete = _isMatchingComplete(_step);
+    _orderPicks = const [];
   }
 
   void _onCheck() {
-    if (_step.type == LessonStepType.question) {
-      if (_selectedAnswer == null) return;
-      final isCorrect = _selectedAnswer == _step.correctAnswerIndex;
-      if (isCorrect) {
-        HapticsService.correct();
-      } else {
-        HapticsService.wrong();
-      }
-      setState(() {
-        _answered = true;
-        if (isCorrect) {
-          _catMood = CatMood.success;
-        } else {
-          _catMood = CatMood.error;
-          _errors++;
-          if (!_mistakeSteps.contains(_step)) _mistakeSteps.add(_step);
-          _weakStepIds.add(_stepId(_step));
-          context.read<AppState>().loseHeart();
-        }
-      });
-    } else {
-      _nextStep();
+    switch (_step.type) {
+      case LessonStepType.question:
+      case LessonStepType.listenChoice:
+        if (_selectedAnswer == null) return;
+        _registerAnswer(_selectedAnswer == _step.correctAnswerIndex);
+      case LessonStepType.wordOrder:
+        if (!_orderComplete) return;
+        _registerAnswer(_builtOrderAnswer() == _step.orderedAnswer);
+      case LessonStepType.audio:
+      case LessonStepType.text:
+      case LessonStepType.matching:
+      case LessonStepType.speak:
+        _nextStep();
     }
+  }
+
+  /// Фраза, собранная учеником в wordOrder-шаге (слова через пробел).
+  String _builtOrderAnswer() {
+    final bank = wordOrderBank(_step);
+    return _orderPicks.map((index) => bank[index]).join(' ');
+  }
+
+  /// Общая обработка результата проверки: гаптика, настроение кота, списание
+  /// жизни и попадание шага в разбор ошибок.
+  void _registerAnswer(bool isCorrect) {
+    if (isCorrect) {
+      HapticsService.correct();
+    } else {
+      HapticsService.wrong();
+    }
+    setState(() {
+      _answered = true;
+      _lastAnswerCorrect = isCorrect;
+      if (isCorrect) {
+        _catMood = CatMood.success;
+      } else {
+        _catMood = CatMood.error;
+        _errors++;
+        if (!_mistakeSteps.contains(_step)) _mistakeSteps.add(_step);
+        _weakStepIds.add(_stepId(_step));
+        context.read<AppState>().loseHeart();
+      }
+    });
   }
 
   void _nextStep() {
@@ -122,9 +164,11 @@ class _LessonScreenState extends State<LessonScreen> {
           _stepIndex = 0;
           _selectedAnswer = null;
           _answered = false;
+          _lastAnswerCorrect = false;
           _showHint = false;
           _speakPassed = _isSpeakPassed(_step);
           _matchingComplete = _isMatchingComplete(_step);
+          _orderPicks = const [];
           _catMood = CatMood.support;
         });
         return;
@@ -137,9 +181,11 @@ class _LessonScreenState extends State<LessonScreen> {
       _stepIndex++;
       _selectedAnswer = null;
       _answered = false;
+      _lastAnswerCorrect = false;
       _showHint = false;
       _speakPassed = _isSpeakPassed(_step);
       _matchingComplete = _isMatchingComplete(_step);
+      _orderPicks = const [];
       _catMood = _stepIndex == 0 ? CatMood.greet : CatMood.support;
     });
   }
@@ -227,9 +273,9 @@ class _LessonScreenState extends State<LessonScreen> {
                 selectedAnswer: _selectedAnswer,
                 speakPassed: _speakPassed,
                 matchingComplete: _matchingComplete,
+                orderComplete: _orderComplete,
                 reviewingMistakes: _reviewingMistakes,
-                isCorrect:
-                    _answered && _selectedAnswer == _step.correctAnswerIndex,
+                isCorrect: _answered && _lastAnswerCorrect,
                 showHint: _showHint,
                 onCheck: _onCheck,
                 onContinue: _nextStep,
@@ -260,6 +306,41 @@ class _LessonScreenState extends State<LessonScreen> {
                   setState(() => _selectedAnswer = i);
                 },
           showHint: _showHint,
+        );
+      case LessonStepType.listenChoice:
+        return _ListenChoiceStep(
+          // Ключ на индекс шага: у каждого аудирования свой проигрыватель и
+          // счётчик прослушиваний — State не должен протекать на соседний шаг.
+          key: ValueKey(
+              'listen_${widget.lesson.id}_${_stepIndex}_$_reviewingMistakes'),
+          step: _step,
+          selectedAnswer: _selectedAnswer,
+          answered: _answered,
+          onSelect: _answered
+              ? null
+              : (i) {
+                  HapticsService.tap();
+                  setState(() => _selectedAnswer = i);
+                },
+        );
+      case LessonStepType.wordOrder:
+        return _WordOrderStep(
+          step: _step,
+          picks: _orderPicks,
+          answered: _answered,
+          isCorrect: _lastAnswerCorrect,
+          onPick: _answered
+              ? null
+              : (bankIndex) {
+                  HapticsService.tap();
+                  setState(() => _orderPicks = [..._orderPicks, bankIndex]);
+                },
+          onUnpick: _answered
+              ? null
+              : (position) {
+                  HapticsService.tap();
+                  setState(() => _orderPicks = [..._orderPicks]..removeAt(position));
+                },
         );
       case LessonStepType.matching:
         return _MatchingStep(
@@ -485,6 +566,14 @@ class _TopBar extends StatelessWidget {
   }
 }
 
+/// Источники аудио аята по порядку попыток: свой бэкенд (если настроен),
+/// затем публичный CDN. Общие для «Нового аята» и шага аудирования.
+List<String> quranAudioSources(int ayahNumber) => <String>[
+      if (BackendService.hasConfiguredApiUrl)
+        '${BackendService.apiBaseUrl}/api/muslingo/quran/audio/$ayahNumber',
+      'https://cdn.islamic.network/quran/audio/128/ar.alafasy/$ayahNumber.mp3',
+    ];
+
 class _AudioStep extends StatefulWidget {
   final LessonStep step;
   const _AudioStep({required this.step});
@@ -560,11 +649,7 @@ class _AudioStepState extends State<_AudioStep> {
   }
 
   Future<void> _playQuranAyah(int ayahNumber) async {
-    final sources = <String>[
-      if (BackendService.hasConfiguredApiUrl)
-        '${BackendService.apiBaseUrl}/api/muslingo/quran/audio/$ayahNumber',
-      'https://cdn.islamic.network/quran/audio/128/ar.alafasy/$ayahNumber.mp3',
-    ];
+    final sources = quranAudioSources(ayahNumber);
 
     if (mounted) {
       setState(() {
@@ -960,91 +1045,13 @@ class _QuestionStep extends StatelessWidget {
         // correctAnswerIndex, так что подсчёт ошибок и разбор не меняются.
         ...List.generate(displayOrder.length, (displayPos) {
           final i = displayOrder[displayPos];
-          Color bg = AppColors.white;
-          Color border = AppColors.border;
-          Color text = AppColors.textDark;
-
-          if (selectedAnswer == i) {
-            if (answered) {
-              if (i == step.correctAnswerIndex) {
-                bg = AppColors.success.withValues(alpha: 0.12);
-                border = AppColors.success;
-                text = AppColors.pistachioDark;
-              } else {
-                bg = AppColors.error.withValues(alpha: 0.1);
-                border = AppColors.error;
-                text = AppColors.error;
-              }
-            } else {
-              bg = AppColors.pistachioLight;
-              border = AppColors.pistachio;
-            }
-          } else if (answered && i == step.correctAnswerIndex) {
-            bg = AppColors.success.withValues(alpha: 0.1);
-            border = AppColors.success;
-          }
-
-          final bool highlighted = selectedAnswer == i ||
-              (answered && i == step.correctAnswerIndex);
-
-          return GestureDetector(
+          return _AnswerOptionCard(
+            text: step.answers![i],
+            letter: String.fromCharCode(65 + displayPos),
+            selected: selectedAnswer == i,
+            answered: answered,
+            isCorrectOption: i == step.correctAnswerIndex,
             onTap: () => onSelect?.call(i),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-              decoration: BoxDecoration(
-                color: bg,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: border, width: 2),
-                boxShadow: highlighted
-                    ? null
-                    : [
-                        BoxShadow(
-                          color: AppColors.navyDark.withValues(alpha: 0.05),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: border.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: border, width: 1.5),
-                    ),
-                    child: Center(
-                        child: Text(String.fromCharCode(65 + displayPos),
-                            style: TextStyle(
-                                fontFamily: 'Nunito',
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: border))),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(step.answers![i],
-                        style: TextStyle(
-                            fontFamily: 'Nunito',
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: text)),
-                  ),
-                  if (answered && i == step.correctAnswerIndex)
-                    const Icon(Icons.check_circle_rounded,
-                        color: AppColors.success, size: 24),
-                  if (answered &&
-                      selectedAnswer == i &&
-                      i != step.correctAnswerIndex)
-                    const Icon(Icons.cancel_rounded,
-                        color: AppColors.error, size: 24),
-                ],
-              ),
-            ),
           );
         }),
       ],
@@ -1125,6 +1132,150 @@ class _QuestionStep extends StatelessWidget {
       en: 'Think about the meaning and recall the lesson material.',
     );
   }
+}
+
+/// Карточка варианта ответа. Общая для обычного вопроса и аудирования —
+/// цвета, буква-маркер и иконки итога здесь одни и те же.
+class _AnswerOptionCard extends StatelessWidget {
+  final String text;
+  final String letter;
+  final bool selected;
+  final bool answered;
+  final bool isCorrectOption;
+  final VoidCallback? onTap;
+
+  const _AnswerOptionCard({
+    required this.text,
+    required this.letter,
+    required this.selected,
+    required this.answered,
+    required this.isCorrectOption,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Color bg = AppColors.white;
+    Color border = AppColors.border;
+    Color textColor = AppColors.textDark;
+
+    if (selected) {
+      if (answered) {
+        if (isCorrectOption) {
+          bg = AppColors.success.withValues(alpha: 0.12);
+          border = AppColors.success;
+          textColor = AppColors.pistachioDark;
+        } else {
+          bg = AppColors.error.withValues(alpha: 0.1);
+          border = AppColors.error;
+          textColor = AppColors.error;
+        }
+      } else {
+        bg = AppColors.pistachioLight;
+        border = AppColors.pistachio;
+      }
+    } else if (answered && isCorrectOption) {
+      bg = AppColors.success.withValues(alpha: 0.1);
+      border = AppColors.success;
+    }
+
+    final bool highlighted = selected || (answered && isCorrectOption);
+    final bool hasArabic = containsArabicText(text);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: border, width: 2),
+          boxShadow: highlighted
+              ? null
+              : [
+                  BoxShadow(
+                    color: AppColors.navyDark.withValues(alpha: 0.05),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: border.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+                border: Border.all(color: border, width: 1.5),
+              ),
+              child: Center(
+                  child: Text(letter,
+                      style: TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: border))),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(text,
+                  textDirection: hasArabic ? TextDirection.rtl : null,
+                  style: TextStyle(
+                      fontFamily: hasArabic ? 'Amiri' : 'Nunito',
+                      fontSize: hasArabic ? 22 : 17,
+                      fontWeight: FontWeight.w700,
+                      color: textColor)),
+            ),
+            if (answered && isCorrectOption)
+              const Icon(Icons.check_circle_rounded,
+                  color: AppColors.success, size: 24),
+            if (answered && selected && !isCorrectOption)
+              const Icon(Icons.cancel_rounded, color: AppColors.error, size: 24),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Есть ли в строке арабские буквы — от этого зависят шрифт (Amiri) и
+/// направление письма в карточках, чипах и банке слов.
+bool containsArabicText(String value) {
+  for (final rune in value.runes) {
+    if (rune >= 0x0600 && rune <= 0x06ff) return true;
+  }
+  return false;
+}
+
+/// Банк слов для wordOrder-шага в порядке показа.
+///
+/// Правильные слова и дистракторы перемешаны детерминированно (seed от
+/// содержимого шага — порядок стабилен между ре-рендерами), но заведомо не
+/// совпадают с эталонной последовательностью: иначе задание решалось бы
+/// нажатием слов слева направо без знания аята.
+@visibleForTesting
+List<String> wordOrderBank(LessonStep step) {
+  final bank = step.wordBank;
+  if (bank.length < 2) return bank;
+
+  final buffer = StringBuffer(step.id ?? step.question ?? 'wordOrder');
+  for (final token in bank) {
+    buffer
+      ..write('|')
+      ..write(token);
+  }
+  final seed = buffer.toString().hashCode;
+
+  for (var attempt = 0; attempt < 8; attempt++) {
+    final shuffled =
+        List<String>.of(bank)..shuffle(Random(Object.hash(seed, attempt)));
+    if (shuffled.join(' ') != step.orderedAnswer) return shuffled;
+  }
+  return List<String>.of(bank.reversed);
 }
 
 /// Детерминированная перестановка вариантов ответа вопроса.
@@ -1332,7 +1483,7 @@ class _MatchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasArabic = _hasArabicText(text);
+    final hasArabic = containsArabicText(text);
     final border = matched
         ? AppColors.success
         : (selected ? AppColors.pistachio : AppColors.border);
@@ -1378,12 +1529,416 @@ class _MatchCard extends StatelessWidget {
       ),
     );
   }
+}
 
-  bool _hasArabicText(String value) {
-    for (final rune in value.runes) {
-      if (rune >= 0x0600 && rune <= 0x06ff) return true;
+/// Шаг «Собери фразу»: слова банка нажимаются в правильном порядке.
+///
+/// Состояние сборки живёт в _LessonScreenState (как и выбранный вариант
+/// вопроса) — иначе оно терялось бы при ре-рендере и не было бы доступно
+/// проверке в `_onCheck`.
+class _WordOrderStep extends StatelessWidget {
+  final LessonStep step;
+  final List<int> picks;
+  final bool answered;
+  final bool isCorrect;
+  final void Function(int bankIndex)? onPick;
+  final void Function(int position)? onUnpick;
+
+  const _WordOrderStep({
+    required this.step,
+    required this.picks,
+    required this.answered,
+    required this.isCorrect,
+    this.onPick,
+    this.onUnpick,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final bank = wordOrderBank(step);
+    final used = picks.toSet();
+    final rtl = step.orderTokens.any(containsArabicText);
+
+    return Column(
+      children: [
+        SectionLabel(text: _stepTypeLabel(step, state)),
+        const SizedBox(height: 10),
+        Text(
+            step.question ??
+                state.tr(
+                    ru: 'Собери фразу в правильном порядке',
+                    kk: 'Тіркесті дұрыс ретпен құрастыр',
+                    en: 'Put the words in the right order'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
+                color: AppColors.navyDark)),
+        if (step.russianText != null) ...[
+          const SizedBox(height: 8),
+          Text(step.russianText!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 14,
+                  height: 1.35,
+                  color: AppColors.textGrey)),
+        ],
+        const SizedBox(height: 18),
+        // Строка ответа: нажатие на слово возвращает его в банк.
+        PremiumCard(
+          child: Container(
+            width: double.infinity,
+            constraints: const BoxConstraints(minHeight: 72),
+            alignment: Alignment.center,
+            child: picks.isEmpty
+                ? Text(
+                    state.tr(
+                        ru: 'Нажимай слова ниже',
+                        kk: 'Төмендегі сөздерді бас',
+                        en: 'Tap the words below'),
+                    style: const TextStyle(
+                        fontFamily: 'Nunito',
+                        fontSize: 14,
+                        color: AppColors.textLight))
+                : Wrap(
+                    alignment: WrapAlignment.center,
+                    textDirection: rtl ? TextDirection.rtl : null,
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: List.generate(picks.length, (position) {
+                      return _WordChip(
+                        text: bank[picks[position]],
+                        tone: answered
+                            ? (isCorrect
+                                ? _WordChipTone.correct
+                                : _WordChipTone.wrong)
+                            : _WordChipTone.picked,
+                        onTap: onUnpick == null
+                            ? null
+                            : () => onUnpick!(position),
+                      );
+                    }),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Банк слов: уже использованные гаснут, но место сохраняют.
+        Wrap(
+          alignment: WrapAlignment.center,
+          textDirection: rtl ? TextDirection.rtl : null,
+          spacing: 8,
+          runSpacing: 8,
+          children: List.generate(bank.length, (bankIndex) {
+            final isUsed = used.contains(bankIndex);
+            return _WordChip(
+              text: bank[bankIndex],
+              tone: isUsed ? _WordChipTone.used : _WordChipTone.bank,
+              onTap: isUsed || onPick == null ? null : () => onPick!(bankIndex),
+            );
+          }),
+        ),
+        if (answered && !isCorrect) ...[
+          const SizedBox(height: 16),
+          Text(
+              state.tr(
+                  ru: 'Верный порядок: ${step.orderedAnswer}',
+                  kk: 'Дұрыс реті: ${step.orderedAnswer}',
+                  en: 'Correct order: ${step.orderedAnswer}'),
+              textAlign: TextAlign.center,
+              textDirection: rtl ? TextDirection.rtl : null,
+              style: TextStyle(
+                  fontFamily: containsArabicText(step.orderedAnswer)
+                      ? 'Amiri'
+                      : 'Nunito',
+                  fontSize: containsArabicText(step.orderedAnswer) ? 22 : 15,
+                  height: 1.6,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.pistachioDark)),
+        ],
+      ],
+    );
+  }
+}
+
+enum _WordChipTone { bank, used, picked, correct, wrong }
+
+class _WordChip extends StatelessWidget {
+  final String text;
+  final _WordChipTone tone;
+  final VoidCallback? onTap;
+
+  const _WordChip({required this.text, required this.tone, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasArabic = containsArabicText(text);
+    late final Color background;
+    late final Color border;
+    late final Color textColor;
+
+    switch (tone) {
+      case _WordChipTone.bank:
+        background = AppColors.white;
+        border = AppColors.border;
+        textColor = AppColors.textDark;
+      case _WordChipTone.used:
+        background = AppColors.border.withValues(alpha: 0.35);
+        border = AppColors.border;
+        textColor = Colors.transparent;
+      case _WordChipTone.picked:
+        background = AppColors.pistachioLight;
+        border = AppColors.pistachio;
+        textColor = AppColors.textDark;
+      case _WordChipTone.correct:
+        background = AppColors.success.withValues(alpha: 0.12);
+        border = AppColors.success;
+        textColor = AppColors.pistachioDark;
+      case _WordChipTone.wrong:
+        background = AppColors.error.withValues(alpha: 0.1);
+        border = AppColors.error;
+        textColor = AppColors.error;
     }
-    return false;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: border, width: 1.5),
+          boxShadow: tone == _WordChipTone.bank
+              ? [
+                  BoxShadow(
+                    color: AppColors.navyDark.withValues(alpha: 0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(text,
+            textDirection: hasArabic ? TextDirection.rtl : null,
+            style: TextStyle(
+                fontFamily: hasArabic ? 'Amiri' : 'Nunito',
+                fontSize: hasArabic ? 22 : 15,
+                fontWeight: FontWeight.w800,
+                color: textColor)),
+      ),
+    );
+  }
+}
+
+/// Шаг «Аудирование»: сначала звучит аят или фраза, потом ученик выбирает
+/// подходящий вариант. Текст аята намеренно не показывается — иначе задание
+/// превращается в обычный вопрос.
+class _ListenChoiceStep extends StatefulWidget {
+  final LessonStep step;
+  final int? selectedAnswer;
+  final bool answered;
+  final void Function(int)? onSelect;
+
+  const _ListenChoiceStep({
+    super.key,
+    required this.step,
+    required this.selectedAnswer,
+    required this.answered,
+    this.onSelect,
+  });
+
+  @override
+  State<_ListenChoiceStep> createState() => _ListenChoiceStepState();
+}
+
+class _ListenChoiceStepState extends State<_ListenChoiceStep> {
+  late final FlutterTts _tts;
+  late final QuranAudioPlayer _audioPlayer;
+  bool _playing = false;
+  int _plays = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _audioPlayer = QuranAudioPlayer();
+    _tts = FlutterTts();
+    _tts.setCompletionHandler(() {
+      if (mounted) setState(() => _playing = false);
+    });
+    _tts.setErrorHandler((_) {
+      if (mounted) setState(() => _playing = false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _tts.stop();
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  Future<void> _play() async {
+    HapticsService.tap();
+    if (_playing) {
+      await _tts.stop();
+      await _audioPlayer.stop();
+      if (mounted) setState(() => _playing = false);
+      return;
+    }
+
+    setState(() {
+      _playing = true;
+      _plays++;
+    });
+
+    final ayahNumber = widget.step.quranGlobalAyahNumber;
+    if (ayahNumber != null) {
+      Object? lastError;
+      for (final source in quranAudioSources(ayahNumber)) {
+        try {
+          await _audioPlayer.playUrl(source);
+          if (mounted) setState(() => _playing = false);
+          return;
+        } catch (error) {
+          lastError = error;
+          await _audioPlayer.stop();
+        }
+      }
+      if (!mounted) return;
+      setState(() => _playing = false);
+      _showUnavailable('$lastError');
+      return;
+    }
+
+    final text = widget.step.arabicText ?? widget.step.speechTarget;
+    if (text == null || text.isEmpty) {
+      if (mounted) setState(() => _playing = false);
+      return;
+    }
+    try {
+      await _tts.setLanguage('ar-SA');
+      await _tts.setSpeechRate(0.38);
+      await _tts.setPitch(1.0);
+      await _tts.setVolume(1.0);
+      await _tts.awaitSpeakCompletion(true);
+      await _tts.speak(text);
+      if (mounted) setState(() => _playing = false);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _playing = false);
+      _showUnavailable(null);
+    }
+  }
+
+  void _showUnavailable(String? details) {
+    final state = context.read<AppState>();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(state.tr(
+          ru: 'Не удалось воспроизвести аудио.${details == null ? '' : ' $details'}',
+          kk: 'Аудионы ойнату мүмкін болмады.${details == null ? '' : ' $details'}',
+          en: 'Could not play the audio.${details == null ? '' : ' $details'}',
+        )),
+        backgroundColor: AppColors.error,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final step = widget.step;
+    final answers = step.answers ?? const <String>[];
+    final displayOrder =
+        questionAnswerOrder(answers.length, _shuffleSeed(step));
+
+    return Column(
+      children: [
+        SectionLabel(text: _stepTypeLabel(step, state)),
+        const SizedBox(height: 10),
+        Text(
+            step.question ??
+                state.tr(
+                    ru: 'Прослушай и выбери верный вариант',
+                    kk: 'Тыңдап, дұрыс нұсқаны таңда',
+                    en: 'Listen and pick the right option'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
+                color: AppColors.navyDark)),
+        const SizedBox(height: 18),
+        Semantics(
+          button: true,
+          label: state.tr(
+              ru: 'Прослушать', kk: 'Тыңдау', en: 'Play the audio'),
+          child: GestureDetector(
+            onTap: _play,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                color: _playing ? AppColors.pistachio : AppColors.sky,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.navyDark.withValues(alpha: 0.18),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Icon(
+                  _playing
+                      ? Icons.stop_rounded
+                      : Icons.volume_up_rounded,
+                  size: 44,
+                  color: AppColors.white),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+            _plays == 0
+                ? state.tr(
+                    ru: 'Нажми, чтобы прослушать',
+                    kk: 'Тыңдау үшін бас',
+                    en: 'Tap to listen')
+                : state.tr(
+                    ru: 'Можно слушать сколько нужно',
+                    kk: 'Қалағаныңша тыңдай аласың',
+                    en: 'Listen as many times as you need'),
+            style: const TextStyle(
+                fontFamily: 'Nunito', fontSize: 13, color: AppColors.textGrey)),
+        const SizedBox(height: 18),
+        ...List.generate(displayOrder.length, (displayPos) {
+          final i = displayOrder[displayPos];
+          return _AnswerOptionCard(
+            text: answers[i],
+            letter: String.fromCharCode(65 + displayPos),
+            selected: widget.selectedAnswer == i,
+            answered: widget.answered,
+            isCorrectOption: i == step.correctAnswerIndex,
+            onTap: () => widget.onSelect?.call(i),
+          );
+        }),
+      ],
+    );
+  }
+
+  int _shuffleSeed(LessonStep step) {
+    final buffer = StringBuffer(step.id ?? step.question ?? 'listen');
+    for (final answer in step.answers ?? const <String>[]) {
+      buffer
+        ..write('|')
+        ..write(answer);
+    }
+    return buffer.toString().hashCode;
   }
 }
 
@@ -2120,6 +2675,7 @@ class _BottomBar extends StatelessWidget {
   final int? selectedAnswer;
   final bool speakPassed;
   final bool matchingComplete;
+  final bool orderComplete;
   final bool reviewingMistakes;
   final bool isCorrect;
   final bool showHint;
@@ -2133,6 +2689,7 @@ class _BottomBar extends StatelessWidget {
     required this.selectedAnswer,
     required this.speakPassed,
     required this.matchingComplete,
+    required this.orderComplete,
     required this.reviewingMistakes,
     required this.isCorrect,
     required this.showHint,
@@ -2154,15 +2711,8 @@ class _BottomBar extends StatelessWidget {
 
     // Резолвим целевой колбэк ровно по прежней логике гейтов: null → кнопка
     // залочена (PremiumButton отрисует disabled-состояние).
-    final VoidCallback? resolvedAction = answered
-        ? onContinue
-        : (step.type == LessonStepType.question && selectedAnswer == null
-            ? null
-            : (step.type == LessonStepType.matching && !matchingComplete
-                ? null
-                : (step.type == LessonStepType.speak && !speakPassed
-                    ? null
-                    : onCheck)));
+    final VoidCallback? resolvedAction =
+        answered ? onContinue : (_gateOpen ? onCheck : null);
     final String actionLabel = answered
         ? (reviewingMistakes
             ? state.tr(ru: 'Закрепить', kk: 'Бекіту', en: 'Reinforce')
@@ -2243,6 +2793,25 @@ class _BottomBar extends StatelessWidget {
     );
   }
 
+  /// Открыт ли гейт «Проверить/Продолжить» до ответа: у каждого
+  /// интерактивного типа шага своё условие готовности.
+  bool get _gateOpen {
+    switch (step.type) {
+      case LessonStepType.question:
+      case LessonStepType.listenChoice:
+        return selectedAnswer != null;
+      case LessonStepType.matching:
+        return matchingComplete;
+      case LessonStepType.wordOrder:
+        return orderComplete;
+      case LessonStepType.speak:
+        return speakPassed;
+      case LessonStepType.audio:
+      case LessonStepType.text:
+        return true;
+    }
+  }
+
   String _checkLabel(AppState state) {
     switch (step.type) {
       case LessonStepType.audio:
@@ -2250,6 +2819,10 @@ class _BottomBar extends StatelessWidget {
       case LessonStepType.text:
         return state.tr(ru: 'Понятно!', kk: 'Түсінікті!', en: 'Got it!');
       case LessonStepType.question:
+        return state.tr(ru: 'Проверить', kk: 'Тексеру', en: 'Check');
+      case LessonStepType.listenChoice:
+        return state.tr(ru: 'Проверить', kk: 'Тексеру', en: 'Check');
+      case LessonStepType.wordOrder:
         return state.tr(ru: 'Проверить', kk: 'Тексеру', en: 'Check');
       case LessonStepType.matching:
         return state.tr(ru: 'Продолжить', kk: 'Жалғастыру', en: 'Continue');

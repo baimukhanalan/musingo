@@ -149,6 +149,60 @@ void main() {
     }
   });
 
+  test('word-order steps carry a solvable token set', () {
+    // Шаг «Собери фразу» без ≥2 слов ответа не решается и вешает гейт
+    // «Проверить»; дистракторы не должны дублировать слова ответа, иначе
+    // правильных сборок становится несколько, а засчитывается одна.
+    final steps = LessonData.getCourses()
+        .expand((course) => course.lessons)
+        .expand((lesson) => lesson.steps)
+        .where((step) => step.type == LessonStepType.wordOrder)
+        .toList(growable: false);
+
+    for (final step in steps) {
+      expect(step.orderTokens.length, greaterThanOrEqualTo(2));
+      expect(
+        step.orderTokens.every((token) => token.trim().isNotEmpty),
+        isTrue,
+      );
+      expect(
+        step.extraTokens.every((token) => token.trim().isNotEmpty),
+        isTrue,
+      );
+      expect(
+        step.extraTokens.any(step.orderTokens.contains),
+        isFalse,
+        reason: 'дистрактор повторяет слово ответа: ${step.orderedAnswer}',
+      );
+    }
+  });
+
+  test('listening steps have audio to play and well-formed options', () {
+    // Аудирование без источника звука превращается в вопрос без вопроса:
+    // нужен номер аята (или арабский текст для TTS) и корректные варианты.
+    final steps = LessonData.getCourses()
+        .expand((course) => course.lessons)
+        .expand((lesson) => lesson.steps)
+        .where((step) => step.type == LessonStepType.listenChoice)
+        .toList(growable: false);
+
+    for (final step in steps) {
+      expect(
+        step.quranGlobalAyahNumber != null ||
+            (step.arabicText?.trim().isNotEmpty ?? false),
+        isTrue,
+        reason: 'нечего проигрывать: ${step.question}',
+      );
+      final answers = step.answers;
+      expect(answers, isNotNull);
+      expect(answers!.length, greaterThanOrEqualTo(3));
+      expect(answers.every((answer) => answer.trim().isNotEmpty), isTrue);
+      final index = step.correctAnswerIndex;
+      expect(index, isNotNull);
+      expect(index! >= 0 && index < answers.length, isTrue);
+    }
+  });
+
   test('course registry ids stay exactly quran/arabic/rules', () {
     // Реестр курсов не должен меняться: серверные маршруты и прогресс
     // опираются на эти три id. Обогащение уроков не должно их трогать.

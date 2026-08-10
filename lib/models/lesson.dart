@@ -1,6 +1,13 @@
 enum LessonStatus { locked, available, inProgress, completed }
 
-enum LessonStepType { audio, text, question, matching, speak }
+/// Типы шагов урока.
+///
+/// [wordOrder] — собрать фразу/аят, нажимая слова в правильном порядке
+/// (последовательность в `orderTokens`, лишние слова-дистракторы в
+/// `extraTokens`). [listenChoice] — аудирование: шаг проигрывает аят
+/// (`quranGlobalAyahNumber`) или фразу (`arabicText` через TTS), а ученик
+/// выбирает подходящий вариант из `answers`/`correctAnswerIndex`.
+enum LessonStepType { audio, text, question, matching, speak, wordOrder, listenChoice }
 
 enum CourseType { quran, rules, arabic }
 
@@ -24,6 +31,12 @@ class LessonStep {
   final String? explanation;
   final List<String> sourceRefs;
 
+  /// Правильная последовательность слов для [LessonStepType.wordOrder].
+  final List<String> orderTokens;
+
+  /// Лишние слова, подмешиваемые в банк wordOrder-шага (дистракторы).
+  final List<String> extraTokens;
+
   const LessonStep({
     this.id,
     required this.type,
@@ -41,7 +54,15 @@ class LessonStep {
     this.passScore,
     this.explanation,
     this.sourceRefs = const [],
+    this.orderTokens = const [],
+    this.extraTokens = const [],
   });
+
+  /// Полный банк слов wordOrder-шага (правильные + дистракторы) до перемешивания.
+  List<String> get wordBank => [...orderTokens, ...extraTokens];
+
+  /// Эталонная строка ответа wordOrder-шага: слова через один пробел.
+  String get orderedAnswer => orderTokens.join(' ');
 
   String get effectiveSpeechTarget =>
       speechTarget ?? arabicText ?? transliteration ?? '';

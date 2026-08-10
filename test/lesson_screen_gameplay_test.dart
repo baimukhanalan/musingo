@@ -1,7 +1,54 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:muslingo/models/lesson.dart';
 import 'package:muslingo/screens/lesson_screen.dart';
 
 void main() {
+  group('wordOrderBank — банк слов шага «Собери фразу»', () {
+    const step = LessonStep(
+      id: 'test_word_order',
+      type: LessonStepType.wordOrder,
+      orderTokens: ['الْحَمْدُ', 'لِلَّهِ', 'رَبِّ', 'الْعَٰلَمِينَ'],
+      extraTokens: ['الرَّحِيمِ'],
+    );
+
+    test('содержит все слова ответа и дистракторы, ничего не теряя', () {
+      final bank = wordOrderBank(step);
+      expect(bank.length, step.wordBank.length);
+      expect(List<String>.of(bank)..sort(),
+          List<String>.of(step.wordBank)..sort());
+    });
+
+    test('не отдаёт слова сразу в правильном порядке', () {
+      // Иначе задание решается нажатием слов подряд, без знания аята.
+      expect(wordOrderBank(step).join(' '), isNot(step.orderedAnswer));
+    });
+
+    test('детерминирован: ре-рендер не пересыпает банк', () {
+      expect(wordOrderBank(step), wordOrderBank(step));
+    });
+
+    test('банк из одного слова отдаётся как есть', () {
+      const single = LessonStep(
+        type: LessonStepType.wordOrder,
+        orderTokens: ['بِسْمِ'],
+      );
+      expect(wordOrderBank(single), ['بِسْمِ']);
+    });
+
+    test('orderedAnswer собирает эталон через один пробел', () {
+      expect(step.orderedAnswer, 'الْحَمْدُ لِلَّهِ رَبِّ الْعَٰلَمِينَ');
+    });
+  });
+
+  group('containsArabicText — выбор шрифта и направления письма', () {
+    test('различает арабский и кириллицу/латиницу', () {
+      expect(containsArabicText('الْعَٰلَمِينَ'), isTrue);
+      expect(containsArabicText('Аль-хамду лилляхи'), isFalse);
+      expect(containsArabicText('Praise be to Allah'), isFalse);
+      expect(containsArabicText(''), isFalse);
+    });
+  });
+
   group('questionAnswerOrder — детерминированный шаффл вариантов (M1)', () {
     test('возвращает полноценную перестановку исходных индексов', () {
       for (final count in [2, 3, 4, 5, 6]) {

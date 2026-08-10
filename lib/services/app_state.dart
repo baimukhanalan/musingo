@@ -1417,9 +1417,14 @@ class AppState extends ChangeNotifier {
       case LessonStepType.matching:
         return KnowledgeKind.matching;
       case LessonStepType.question:
+      case LessonStepType.listenChoice:
         return lesson.course == CourseType.rules
             ? KnowledgeKind.rule
             : KnowledgeKind.meaning;
+      // Сборка фразы из слов — это память на порядок слов аята: тот же тип
+      // знания, что у matching-заданий.
+      case LessonStepType.wordOrder:
+        return KnowledgeKind.matching;
       case LessonStepType.audio:
       case LessonStepType.text:
         if (lesson.course == CourseType.quran) return KnowledgeKind.ayah;
