@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:muslingo/services/lesson_data.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -144,5 +145,35 @@ void main() {
 
     expect(counts, expectedCounts);
     expect(total, 6236);
+  });
+
+  test('every Juz Tabarak lesson ayah matches Tanzil text exactly', () async {
+    final content = await rootBundle.loadString(
+      'assets/data/quran-uthmani-tanzil.txt',
+    );
+    final canonicalByGlobalNumber = <int, String>{};
+    var globalNumber = 0;
+    for (final line in const LineSplitter().convert(content)) {
+      if (!RegExp(r'^\d+\|\d+\|').hasMatch(line)) continue;
+      globalNumber++;
+      canonicalByGlobalNumber[globalNumber] =
+          line.split('|').sublist(2).join('|');
+    }
+
+    final ayahSteps = LessonData.quranCourse.lessons
+        .where((lesson) => lesson.order >= 49 && lesson.order <= 59)
+        .expand((lesson) => lesson.steps)
+        .where((step) =>
+            step.quranGlobalAyahNumber != null &&
+            (step.arabicText?.trim().isNotEmpty ?? false));
+
+    expect(ayahSteps, isNotEmpty);
+    for (final step in ayahSteps) {
+      expect(
+        step.arabicText,
+        canonicalByGlobalNumber[step.quranGlobalAyahNumber],
+        reason: 'global ayah ${step.quranGlobalAyahNumber}',
+      );
+    }
   });
 }

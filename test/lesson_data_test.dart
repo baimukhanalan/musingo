@@ -3,6 +3,64 @@ import 'package:muslingo/models/lesson.dart';
 import 'package:muslingo/services/lesson_data.dart';
 
 void main() {
+  const juzTabarakIds = <String>[
+    'q_mulk_1',
+    'q_qalam_1',
+    'q_haqqah_1',
+    'q_maarij_1',
+    'q_nuh_1',
+    'q_jinn_1',
+    'q_muzzammil_1',
+    'q_muddaththir_1',
+    'q_qiyamah_1',
+    'q_insan_1',
+    'q_mursalat_1',
+  ];
+
+  test('curriculum contains 85 lessons including ordered Juz Tabarak', () {
+    final courses = LessonData.getCourses();
+    expect(courses.expand((course) => course.lessons), hasLength(85));
+    expect(LessonData.quranCourse.lessons, hasLength(59));
+    expect(LessonData.arabicCourse.lessons, hasLength(16));
+    expect(LessonData.rulesCourse.lessons, hasLength(10));
+
+    final quran = LessonData.quranCourse.lessons;
+    expect(quran.skip(48).map((lesson) => lesson.id), juzTabarakIds);
+    expect(quran.skip(48).map((lesson) => lesson.order),
+        List<int>.generate(11, (index) => 49 + index));
+  });
+
+  test('every Juz Tabarak lesson follows the rich learning loop', () {
+    final lessons = LessonData.quranCourse.lessons
+        .where((lesson) => juzTabarakIds.contains(lesson.id));
+    const requiredTypes = <LessonStepType>{
+      LessonStepType.text,
+      LessonStepType.audio,
+      LessonStepType.listenChoice,
+      LessonStepType.wordOrder,
+      LessonStepType.question,
+      LessonStepType.matching,
+      LessonStepType.speak,
+    };
+
+    expect(lessons, hasLength(juzTabarakIds.length));
+    for (final lesson in lessons) {
+      final types = lesson.steps.map((step) => step.type).toSet();
+      expect(types.containsAll(requiredTypes), isTrue, reason: lesson.id);
+      expect(lesson.steps, hasLength(9), reason: lesson.id);
+      expect(lesson.sourceUrl, startsWith('https://quran.com/'));
+      expect(
+        lesson.steps.every((step) => step.sourceRefs.isNotEmpty),
+        isTrue,
+        reason: '${lesson.id}: source metadata is incomplete',
+      );
+      expect(
+        lesson.steps.where((step) => step.type == LessonStepType.question),
+        hasLength(2),
+      );
+    }
+  });
+
   test('Islam foundations course keeps the seven intro lessons in order', () {
     final rules = LessonData.rulesCourse.lessons;
 
@@ -76,14 +134,16 @@ void main() {
       expect(step.matchPairs.length, greaterThanOrEqualTo(2));
       expect(
         step.matchPairs.every(
-          (pair) => pair.prompt.trim().isNotEmpty && pair.answer.trim().isNotEmpty,
+          (pair) =>
+              pair.prompt.trim().isNotEmpty && pair.answer.trim().isNotEmpty,
         ),
         isTrue,
       );
     }
   });
 
-  test('new short-surah and arabic lessons are registered in their courses', () {
+  test('new short-surah and arabic lessons are registered in their courses',
+      () {
     // These ids must stay in sync, character for character, with the
     // `lessons` Set in server/routes/progress-complete.js — otherwise the
     // backend answers 400 unknown_lesson when the lesson is completed.
@@ -117,8 +177,7 @@ void main() {
   });
 
   test('every lesson has non-empty steps and well-formed questions', () {
-    final lessons =
-        LessonData.getCourses().expand((course) => course.lessons);
+    final lessons = LessonData.getCourses().expand((course) => course.lessons);
 
     for (final lesson in lessons) {
       expect(lesson.id.trim(), isNotEmpty);
@@ -127,7 +186,8 @@ void main() {
       for (final step in lesson.steps) {
         if (step.type != LessonStepType.question) continue;
         final answers = step.answers;
-        expect(answers, isNotNull, reason: '${lesson.id}: question has no answers');
+        expect(answers, isNotNull,
+            reason: '${lesson.id}: question has no answers');
         expect(
           answers!.length,
           greaterThanOrEqualTo(2),

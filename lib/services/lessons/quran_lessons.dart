@@ -1,4 +1,5 @@
 import '../../models/lesson.dart';
+import 'juz_tabarak_lessons.dart';
 
 final List<Lesson> quranLessons = [
     const Lesson(
@@ -8108,4 +8109,5 @@ final List<Lesson> quranLessons = [
         ),
       ],
     ),
+    ...juzTabarakLessons,
 ];
