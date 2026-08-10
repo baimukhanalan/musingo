@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/app_install_service.dart';
 import '../services/app_state.dart';
@@ -18,6 +19,9 @@ class InstallAppScreen extends StatefulWidget {
 }
 
 class _InstallAppScreenState extends State<InstallAppScreen> {
+  static final Uri _androidApkUri = Uri.parse(
+    'https://github.com/baimukhanalan/musingo/releases/latest/download/muslingo-android.apk',
+  );
   bool _installing = false;
   bool _showIosInstructions = false;
 
@@ -27,8 +31,7 @@ class _InstallAppScreenState extends State<InstallAppScreen> {
     if (!mounted) return;
     setState(() {
       _installing = false;
-      _showIosInstructions =
-          result == AppInstallResult.instructionsRequired;
+      _showIosInstructions = result == AppInstallResult.instructionsRequired;
     });
 
     final state = context.read<AppState>();
@@ -55,6 +58,25 @@ class _InstallAppScreenState extends State<InstallAppScreen> {
         ),
       );
     }
+  }
+
+  Future<void> _downloadAndroidApk() async {
+    final opened = await launchUrl(
+      _androidApkUri,
+      mode: LaunchMode.externalApplication,
+    );
+    if (!mounted || opened) return;
+    final state = context.read<AppState>();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(state.tr(
+          ru: 'Не удалось открыть загрузку APK. Попробуй ещё раз.',
+          kk: 'APK жүктеуін ашу мүмкін болмады. Қайта көріңіз.',
+          en: 'Could not open the APK download. Please try again.',
+        )),
+        backgroundColor: AppColors.error,
+      ),
+    );
   }
 
   @override
@@ -251,10 +273,41 @@ class _InstallAppScreenState extends State<InstallAppScreen> {
                         icon: Icons.download_rounded,
                         onPressed: _installing ? null : _install,
                       ),
-                    if (installed)
+                    if (!installed && AppInstallService.isWebInstallExperience)
+                      const SizedBox(height: 12),
+                    if (!installed && AppInstallService.isWebInstallExperience)
                       PremiumButton(
                         label: state.tr(
-                            ru: 'Готово', kk: 'Дайын', en: 'Done'),
+                          ru: 'Скачать APK для Android',
+                          kk: 'Android үшін APK жүктеу',
+                          en: 'Download Android APK',
+                        ),
+                        icon: Icons.android_rounded,
+                        variant: PremiumButtonVariant.navy,
+                        onPressed: _downloadAndroidApk,
+                      ),
+                    if (!installed && AppInstallService.isWebInstallExperience)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                        child: Text(
+                          state.tr(
+                            ru: 'Нативная тестовая версия. Android может попросить разрешить установку из браузера.',
+                            kk: 'Нативті тест нұсқасы. Android браузерден орнатуға рұқсат сұрауы мүмкін.',
+                            en: 'Native test build. Android may ask you to allow installs from the browser.',
+                          ),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontFamily: 'Nunito',
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textGrey,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    if (installed)
+                      PremiumButton(
+                        label: state.tr(ru: 'Готово', kk: 'Дайын', en: 'Done'),
                         icon: Icons.check_rounded,
                         onPressed: () => Navigator.pop(context),
                       ),

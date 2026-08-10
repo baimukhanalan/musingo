@@ -18,9 +18,13 @@ test('guest import merges learning data and clamps counters', () => {
   assert.equal(merged.placementLevel, 4);
 });
 
-test('normal sync cannot overwrite authoritative xp', () => {
-  const server = { ...defaultProgress({ id: 'u1', email: 'a@b.co', display_name: 'Alan' }), xp: 100 };
+test('normal sync cannot overwrite authoritative xp or completed lessons', () => {
+  const server = {
+    ...defaultProgress({ id: 'u1', email: 'a@b.co', display_name: 'Alan' }),
+    xp: 100,
+    completedLessons: ['r1'],
+  };
   const merged = mergeLearningState(server, { xp: 999999, completedLessons: ['r2'] });
   assert.equal(merged.xp, 100);
-  assert.deepEqual(merged.completedLessons, ['r2']);
+  assert.deepEqual(merged.completedLessons, ['r1']);
 });

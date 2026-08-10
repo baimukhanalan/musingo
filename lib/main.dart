@@ -14,6 +14,7 @@ import 'screens/lesson_screen.dart';
 import 'screens/lesson_review_screen.dart';
 import 'screens/premium_screen.dart';
 import 'screens/friends_screen.dart';
+import 'screens/league_screen.dart';
 import 'screens/achievements_screen.dart';
 import 'screens/streak_screen.dart';
 import 'screens/settings_screen.dart';
@@ -139,10 +140,8 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
                 titleEn: 'Lesson not found',
                 messageRu:
                     'Открой урок с главного экрана, чтобы начать заново.',
-                messageKk:
-                    'Қайта бастау үшін басты экраннан сабақты аш.',
-                messageEn:
-                    'Open a lesson from the home screen to start again.',
+                messageKk: 'Қайта бастау үшін басты экраннан сабақты аш.',
+                messageEn: 'Open a lesson from the home screen to start again.',
               );
         break;
       case '/lesson_review':
@@ -155,8 +154,7 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
                 titleEn: 'Lesson summary unavailable',
                 messageRu:
                     'Результат урока не был передан. Вернись к обучению.',
-                messageKk:
-                    'Сабақ нәтижесі берілмеді. Оқуға оралыңыз.',
+                messageKk: 'Сабақ нәтижесі берілмеді. Оқуға оралыңыз.',
                 messageEn:
                     'The lesson result was not provided. Return to learning.',
               );
@@ -166,6 +164,9 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
         break;
       case '/friends':
         page = const FriendsScreen();
+        break;
+      case '/league':
+        page = const LeagueScreen();
         break;
       case '/achievements':
         page = const AchievementsScreen();
@@ -373,8 +374,7 @@ class _SplashScreenState extends State<_SplashScreen>
     // экранный размер, домноженный на devicePixelRatio, а не в исходном
     // разрешении. Картинка квадратная, поэтому cacheWidth == cacheHeight без
     // искажения пропорций.
-    final catCache =
-        (190 * MediaQuery.of(context).devicePixelRatio).round();
+    final catCache = (190 * MediaQuery.of(context).devicePixelRatio).round();
     final state = context.watch<AppState>();
     return Scaffold(
       backgroundColor: AppColors.sky,

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/coach.dart';
 import '../models/friend.dart';
+import '../models/leaderboard.dart';
 import '../models/user.dart';
 
 class BackendProfile {
@@ -210,7 +211,8 @@ class BackendService {
       '/api/friends',
       body: {'action': 'add', 'code': code},
     );
-    return Friend.fromJson(Map<String, dynamic>.from(response['friend'] as Map));
+    return Friend.fromJson(
+        Map<String, dynamic>.from(response['friend'] as Map));
   }
 
   Future<void> removeFriend(String code) async {
@@ -220,6 +222,39 @@ class BackendService {
       body: {'action': 'remove', 'code': code},
       allowEmpty: true,
     );
+  }
+
+  Future<List<LeaderboardEntry>> getLeaderboard() async {
+    final response = await _send('GET', '/api/leaderboard');
+    final decoded = jsonDecode(response.body);
+    if (decoded is! List) {
+      throw const BackendException(
+        500,
+        'invalid_response',
+        'Invalid leaderboard response.',
+      );
+    }
+    return decoded.indexed.map((indexed) {
+      final index = indexed.$1;
+      final raw = indexed.$2;
+      if (raw is! Map) {
+        throw const BackendException(
+          500,
+          'invalid_response',
+          'Invalid leaderboard entry.',
+        );
+      }
+      final item = Map<String, dynamic>.from(raw);
+      return LeaderboardEntry(
+        userId: 'leaderboard-${item['position'] ?? index + 1}',
+        name: (item['displayName'] as String?)?.trim().isNotEmpty == true
+            ? (item['displayName'] as String).trim()
+            : 'Ученик',
+        xp: (item['xp'] as num?)?.toInt() ?? 0,
+        position: (item['position'] as num?)?.toInt() ?? index + 1,
+        isCurrentUser: item['isCurrentUser'] == true,
+      );
+    }).toList(growable: false);
   }
 
   /// Спрашивает серверного AI-коуча. JWT добавляется автоматически, если
@@ -328,7 +363,8 @@ class BackendService {
     if (response.body.isEmpty && allowEmpty) return const {};
     final decoded = jsonDecode(response.body);
     if (decoded is! Map) {
-      throw const BackendException(500, 'invalid_response', 'Invalid server response.');
+      throw const BackendException(
+          500, 'invalid_response', 'Invalid server response.');
     }
     return Map<String, dynamic>.from(decoded);
   }
@@ -385,7 +421,8 @@ class BackendService {
 
   Future<void> _storeToken(String? token) async {
     if (token == null || token.isEmpty) {
-      throw const BackendException(500, 'invalid_response', 'Authentication token is missing.');
+      throw const BackendException(
+          500, 'invalid_response', 'Authentication token is missing.');
     }
     _token = token;
     await _preferences.setString(_authStorageKey, token);
@@ -420,10 +457,9 @@ class BackendService {
         speechAttempts: (progress['speechAttempts'] as num?)?.toInt() ?? 0,
         rewardChestsOpened:
             (progress['rewardChestsOpened'] as num?)?.toInt() ?? 0,
-        rewardHistory:
-            (progress['rewardHistory'] as List<dynamic>? ?? const [])
-                .whereType<String>()
-                .toList(growable: false),
+        rewardHistory: (progress['rewardHistory'] as List<dynamic>? ?? const [])
+            .whereType<String>()
+            .toList(growable: false),
       ),
       completedLessons: completed,
       learningState: Map<String, dynamic>.from(progress),

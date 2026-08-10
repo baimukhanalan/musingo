@@ -18,6 +18,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
@@ -43,11 +46,14 @@ jobs:
           --dart-define=MUSLINGO_API_URL=https://muslingo-mobile.vercel.app
           --dart-define=MUSLINGO_SPEECH_API_URL=https://muslingo-mobile.vercel.app
 
+      - name: Give APK a stable public filename
+        run: cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/muslingo-android.apk
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: muslingo-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/muslingo-android.apk
           if-no-files-found: error
 
       # На пуш тега v* — прикрепить APK к GitHub Release (постоянная ссылка).
@@ -55,4 +61,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: build/app/outputs/flutter-apk/app-release.apk
+          files: build/app/outputs/flutter-apk/muslingo-android.apk

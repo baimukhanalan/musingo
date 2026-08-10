@@ -83,9 +83,14 @@ function mergeObjectsById(serverItems, clientItems) {
 
 export function mergeLearningState(server, incoming, { importGuest = false } = {}) {
   const next = { ...server };
+  // Completed lessons are awarded by /api/progress/complete. A regular sync
+  // must never let the client mint completions (and indirectly unlock course
+  // content). The only exception is the explicit one-time guest import.
   const completed = new Set([
     ...safeList(server.completedLessons).filter((value) => typeof value === 'string'),
-    ...safeList(incoming.completedLessons).filter((value) => typeof value === 'string'),
+    ...(importGuest
+      ? safeList(incoming.completedLessons).filter((value) => typeof value === 'string')
+      : []),
   ]);
   next.completedLessons = [...completed].slice(0, 500);
   next.knowledgeStates = mergeObjectsById(server.knowledgeStates, incoming.knowledgeStates);

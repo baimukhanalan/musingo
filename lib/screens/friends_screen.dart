@@ -12,8 +12,8 @@ import '../widgets/premium_button.dart';
 import '../widgets/premium_card.dart';
 import '../widgets/section_label.dart';
 
-/// Экран «Друзья» — соревнование с реальными людьми взамен убранной лиги
-/// с ботами. Для backend-пользователя это настоящая фича поверх сервера:
+/// Экран «Друзья» — соревнование с реальными людьми и вход в недельную лигу.
+/// Для backend-пользователя это настоящая фича поверх сервера:
 /// код-приглашение с сервера, добавление друга по коду и живой список с их
 /// XP/страйком. Для гостя — предложение создать аккаунт.
 class FriendsScreen extends StatefulWidget {
@@ -102,7 +102,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
     FocusScope.of(context).unfocus();
     setState(() => _adding = true);
     try {
-      final friend = await (_backend ??= await BackendService.create()).addFriend(code);
+      final friend =
+          await (_backend ??= await BackendService.create()).addFriend(code);
       _codeController.clear();
       await _loadFriends();
       if (!mounted) return;
@@ -126,7 +127,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
   Future<void> _removeFriend(Friend friend) async {
     final state = context.read<AppState>();
     try {
-      await (_backend ??= await BackendService.create()).removeFriend(friend.code);
+      await (_backend ??= await BackendService.create())
+          .removeFriend(friend.code);
       await _loadFriends();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -163,9 +165,14 @@ class _FriendsScreenState extends State<FriendsScreen> {
               const _FriendsHeader(),
               const SizedBox(height: 18),
               const _HeroCard(),
+              const SizedBox(height: 12),
+              _LeagueEntry(
+                onTap: () => Navigator.pushNamed(context, '/league'),
+              ),
               const SizedBox(height: 16),
               if (isGuest)
-                _GuestPrompt(onTap: () => Navigator.pushNamed(context, '/login'))
+                _GuestPrompt(
+                    onTap: () => Navigator.pushNamed(context, '/login'))
               else ...[
                 _InviteCard(code: code, name: user.name),
                 if (isBackend) ...[
@@ -219,6 +226,88 @@ class _FriendsScreenState extends State<FriendsScreen> {
               ),
             ))
         .toList(growable: false);
+  }
+}
+
+class _LeagueEntry extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _LeagueEntry({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    return Semantics(
+      button: true,
+      label: state.tr(
+        ru: 'Открыть недельную лигу',
+        kk: 'Апталық лиганы ашу',
+        en: 'Open weekly league',
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: PremiumCard(
+            radius: 18,
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppColors.gold.withValues(alpha: 0.18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.emoji_events_rounded,
+                      color: AppColors.gold, size: 27),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        state.tr(
+                          ru: 'Недельная лига',
+                          kk: 'Апталық лига',
+                          en: 'Weekly league',
+                        ),
+                        style: const TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.navyDark,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        state.tr(
+                          ru: 'Рейтинг реальных учеников по XP',
+                          kk: 'Нақты оқушылардың XP рейтингі',
+                          en: 'Real learners ranked by XP',
+                        ),
+                        style: const TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textGrey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded,
+                    color: AppColors.navy, size: 28),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -281,8 +370,8 @@ class _HeroCard extends StatelessWidget {
               color: Colors.white.withValues(alpha: 0.16),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.groups_rounded,
-                color: Colors.white, size: 30),
+            child:
+                const Icon(Icons.groups_rounded, color: Colors.white, size: 30),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -303,7 +392,8 @@ class _HeroCard extends StatelessWidget {
                 Text(
                     state.tr(
                         ru: 'Пригласи друзей и соревнуйтесь по XP и страйку',
-                        kk: 'Достарыңды шақырып, XP мен страйк бойынша жарысыңдар',
+                        kk:
+                            'Достарыңды шақырып, XP мен страйк бойынша жарысыңдар',
                         en: 'Invite friends and compete on XP and streak'),
                     style: const TextStyle(
                         fontFamily: 'Nunito',
@@ -356,7 +446,8 @@ class _GuestPrompt extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
               state.tr(
-                  ru: 'Создай аккаунт, чтобы получить код-приглашение, добавлять друзей '
+                  ru:
+                      'Создай аккаунт, чтобы получить код-приглашение, добавлять друзей '
                       'и сравнивать прогресс на любом устройстве.',
                   kk: 'Шақыру кодын алу, дос қосу және кез келген құрылғыда '
                       'прогресті салыстыру үшін аккаунт жаса.',
@@ -483,9 +574,7 @@ class _AddFriendField extends StatelessWidget {
               decoration: InputDecoration(
                 counterText: '',
                 hintText: state.tr(
-                    ru: 'Код друга',
-                    kk: 'Достың коды',
-                    en: "Friend's code"),
+                    ru: 'Код друга', kk: 'Достың коды', en: "Friend's code"),
                 hintStyle: const TextStyle(
                     fontFamily: 'Nunito', color: AppColors.textLight),
                 border: InputBorder.none,
@@ -566,8 +655,7 @@ class _AddButton extends StatelessWidget {
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white),
                         )
-                      : Text(
-                          state.tr(ru: 'Добавить', kk: 'Қосу', en: 'Add'),
+                      : Text(state.tr(ru: 'Добавить', kk: 'Қосу', en: 'Add'),
                           style: const TextStyle(
                               fontFamily: 'Nunito',
                               fontSize: 15,
@@ -594,7 +682,8 @@ class _FriendTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final trimmed = friend.displayName.trim();
-    final initial = trimmed.isEmpty ? '?' : trimmed.substring(0, 1).toUpperCase();
+    final initial =
+        trimmed.isEmpty ? '?' : trimmed.substring(0, 1).toUpperCase();
     return PremiumCard(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       radius: 18,
@@ -744,8 +833,7 @@ class _LoadErrorCard extends StatelessWidget {
           const SizedBox(height: 14),
           TextButton(
             onPressed: onRetry,
-            child: Text(
-                state.tr(ru: 'Повторить', kk: 'Қайталау', en: 'Retry'),
+            child: Text(state.tr(ru: 'Повторить', kk: 'Қайталау', en: 'Retry'),
                 style: const TextStyle(
                     fontFamily: 'Nunito',
                     fontSize: 14,
@@ -791,11 +879,14 @@ class _EmptyFriends extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
               state.tr(
-                  ru: 'Пригласи друзей по коду выше. Когда они присоединятся, здесь '
+                  ru:
+                      'Пригласи друзей по коду выше. Когда они присоединятся, здесь '
                       'появится их прогресс, и вы сможете соревноваться.',
-                  kk: 'Жоғарыдағы код арқылы достарыңды шақыр. Олар қосылғанда, '
+                  kk:
+                      'Жоғарыдағы код арқылы достарыңды шақыр. Олар қосылғанда, '
                       'осында олардың прогресі пайда болып, жарыса аласыңдар.',
-                  en: 'Invite friends with the code above. When they join, their '
+                  en:
+                      'Invite friends with the code above. When they join, their '
                       'progress will appear here and you can compete.'),
               textAlign: TextAlign.center,
               style: const TextStyle(

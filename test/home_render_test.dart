@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:muslingo/screens/friends_screen.dart';
 import 'package:muslingo/screens/home_screen.dart';
+import 'package:muslingo/screens/league_screen.dart';
 import 'package:muslingo/screens/main_tab_screen.dart';
 import 'package:muslingo/services/app_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -66,7 +67,8 @@ void main() {
     await teardown(tester);
   });
 
-  testWidgets('Нижняя навигация: премиум-таббар без Лиги/Основ', (tester) async {
+  testWidgets('Нижняя навигация: премиум-таббар без Лиги/Основ',
+      (tester) async {
     final state = await guestState(tester);
 
     await tester.pumpWidget(
@@ -89,7 +91,8 @@ void main() {
     expect(find.text('Коран'), findsOneWidget);
     expect(find.text('Hafiz'), findsOneWidget);
     expect(find.text('Профиль'), findsOneWidget);
-    // Лига убрана давно; «Основы» переехали разделом на главную; «Уроки» → «Главная».
+    // Лига доступна отдельной страницей из «Друзей», но не перегружает таббар;
+    // «Основы» переехали разделом на главную; «Уроки» → «Главная».
     expect(find.text('Лига'), findsNothing);
     expect(find.text('Основы'), findsNothing);
     expect(find.text('Уроки'), findsNothing);
@@ -118,9 +121,37 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Друзья'), findsOneWidget);
     expect(find.text('Учитесь вместе'), findsOneWidget);
+    expect(find.text('Недельная лига'), findsOneWidget);
     // Гость видит предложение создать аккаунт, а не выдуманных соперников.
     expect(find.text('Соревнование доступно с аккаунтом'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Пока никого'), 240);
     expect(find.text('Пока никого'), findsOneWidget);
+
+    await teardown(tester);
+  });
+
+  testWidgets('Лига рендерится и честно требует аккаунт у гостя',
+      (tester) async {
+    final state = await guestState(tester);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppState>.value(
+        value: state,
+        child: MaterialApp(
+          home: const LeagueScreen(),
+          onGenerateRoute: (settings) => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => const SizedBox.shrink(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Недельная лига'), findsWidgets);
+    expect(find.text('Войди, чтобы участвовать'), findsOneWidget);
+    expect(find.text('Войти или создать аккаунт'), findsOneWidget);
 
     await teardown(tester);
   });
