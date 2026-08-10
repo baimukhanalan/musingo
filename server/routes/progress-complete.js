@@ -20,6 +20,9 @@ export const lessons = new Set([
   'q_qadr_1', 'q_tin_1', 'q_sharh_1', 'q_duha_1', 'q_ala_1',
   'q_alaq_1', 'q_shams_1', 'q_layl_1', 'q_fajr_1', 'q_ghashiya_1',
   'q_tariq_1', 'q_buruj_1',
+  'q_naba_1', 'q_naba_2', 'q_naziat_1', 'q_naziat_2',
+  'q_abasa_1', 'q_abasa_2', 'q_takwir_1', 'q_infitar_1',
+  'q_mutaffifin_1', 'q_mutaffifin_2', 'q_inshiqaq_1',
   // rules_lessons.dart (r1–r10)
   'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10',
 ]);
@@ -37,6 +40,9 @@ export const ayatRewards = {
   q_qadr_1: 5, q_tin_1: 8, q_sharh_1: 8, q_duha_1: 11, q_ala_1: 19,
   q_alaq_1: 19, q_shams_1: 15, q_layl_1: 21, q_fajr_1: 30, q_ghashiya_1: 26,
   q_tariq_1: 17, q_buruj_1: 22,
+  q_naba_1: 20, q_naba_2: 20, q_naziat_1: 26, q_naziat_2: 20,
+  q_abasa_1: 23, q_abasa_2: 19, q_takwir_1: 29, q_infitar_1: 19,
+  q_mutaffifin_1: 20, q_mutaffifin_2: 16, q_inshiqaq_1: 25,
 };
 
 // M2: first-completion xp must equal the lesson's own xpReward (lib/services/
@@ -54,6 +60,9 @@ export const lessonXp = {
   q_qadr_1: 25, q_tin_1: 25, q_sharh_1: 25, q_duha_1: 25, q_ala_1: 25,
   q_alaq_1: 25, q_shams_1: 25, q_layl_1: 25, q_fajr_1: 25, q_ghashiya_1: 25,
   q_tariq_1: 25, q_buruj_1: 25,
+  q_naba_1: 25, q_naba_2: 25, q_naziat_1: 25, q_naziat_2: 25,
+  q_abasa_1: 25, q_abasa_2: 25, q_takwir_1: 25, q_infitar_1: 25,
+  q_mutaffifin_1: 25, q_mutaffifin_2: 25, q_inshiqaq_1: 25,
   r1: 25, r2: 25, r3: 25, r4: 25, r5: 25, r6: 25, r7: 25, r8: 25, r9: 25, r10: 25,
 };
 
