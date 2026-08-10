@@ -92,6 +92,38 @@
     }
   </style>
   <script>
+    // Flutter 3.44 no longer creates a root cache worker. Older Muslingo
+    // installs can still have one, so retire only that legacy registration and
+    // preserve the independent /push/ worker used for notifications.
+    (() => {
+      if (!('serviceWorker' in navigator)) return;
+      const reloadKey = 'muslingo-root-worker-retired';
+      let reloading = false;
+
+      const reloadOnce = () => {
+        if (reloading || sessionStorage.getItem(reloadKey) === '1') return;
+        reloading = true;
+        sessionStorage.setItem(reloadKey, '1');
+        window.location.reload();
+      };
+
+      navigator.serviceWorker.addEventListener('controllerchange', reloadOnce);
+      window.addEventListener('load', async () => {
+        try {
+          const rootScope = new URL('/', window.location.origin).href;
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          const legacy = registrations.filter((registration) =>
+            registration.scope === rootScope &&
+            [registration.active, registration.waiting, registration.installing]
+              .filter(Boolean)
+              .some((worker) => worker.scriptURL.includes('/flutter_service_worker.js')));
+          await Promise.all(legacy.map((registration) => registration.update()));
+        } catch (error) {
+          console.warn('Muslingo app update check failed', error);
+        }
+      });
+    })();
+
     (() => {
       let installPrompt = null;
 
