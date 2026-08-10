@@ -10,6 +10,10 @@ class UserModel {
   final int energy;
   final bool isPremium;
   final DateTime? lastStudyDate;
+
+  /// Момент, от которого отсчитывается восстановление жизней по времени.
+  /// null означает «часы не идут» — либо жизни полны, либо premium.
+  final DateTime? heartsUpdatedAt;
   final int totalLessons;
   final int totalMinutes;
   final int learnedAyats;
@@ -33,6 +37,7 @@ class UserModel {
     this.energy = 0,
     this.isPremium = false,
     this.lastStudyDate,
+    this.heartsUpdatedAt,
     this.totalLessons = 0,
     this.totalMinutes = 0,
     this.learnedAyats = 0,
@@ -60,6 +65,10 @@ class UserModel {
     int? energy,
     bool? isPremium,
     DateTime? lastStudyDate,
+    DateTime? heartsUpdatedAt,
+    // copyWith не умеет присваивать null через `?? this`, поэтому обнуление
+    // таймера восстановления делаем через явный флаг.
+    bool clearHeartsUpdatedAt = false,
     int? totalLessons,
     int? totalMinutes,
     int? learnedAyats,
@@ -83,6 +92,9 @@ class UserModel {
       energy: energy ?? this.energy,
       isPremium: isPremium ?? this.isPremium,
       lastStudyDate: lastStudyDate ?? this.lastStudyDate,
+      heartsUpdatedAt: clearHeartsUpdatedAt
+          ? null
+          : (heartsUpdatedAt ?? this.heartsUpdatedAt),
       totalLessons: totalLessons ?? this.totalLessons,
       totalMinutes: totalMinutes ?? this.totalMinutes,
       learnedAyats: learnedAyats ?? this.learnedAyats,
@@ -108,6 +120,7 @@ class UserModel {
         'energy': energy,
         'isPremium': isPremium,
         'lastStudyDate': lastStudyDate?.toIso8601String(),
+        'heartsUpdatedAt': heartsUpdatedAt?.toIso8601String(),
         'totalLessons': totalLessons,
         'totalMinutes': totalMinutes,
         'learnedAyats': learnedAyats,
@@ -133,6 +146,9 @@ class UserModel {
         isPremium: json['isPremium'] ?? false,
         lastStudyDate: json['lastStudyDate'] != null
             ? DateTime.parse(json['lastStudyDate'])
+            : null,
+        heartsUpdatedAt: json['heartsUpdatedAt'] != null
+            ? DateTime.tryParse(json['heartsUpdatedAt'])
             : null,
         totalLessons: json['totalLessons'] ?? 0,
         totalMinutes: json['totalMinutes'] ?? 0,

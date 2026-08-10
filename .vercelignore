@@ -1,0 +1,22 @@
+# Vercel не применяет .gitignore при загрузке — эти каталоги исключаем явно,
+# иначе в деплой уходят сотни мегабайт (вложенный бэкап, сборки, кэши, .git).
+
+# Случайно вложенная резервная копия проекта (~310MB)
+Muslingo mobile backup before github 2026-07-16/
+
+# Генерируется на стороне Vercel (installCommand/buildCommand), грузить не нужно
+build/
+.dart_tool/
+.vercel_flutter/
+node_modules/
+
+# История git и локальные инструменты
+.git/
+.github/
+.idea/
+.vscode/
+.claude/
+
+# Секреты и локальное окружение — на Vercel свои env-переменные
+.env.local
+.env*.local

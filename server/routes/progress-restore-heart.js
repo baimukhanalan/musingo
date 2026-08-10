@@ -3,12 +3,21 @@ import { sql } from '../lib/db.js';
 import { ApiError, method, withApi } from '../lib/http.js';
 import { profile } from '../lib/progress.js';
 
+// Mirrors progress-complete.js:45. Without this guard an empty result set falls
+// through to profile(undefined) — whose hearts:5 default trips the hearts_full
+// branch below — so a user with no progress row gets a misleading 400 instead
+// of a 404. Exported so the branch is unit-testable without a DB.
+export function requireProgressRows(rows) {
+  if (rows.length === 0) throw new ApiError(404, 'progress_not_found', 'Progress not found.');
+}
+
 export default withApi(async (request, response) => {
   method(request, ['POST']);
   const user = await requireUser(request);
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const rows = await sql`SELECT document, version FROM muslingo_progress WHERE user_id = ${user.id}::uuid`;
-    const current = profile(rows[0]?.document, user);
+    requireProgressRows(rows);
+    const current = profile(rows[0].document, user);
     if (current.isPremium || Number(current.hearts) >= 5) {
       throw new ApiError(400, 'hearts_full', 'Hearts are already full.');
     }

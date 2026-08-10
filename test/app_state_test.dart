@@ -95,6 +95,16 @@ void main() {
     await state.loginAsGuest();
     final reviewedAt = DateTime.now().subtract(const Duration(days: 2));
 
+    // memory engine заводит по одному KnowledgeState на КАЖДЫЙ шаг урока,
+    // поэтому ожидаемое число выводим из фактической структуры r1, а не из
+    // магической константы (число шагов урока меняется при обогащении контента).
+    final r1StepCount = state
+        .getCourse(CourseType.rules)!
+        .lessons
+        .firstWhere((lesson) => lesson.id == 'r1')
+        .steps
+        .length;
+
     await state.completeLesson(
       'r1',
       1,
@@ -102,14 +112,14 @@ void main() {
       completedAt: reviewedAt,
     );
 
-    expect(state.knowledgeStates, hasLength(3));
+    expect(state.knowledgeStates, hasLength(r1StepCount));
     expect(state.weakKnowledgeCount, 1);
-    expect(state.dueReviewCount, 3);
+    expect(state.dueReviewCount, r1StepCount);
     expect(state.recommendedLesson?.id, 'r1');
 
     final restored = AppState();
     await _waitUntilInitialized(restored);
-    expect(restored.knowledgeStates, hasLength(3));
+    expect(restored.knowledgeStates, hasLength(r1StepCount));
     expect(restored.recommendedLesson?.id, 'r1');
   });
 
@@ -162,36 +172,20 @@ void main() {
     expect(restored.hafizProgressFor(1, 1)?.bestScore, 92);
   });
 
-  test('local leaderboard works without backend session', () async {
+  test('repeating a completed lesson grants reduced xp like the backend',
+      () async {
     final state = AppState();
     await _waitUntilInitialized(state);
     await state.loginAsGuest();
 
-    final leaderboard = await state.fetchLeaderboard();
+    final first = await state.completeLesson('r1', 0);
+    final repeat = await state.completeLesson('r1', 0);
 
-    expect(leaderboard, isNotEmpty);
-    expect(leaderboard.any((entry) => entry.isCurrentUser), isTrue);
-    expect(leaderboard.map((entry) => entry.position), [1, 2, 3, 4, 5]);
-  });
-
-  test('local leaderboard uses weekly season xp', () async {
-    final state = AppState();
-    await _waitUntilInitialized(state);
-    await state.loginAsGuest();
-
-    var leaderboard = await state.fetchLeaderboard();
-    expect(
-      leaderboard.firstWhere((entry) => entry.isCurrentUser).xp,
-      0,
-    );
-
-    final result = await state.completeLesson('r1', 0);
-    leaderboard = await state.fetchLeaderboard();
-
-    expect(
-      leaderboard.firstWhere((entry) => entry.isCurrentUser).xp,
-      result['xpEarned'],
-    );
+    // Первое прохождение — полный lesson.xpReward (для r1 это дефолтные 25),
+    // повтор — фиксированные 5 XP, как на сервере
+    // (server/routes/progress-complete.js: firstCompletion ? 25 : 5).
+    expect(first['xpEarned'], 25);
+    expect(repeat['xpEarned'], 5);
   });
 
   test('deleting a local account removes saved email login', () async {

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -18,23 +18,79 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Muslingo помогает изучать короткие суры, арабское чтение и основы ислама шаг за шагом.">
-  <meta name="theme-color" content="#62C5EE">
-  <meta property="og:title" content="Muslingo">
-  <meta property="og:description" content="Коран, арабский язык и основы ислама в формате коротких интерактивных уроков.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="Muslingo — персональный AI-тренер по Корану, арабскому языку и основам ислама. Учись каждый день короткими интерактивными уроками.">
+  <meta name="theme-color" content="#155B88">
+  <meta property="og:title" content="Muslingo — учи Коран каждый день">
+  <meta property="og:description" content="Персональный AI-тренер по Корану, арабскому языку и основам ислама в формате коротких интерактивных уроков.">
   <meta property="og:type" content="website">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Muslingo">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>Muslingo</title>
+  <title>Muslingo — учи Коран каждый день</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    /* Брендовый лоадер: виден до загрузки Flutter web, скрывается на первом кадре */
+    #muslingo-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 2147483000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      background: #155B88;
+      color: #FFFFFF;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      opacity: 1;
+      transition: opacity 0.4s ease;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+    #muslingo-splash.muslingo-splash--hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    #muslingo-splash .muslingo-splash__logo {
+      width: 88px;
+      height: 88px;
+      border-radius: 24px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+    }
+    #muslingo-splash .muslingo-splash__title {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    #muslingo-splash .muslingo-splash__subtitle {
+      font-size: 15px;
+      font-weight: 400;
+      opacity: 0.85;
+    }
+    #muslingo-splash .muslingo-splash__spinner {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.25);
+      border-top-color: #FFFFFF;
+      animation: muslingo-spin 0.9s linear infinite;
+    }
+    @keyframes muslingo-spin {
+      to { transform: rotate(360deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #muslingo-splash .muslingo-splash__spinner { animation-duration: 2s; }
+    }
+  </style>
   <script>
     (() => {
       let installPrompt = null;
@@ -153,7 +209,12 @@
             await fetch('/api/push/unsubscribe', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-              body: JSON.stringify({ endpoint: subscription.endpoint }),
+              // installationId обязателен: сервер по нему подтверждает, что
+              // отписывается владелец подписки, а не случайный знающий endpoint.
+              body: JSON.stringify({
+                endpoint: subscription.endpoint,
+                installationId: installationId(),
+              }),
             });
             return subscription.unsubscribe();
           } catch (error) {
@@ -186,6 +247,34 @@
   </script>
 </head>
 <body>
+  <!-- Брендовый экран загрузки: перекрывается Flutter при старте, не мешает bootstrap -->
+  <div id="muslingo-splash" role="status" aria-live="polite" aria-label="Загрузка Muslingo">
+    <img class="muslingo-splash__logo" src="icons/Icon-192.png" alt="Muslingo" />
+    <div class="muslingo-splash__title">Muslingo</div>
+    <div class="muslingo-splash__subtitle">учи Коран каждый день</div>
+    <div class="muslingo-splash__spinner"></div>
+  </div>
+  <script>
+    // Скрываем брендовый лоадер, когда Flutter отрисовал первый кадр.
+    (() => {
+      let removed = false;
+      const removeSplash = () => {
+        if (removed) return;
+        removed = true;
+        const splash = document.getElementById('muslingo-splash');
+        if (!splash) return;
+        splash.classList.add('muslingo-splash--hidden');
+        // Удаляем узел после завершения плавного исчезновения.
+        window.setTimeout(() => splash.remove(), 500);
+      };
+      // Flutter web диспатчит событие первого кадра; слушаем на window и document.
+      window.addEventListener('flutter-first-frame', removeSplash, { once: true });
+      document.addEventListener('flutter-first-frame', removeSplash, { once: true });
+      // Страховка: если событие не пришло, всё равно убираем лоадер.
+      window.setTimeout(removeSplash, 12000);
+    })();
+  </script>
+
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

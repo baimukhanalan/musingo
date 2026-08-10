@@ -8,6 +8,7 @@ import '../services/app_state.dart';
 import '../services/coach_service.dart';
 import '../utils/colors.dart';
 import '../widgets/cat_character.dart';
+import '../widgets/premium_background.dart';
 
 class CoachScreen extends StatefulWidget {
   const CoachScreen({super.key});
@@ -40,16 +41,30 @@ class _CoachScreenState extends State<CoachScreen> {
     if (!mounted || _messages.isNotEmpty) return;
     final state = context.read<AppState>();
     final lesson = state.recommendedLesson;
+    final lessonTitle = lesson?.title ??
+        state.tr(ru: 'короткий урок', kk: 'қысқа сабақ', en: 'a short lesson');
     setState(() {
       _messages.add(CoachMessage(
         id: 'greeting',
         role: CoachRole.coach,
         text: state.dueReviewCount > 0
-            ? 'У тебя ${state.dueReviewCount} назначенных повторений. '
-                'Сначала закрепим их, затем вернёмся к новому материалу.'
-            : 'Сегодня подходящий следующий шаг — '
-                '«${lesson?.title ?? 'короткий урок'}». Я отвечаю по твоему '
-                'прогрессу и показываю источники для религиозных материалов.',
+            ? state.tr(
+                ru: 'У тебя ${state.dueReviewCount} назначенных повторений. '
+                    'Сначала закрепим их, затем вернёмся к новому материалу.',
+                kk: 'Сенде ${state.dueReviewCount} тағайындалған қайталау бар. '
+                    'Алдымен соларды бекітейік, содан кейін жаңа материалға ораламыз.',
+                en: 'You have ${state.dueReviewCount} scheduled reviews. '
+                    'Let\'s reinforce them first, then return to new material.')
+            : state.tr(
+                ru: 'Сегодня подходящий следующий шаг — '
+                    '«$lessonTitle». Я отвечаю по твоему '
+                    'прогрессу и показываю источники для религиозных материалов.',
+                kk: 'Бүгінгі қолайлы келесі қадам — '
+                    '«$lessonTitle». Мен сенің прогресіңе қарай жауап беремін '
+                    'және діни материалдар үшін дереккөздерді көрсетемін.',
+                en: 'A good next step today is '
+                    '“$lessonTitle”. I answer based on your progress '
+                    'and show sources for religious materials.'),
         createdAt: DateTime.now(),
       ));
     });
@@ -131,7 +146,10 @@ class _CoachScreenState extends State<CoachScreen> {
         }
         if (lesson == null) return;
         if (!state.isPremium && (state.user?.hearts ?? 0) <= 0) {
-          _showMessage('Жизни закончились. Восстанови одну на главном экране.');
+          _showMessage(state.tr(
+              ru: 'Жизни закончились. Восстанови одну на главном экране.',
+              kk: 'Жандар бітті. Басты экраннан біреуін қалпына келтір.',
+              en: 'You are out of lives. Restore one on the home screen.'));
           return;
         }
         if (mounted) Navigator.pushNamed(context, '/lesson', arguments: lesson);
@@ -159,7 +177,12 @@ class _CoachScreenState extends State<CoachScreen> {
       Uri.parse(rawUrl),
       mode: LaunchMode.externalApplication,
     );
-    if (!opened && mounted) _showMessage('Не удалось открыть источник.');
+    if (!opened && mounted) {
+      _showMessage(context.read<AppState>().tr(
+          ru: 'Не удалось открыть источник.',
+          kk: 'Дереккөзді ашу мүмкін болмады.',
+          en: 'Could not open the source.'));
+    }
   }
 
   void _showMessage(String message) {
@@ -169,105 +192,123 @@ class _CoachScreenState extends State<CoachScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        titleSpacing: 16,
-        title: const Row(
-          children: [
-            Text(
-              'AI Coach',
-              style: TextStyle(
-                fontFamily: 'Nunito',
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textDark,
-              ),
-            ),
-            SizedBox(width: 8),
-            _GroundedBadge(),
-          ],
-        ),
-      ),
-      body: Column(
-        children: [
-          SizedBox(
-            height: 46,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: CoachService.suggestions.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, index) => ActionChip(
-                avatar: const Icon(Icons.auto_awesome_rounded, size: 16),
-                label: Text(CoachService.suggestions[index]),
-                onPressed: () => _send(CoachService.suggestions[index]),
-                side: const BorderSide(color: AppColors.border),
-                backgroundColor: AppColors.white,
-                labelStyle: const TextStyle(
-                  fontFamily: 'Nunito',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.navy,
+      backgroundColor: AppColors.ivory,
+      body: PremiumBackground(
+        floatingLetters: false,
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              const _CoachHeader(),
+              Expanded(
+                child: ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 18),
+                  itemCount: _messages.length + (_sending ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index == _messages.length) {
+                      return const _TypingIndicator();
+                    }
+                    final message = _messages[index];
+                    return _MessageView(
+                      message: message,
+                      onAction: message.actionType == null
+                          ? null
+                          : () => _runAction(message),
+                      onSource: _openUrl,
+                    );
+                  },
                 ),
               ),
-            ),
+              _SuggestionChips(
+                enabled: !_sending,
+                onSelect: (text) => _send(text),
+              ),
+              _CoachInput(
+                controller: _controller,
+                enabled: !_sending,
+                onSend: () => _send(),
+              ),
+              _SpecialistBanner(
+                onTap: () => _openUrl(CoachService.specialistUrl),
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
-              itemCount: _messages.length + (_sending ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == _messages.length) return const _TypingIndicator();
-                final message = _messages[index];
-                return _MessageView(
-                  message: message,
-                  onAction: message.actionType == null
-                      ? null
-                      : () => _runAction(message),
-                  onSource: _openUrl,
-                );
-              },
-            ),
-          ),
-          _CoachInput(
-            controller: _controller,
-            enabled: !_sending,
-            onSend: () => _send(),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _GroundedBadge extends StatelessWidget {
-  const _GroundedBadge();
+/// 1d header: cat avatar + «Muslingo Coach» wordmark and a grounding subtitle.
+class _CoachHeader extends StatelessWidget {
+  const _CoachHeader();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.success.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
+    final state = context.watch<AppState>();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
+      child: Row(
         children: [
-          Icon(Icons.verified_rounded, size: 13, color: AppColors.success),
-          SizedBox(width: 4),
-          Text(
-            'ИСТОЧНИКИ',
-            style: TextStyle(
-              fontFamily: 'Nunito',
-              fontSize: 9,
-              fontWeight: FontWeight.w900,
-              color: AppColors.success,
+          Container(
+            width: 48,
+            height: 48,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.sky.withValues(alpha: 0.16),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.navyDark.withValues(alpha: 0.06),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const CatCharacter(mood: CatMood.support, size: 40),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Muslingo Coach',
+                  style: TextStyle(
+                    fontFamily: 'Nunito',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.navyDark,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    const Icon(Icons.verified_rounded,
+                        size: 13, color: AppColors.success),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        state.tr(
+                            ru: 'знает твой прогресс · отвечает по источникам',
+                            kk: 'сенің прогресіңді біледі · дереккөздер бойынша жауап береді',
+                            en: 'knows your progress · answers from sources'),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 11.5,
+                          height: 1.25,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textGrey,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -289,7 +330,9 @@ class _MessageView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
     final isUser = message.role == CoachRole.user;
+    final isGreeting = message.id == 'greeting';
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
@@ -298,21 +341,45 @@ class _MessageView extends StatelessWidget {
             isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           if (!isUser) ...[
-            const SizedBox(
-              width: 38,
-              height: 38,
-              child: CatCharacter(mood: CatMood.support, size: 38),
+            Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.sky.withValues(alpha: 0.16),
+              ),
+              child: const CatCharacter(mood: CatMood.support, size: 30),
             ),
             const SizedBox(width: 8),
           ],
           Flexible(
             child: Container(
               constraints: const BoxConstraints(maxWidth: 470),
-              padding: const EdgeInsets.all(13),
+              padding: const EdgeInsets.fromLTRB(15, 13, 15, 14),
               decoration: BoxDecoration(
-                color: isUser ? AppColors.navy : AppColors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: isUser ? null : Border.all(color: AppColors.border),
+                gradient: isUser
+                    ? const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF5FC3EE), Color(0xFF3FA9DC)],
+                      )
+                    : null,
+                color: isUser ? null : AppColors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(20),
+                  topRight: const Radius.circular(20),
+                  bottomLeft: Radius.circular(isUser ? 20 : 6),
+                  bottomRight: Radius.circular(isUser ? 6 : 20),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: (isUser ? AppColors.sky : AppColors.navyDark)
+                        .withValues(alpha: isUser ? 0.28 : 0.06),
+                    blurRadius: isUser ? 18 : 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -321,12 +388,13 @@ class _MessageView extends StatelessWidget {
                     message.text,
                     style: TextStyle(
                       fontFamily: 'Nunito',
-                      fontSize: 14,
+                      fontSize: 14.5,
                       height: 1.45,
                       fontWeight: FontWeight.w600,
                       color: isUser ? Colors.white : AppColors.textDark,
                     ),
                   ),
+                  if (isGreeting) const _ProgressSummary(),
                   if (message.sources.isNotEmpty) ...[
                     const SizedBox(height: 11),
                     const Divider(height: 1, color: AppColors.border),
@@ -335,7 +403,7 @@ class _MessageView extends StatelessWidget {
                       _SourceRow(source: source, onTap: onSource),
                   ],
                   if (onAction != null) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
@@ -348,12 +416,19 @@ class _MessageView extends StatelessWidget {
                                   : Icons.play_arrow_rounded,
                           size: 19,
                         ),
-                        label: Text(message.actionLabel ?? 'Открыть'),
+                        label: Text(message.actionLabel ??
+                            state.tr(
+                                ru: 'Открыть', kk: 'Ашу', en: 'Open')),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.sky,
                           foregroundColor: Colors.white,
+                          textStyle: const TextStyle(
+                            fontFamily: 'Nunito',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                          ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(14),
                           ),
                         ),
                       ),
@@ -361,6 +436,118 @@ class _MessageView extends StatelessWidget {
                   ],
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Progress snapshot inside the welcome bubble — streak, suras in progress and
+/// memory accuracy, all read from [AppState]. Metrics render only when
+/// meaningful data is available.
+class _ProgressSummary extends StatelessWidget {
+  const _ProgressSummary();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final streak = state.user?.streak ?? 0;
+    final suras = state.courses
+        .where((c) => c.type == CourseType.quran && c.completedLessons > 0)
+        .length;
+    final memory = state.knowledgeStates;
+    final int? accuracyPct = memory.isEmpty
+        ? null
+        : (memory.map((k) => k.strength).reduce((a, b) => a + b) /
+                memory.length *
+                100)
+            .round();
+
+    final chips = <Widget>[
+      if (streak > 0)
+        _StatChip(
+          icon: Icons.local_fire_department_rounded,
+          value: '$streak',
+          label: state.tr(ru: 'серия', kk: 'серия', en: 'streak'),
+          accent: AppColors.gold,
+        ),
+      if (suras > 0)
+        _StatChip(
+          icon: Icons.menu_book_rounded,
+          value: '$suras',
+          label: state.tr(ru: 'суры', kk: 'сүрелер', en: 'surahs'),
+          accent: AppColors.sky,
+        ),
+      if (accuracyPct != null)
+        _StatChip(
+          icon: Icons.insights_rounded,
+          value: '$accuracyPct%',
+          label: state.tr(ru: 'точность', kk: 'дәлдік', en: 'accuracy'),
+          accent: accuracyPct >= 80
+              ? AppColors.success
+              : (accuracyPct >= 60 ? AppColors.sky : AppColors.coral),
+        ),
+    ];
+
+    if (chips.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: chips,
+      ),
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color accent;
+
+  const _StatChip({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: accent),
+          const SizedBox(width: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              fontFamily: 'Nunito',
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+              color: AppColors.navyDark,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label.toUpperCase(),
+            style: const TextStyle(
+              fontFamily: 'Nunito',
+              fontSize: 9.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.6,
+              color: AppColors.textLight,
             ),
           ),
         ],
@@ -435,14 +622,125 @@ class _TypingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.only(left: 46, bottom: 14),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: SizedBox(
-          width: 18,
-          height: 18,
-          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.sky),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.sky.withValues(alpha: 0.16),
+            ),
+            child: const CatCharacter(mood: CatMood.support, size: 30),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.fromLTRB(15, 13, 15, 13),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+                bottomLeft: Radius.circular(6),
+                bottomRight: Radius.circular(20),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.navyDark.withValues(alpha: 0.06),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: AppColors.sky),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Question-suggestion pills sitting just above the input field.
+class _SuggestionChips extends StatelessWidget {
+  final bool enabled;
+  final ValueChanged<String> onSelect;
+
+  const _SuggestionChips({required this.enabled, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 42,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: CoachService.suggestions.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final text = CoachService.suggestions[index];
+          return _SuggestionPill(
+            text: text,
+            onTap: enabled ? () => onSelect(text) : null,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SuggestionPill extends StatelessWidget {
+  final String text;
+  final VoidCallback? onTap;
+
+  const _SuggestionPill({required this.text, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(30),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: AppColors.border),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.navyDark.withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.auto_awesome_rounded,
+                  size: 15, color: AppColors.sky),
+              const SizedBox(width: 6),
+              Text(
+                text,
+                style: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -462,58 +760,209 @@ class _CoachInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 9, 12, 10),
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
+    final state = context.watch<AppState>();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(color: AppColors.border),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.navyDark.withValues(alpha: 0.05),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
               child: TextField(
                 controller: controller,
                 enabled: enabled,
                 minLines: 1,
-                maxLines: 3,
+                maxLines: 4,
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => onSend(),
+                style: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textDark,
+                ),
                 decoration: InputDecoration(
-                  hintText: 'Спроси об уроке или повторении',
-                  filled: true,
-                  fillColor: AppColors.backgroundGrey,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
+                  hintText: state.tr(
+                      ru: 'Спроси об уроке или повторении',
+                      kk: 'Сабақ немесе қайталау туралы сұра',
+                      en: 'Ask about a lesson or review'),
+                  hintStyle: const TextStyle(
+                    fontFamily: 'Nunito',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textLight,
                   ),
+                  filled: false,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            Semantics(
-              label: 'Отправить сообщение',
-              button: true,
-              child: Tooltip(
-                message: 'Отправить',
-                child: ExcludeSemantics(
-                  child: IconButton.filled(
-                    onPressed: enabled ? () => onSend() : null,
-                    icon: const Icon(Icons.send_rounded),
-                    style: IconButton.styleFrom(
-                      backgroundColor: AppColors.navy,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: AppColors.buttonDisabled,
+          ),
+          const SizedBox(width: 10),
+          _SendButton(onTap: enabled ? onSend : null),
+        ],
+      ),
+    );
+  }
+}
+
+/// Round premium send button with an upward arrow (↑).
+class _SendButton extends StatelessWidget {
+  final VoidCallback? onTap;
+
+  const _SendButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final bool enabled = onTap != null;
+    return Semantics(
+      label: state.tr(
+          ru: 'Отправить сообщение',
+          kk: 'Хабарлама жіберу',
+          en: 'Send message'),
+      button: true,
+      child: Tooltip(
+        message: state.tr(ru: 'Отправить', kk: 'Жіберу', en: 'Send'),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: enabled
+                ? [
+                    BoxShadow(
+                      color: AppColors.sky.withValues(alpha: 0.4),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              customBorder: const CircleBorder(),
+              child: Ink(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: enabled
+                      ? const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFF5FC3EE), Color(0xFF3FA9DC)],
+                        )
+                      : null,
+                  color: enabled ? null : AppColors.buttonDisabled,
+                ),
+                child: const Icon(Icons.arrow_upward_rounded,
+                    color: Colors.white, size: 24),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom banner routing a hard religious question to a human specialist.
+class _SpecialistBanner extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _SpecialistBanner({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.gold.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppColors.gold.withValues(alpha: 0.35),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.gold.withValues(alpha: 0.2),
+                    ),
+                    child: const Icon(Icons.support_agent_rounded,
+                        size: 19, color: AppColors.warning),
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          state.tr(
+                              ru: 'Сложный религиозный вопрос?',
+                              kk: 'Күрделі діни сұрақ па?',
+                              en: 'A difficult religious question?'),
+                          style: const TextStyle(
+                            fontFamily: 'Nunito',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.navyDark,
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          state.tr(
+                              ru: 'Спросить специалиста',
+                              kk: 'Маманнан сұрау',
+                              en: 'Ask a specialist'),
+                          style: const TextStyle(
+                            fontFamily: 'Nunito',
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textGrey,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                  const Icon(Icons.arrow_forward_rounded,
+                      size: 18, color: AppColors.warning),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

@@ -1,0 +1,58 @@
+name: Build Android APK
+
+# Собирает устанавливаемый (debug-signed) APK в облаке GitHub Actions.
+# Локальный Android SDK не нужен — раннер ставит его сам.
+# Запуск: вкладка Actions → "Build Android APK" → Run workflow (workflow_dispatch),
+# либо пуш тега вида v1.0.0 (тогда APK ещё и прикрепится к Release).
+#
+# Подпись: без android/key.properties build.gradle откатывается на debug-ключ —
+# такой APK НЕ годится для Google Play, но отлично ставится на телефон для теста
+# (включи «Установка из неизвестных источников»). Для Play нужен upload-keystore
+# (см. android/key.properties.example) и загрузка его в секреты репозитория.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: flutter pub get
+        run: flutter pub get
+
+      - name: Build release APK (backend = прод на Vercel)
+        run: >
+          flutter build apk --release
+          --dart-define=MUSLINGO_API_URL=https://muslingo-mobile.vercel.app
+          --dart-define=MUSLINGO_SPEECH_API_URL=https://muslingo-mobile.vercel.app
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: muslingo-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+
+      # На пуш тега v* — прикрепить APK к GitHub Release (постоянная ссылка).
+      - name: Attach APK to Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/app/outputs/flutter-apk/app-release.apk

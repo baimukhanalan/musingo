@@ -17,6 +17,8 @@ class NotificationPlatform {
     required List<ReminderMessage> messages,
     int dueCount = 0,
     String learningGoal = '',
+    String name = '',
+    int streak = 0,
   }) async {}
 
   Future<void> cancelAll() async {}

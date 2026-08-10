@@ -30,7 +30,12 @@ void main() {
     expect(chapter.verses.single.arabicText, 'بِسْمِ ٱللَّهِ');
     expect(chapter.verses.single.translation, 'Во имя Аллаха');
     expect(chapter.verses.single.transliteration, 'Бисмиллях');
-    expect(chapter.verses.single.audioUrl, endsWith('/quran/audio/1'));
+    // Primary audio now points at the public CDN on every platform (the old
+    // localhost proxy route returned 404 in production).
+    expect(
+      chapter.verses.single.audioUrl,
+      'https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3',
+    );
     expect(chapter.verses.single.audioFallbackUrl, contains('islamic.network'));
     expect(chapter.fullAudioUrl, 'https://server8.mp3quran.net/afs/001.mp3');
 

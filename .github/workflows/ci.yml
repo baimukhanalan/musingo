@@ -1,0 +1,65 @@
+name: CI
+
+# Раньше в репозитории не было ни одного workflow, запускающего тесты:
+# единственный существующий (push-reminders.yml) — это прод-доставка
+# уведомлений по cron, и на изменения кода он не реагирует.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flutter:
+    name: Flutter analyze и тесты
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.6'
+          channel: stable
+          cache: true
+
+      - name: Зависимости
+        run: flutter pub get
+
+      # --no-fatal-infos: info-замечания (например депрекейшены в SDK
+      # зависимостей) не должны валить сборку — падаем только на warning/error.
+      - name: Анализатор
+        run: flutter analyze --no-fatal-infos
+
+      - name: Тесты
+        run: flutter test
+
+  api:
+    name: Тесты серверной части
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # В репозитории pnpm-lock.yaml, package-lock.json нет — ставим pnpm,
+      # иначе CI разошёлся бы с локальной установкой.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+
+      # Заодно проверяем, что лок-файл согласован с package.json.
+      - name: Зависимости
+        run: pnpm install --frozen-lockfile
+
+      - name: Тесты
+        run: pnpm run test:api

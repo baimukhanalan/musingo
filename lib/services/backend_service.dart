@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/leaderboard.dart';
+import '../models/friend.dart';
 import '../models/user.dart';
 
 class BackendProfile {
@@ -153,13 +153,19 @@ class BackendService {
     final now = DateTime.now();
     final localDate =
         '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    // Сервер валидирует errors как {min:0,max:5} и бросает 400 при >5
+    // (server/lib/http.js integer()). matching растит счётчик на каждый неверный
+    // тап, так что 6+ ошибок набирается легко и раньше отклоняло completion —
+    // прогресс залогиненного уходил «в никуда». Клампим у самой точки отправки.
+    final safeErrors = errors.clamp(0, 5).toInt();
+    final safeSpeechAttempts = speechAttempts.clamp(0, 50).toInt();
     final response = await _request(
       'POST',
       '/api/progress/complete',
       body: {
         'lessonId': lessonId,
-        'errors': errors,
-        'speechAttempts': speechAttempts,
+        'errors': safeErrors,
+        'speechAttempts': safeSpeechAttempts,
         'rewardToken': rewardToken,
         'localDate': localDate,
       },
@@ -178,19 +184,41 @@ class BackendService {
     return _profileFromProgress(response);
   }
 
-  Future<List<LeaderboardEntry>> getLeaderboard() async {
-    final response = await _requestList('GET', '/api/leaderboard');
-    return response.indexed.map((item) {
-      final data = Map<String, dynamic>.from(item.$2 as Map);
-      final userId = data['user'] as String? ?? '';
-      return LeaderboardEntry(
-        userId: userId,
-        name: data['displayName'] as String? ?? 'Ученик',
-        xp: (data['xp'] as num?)?.toInt() ?? 0,
-        position: (data['position'] as num?)?.toInt() ?? item.$1 + 1,
-        isCurrentUser: data['isCurrentUser'] as bool? ?? false,
-      );
-    }).toList(growable: false);
+  /// Собственный код-приглашение (детерминированно выведен сервером из id) и
+  /// display_name. Одним GET сервер отдаёт и код, и список друзей.
+  Future<({String code, String displayName})> myFriendCode() async {
+    final response = await _request('GET', '/api/friends');
+    return (
+      code: response['code'] as String? ?? '',
+      displayName: response['displayName'] as String? ?? '',
+    );
+  }
+
+  Future<List<Friend>> listFriends() async {
+    final response = await _request('GET', '/api/friends');
+    final list = response['friends'] as List<dynamic>? ?? const [];
+    return list
+        .whereType<Map>()
+        .map((item) => Friend.fromJson(Map<String, dynamic>.from(item)))
+        .toList(growable: false);
+  }
+
+  Future<Friend> addFriend(String code) async {
+    final response = await _request(
+      'POST',
+      '/api/friends',
+      body: {'action': 'add', 'code': code},
+    );
+    return Friend.fromJson(Map<String, dynamic>.from(response['friend'] as Map));
+  }
+
+  Future<void> removeFriend(String code) async {
+    await _request(
+      'POST',
+      '/api/friends',
+      body: {'action': 'remove', 'code': code},
+      allowEmpty: true,
+    );
   }
 
   Future<Map<String, dynamic>> _request(
@@ -212,15 +240,6 @@ class BackendService {
       throw const BackendException(500, 'invalid_response', 'Invalid server response.');
     }
     return Map<String, dynamic>.from(decoded);
-  }
-
-  Future<List<dynamic>> _requestList(String method, String path) async {
-    final response = await _send(method, path);
-    final decoded = jsonDecode(response.body);
-    if (decoded is! List) {
-      throw const BackendException(500, 'invalid_response', 'Invalid server response.');
-    }
-    return decoded;
   }
 
   Future<http.Response> _send(
@@ -252,7 +271,7 @@ class BackendService {
           ),
         _ => throw ArgumentError('Unsupported HTTP method: $method'),
       };
-      final response = await request.timeout(const Duration(seconds: 12));
+      final response = await request.timeout(const Duration(seconds: 8));
       if (response.statusCode < 200 || response.statusCode >= 300) {
         var code = 'request_failed';
         var message = 'Request failed.';
@@ -341,6 +360,12 @@ String readableBackendError(Object error) {
       case 'expired_session':
       case 'invalid_session':
         return 'Сессия истекла. Войди в аккаунт снова.';
+      case 'invalid_code':
+        return 'Неверный код-приглашение. Проверь и попробуй ещё раз.';
+      case 'cannot_add_self':
+        return 'Нельзя добавить самого себя.';
+      case 'friend_not_found':
+        return 'Друг с таким кодом не найден.';
       default:
         if (error.statusCode == 0) {
           return 'Сервер недоступен. Проверь подключение и повтори.';

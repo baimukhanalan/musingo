@@ -275,60 +275,31 @@ class QuranRepository {
       _fullChapterAudioUrl(chapterNumber);
 
   String _proxiedAudioUrl(int globalAyahNumber) {
-    const configured = String.fromEnvironment('MUSLINGO_API_URL');
-    if (kIsWeb && configured.isEmpty) {
-      return 'https://cdn.islamic.network/quran/audio/128/ar.alafasy/$globalAyahNumber.mp3';
-    }
-    final baseUrl = configured.isNotEmpty
-        ? configured
-        : (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
-            ? 'http://10.0.2.2:8090'
-            : 'http://127.0.0.1:8090';
-    return '$baseUrl/api/muslingo/quran/audio/$globalAyahNumber';
+    // Всегда публичный CDN. Прокси-маршрута `/api/muslingo/quran/audio/...`
+    // нет ни на localhost, ни на Vercel: `/api/:route*` уходит в общий роутер,
+    // где такого маршрута нет → 404 на каждый аят. Через MUSLINGO_API_URL
+    // (это адрес прод-API для auth/progress) роутить аудио тоже нельзя — там
+    // тот же 404. Поэтому источник аята — только CDN.
+    return _cdnAyahAudioUrl(globalAyahNumber);
   }
+
+  String _cdnAyahAudioUrl(int globalAyahNumber) =>
+      'https://cdn.islamic.network/quran/audio/128/ar.alafasy/'
+      '$globalAyahNumber.mp3';
 
   Future<Map<int, List<String>>> _loadCanonicalArabic() {
     return _canonicalArabicFuture ??= _readCanonicalArabic();
   }
 
   Future<Map<int, List<String>>> _readCanonicalArabic() async {
+    // L14: rootBundle доступен только на главном изоляте, поэтому строку
+    // (1.4 МБ) читаем здесь, а тяжёлый парсинг 6236 строк уносим в фоновый
+    // изолят через compute(), чтобы не морозить UI при первом входе в суру.
+    // В изолят передаётся только String — простой sendable-объект.
     final content = await rootBundle.loadString(
       'assets/data/quran-uthmani-tanzil.txt',
     );
-    final chapters = <int, List<String>>{};
-    var verseCount = 0;
-    for (final line in const LineSplitter().convert(content)) {
-      if (line.isEmpty || line.codeUnitAt(0) < 48 || line.codeUnitAt(0) > 57) {
-        continue;
-      }
-      final firstSeparator = line.indexOf('|');
-      final secondSeparator = line.indexOf('|', firstSeparator + 1);
-      if (firstSeparator <= 0 || secondSeparator <= firstSeparator + 1) {
-        throw const QuranRepositoryException(
-          'Локальный текст Корана повреждён.',
-        );
-      }
-      final chapter = int.parse(line.substring(0, firstSeparator));
-      final verse = int.parse(
-        line.substring(firstSeparator + 1, secondSeparator),
-      );
-      final text = line.substring(secondSeparator + 1);
-      final verses = chapters.putIfAbsent(chapter, () => <String>[]);
-      if (verse != verses.length + 1 || text.isEmpty) {
-        throw const QuranRepositoryException(
-          'Нумерация локального текста Корана нарушена.',
-        );
-      }
-      verses.add(text);
-      verseCount++;
-    }
-    if (chapters.length != 114 || verseCount != 6236) {
-      throw QuranRepositoryException(
-        'Ожидалось 114 сур и 6236 аятов, получено '
-        '${chapters.length} и $verseCount.',
-      );
-    }
-    return chapters;
+    return compute(_parseCanonicalArabic, content);
   }
 
   Future<void> _touchChapterCache(
@@ -347,4 +318,45 @@ class QuranRepository {
   }
 
   void dispose() => _client.close();
+}
+
+/// Парсит канонический текст Корана (формат `сура|аят|текст`) из строки в карту
+/// «номер суры → список аятов». Тяжёлая операция (6236 строк LineSplitter),
+/// поэтому запускается через compute() в отдельном изоляте. Принимает только
+/// String, чтобы граница изолята оставалась дешёвой.
+Map<int, List<String>> _parseCanonicalArabic(String content) {
+  final chapters = <int, List<String>>{};
+  var verseCount = 0;
+  for (final line in const LineSplitter().convert(content)) {
+    if (line.isEmpty || line.codeUnitAt(0) < 48 || line.codeUnitAt(0) > 57) {
+      continue;
+    }
+    final firstSeparator = line.indexOf('|');
+    final secondSeparator = line.indexOf('|', firstSeparator + 1);
+    if (firstSeparator <= 0 || secondSeparator <= firstSeparator + 1) {
+      throw const QuranRepositoryException(
+        'Локальный текст Корана повреждён.',
+      );
+    }
+    final chapter = int.parse(line.substring(0, firstSeparator));
+    final verse = int.parse(
+      line.substring(firstSeparator + 1, secondSeparator),
+    );
+    final text = line.substring(secondSeparator + 1);
+    final verses = chapters.putIfAbsent(chapter, () => <String>[]);
+    if (verse != verses.length + 1 || text.isEmpty) {
+      throw const QuranRepositoryException(
+        'Нумерация локального текста Корана нарушена.',
+      );
+    }
+    verses.add(text);
+    verseCount++;
+  }
+  if (chapters.length != 114 || verseCount != 6236) {
+    throw QuranRepositoryException(
+      'Ожидалось 114 сур и 6236 аятов, получено '
+      '${chapters.length} и $verseCount.',
+    );
+  }
+  return chapters;
 }

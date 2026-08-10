@@ -1,0 +1,14 @@
+# Шаблон подписи Android (Play App Signing, upload-ключ).
+# 1) Скопируй этот файл в android/key.properties (без .example).
+# 2) Заполни своими значениями. key.properties и сам .jks — в .gitignore, НЕ коммить их.
+#
+# Сгенерировать upload-keystore (делаешь ты, ключ — секрет; НЕ теряй пароли):
+#   keytool -genkey -v -keystore ~/muslingo-upload-keystore.jks \
+#     -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+#
+# storeFile — абсолютный путь к .jks (проще всего), либо путь относительно android/app.
+
+storePassword=ЗАМЕНИ_пароль_хранилища
+keyPassword=ЗАМЕНИ_пароль_ключа
+keyAlias=upload
+storeFile=/абсолютный/путь/к/muslingo-upload-keystore.jks

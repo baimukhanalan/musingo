@@ -6,7 +6,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "test:api": "node --test server_test/**/*.test.js"
+    "test:api": "node --test server_test/*.test.js"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.1",

@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -65,31 +64,11 @@ class SpeechEvaluationService {
           passScore: step.effectivePassScore,
         );
       }
-      if (audioBytes != null && audioBytes.isNotEmpty) {
-        final request = http.MultipartRequest(
-          'POST',
-          Uri.parse('$apiBaseUrl/api/speech/evaluate'),
-        )
-          ..fields['target'] = target
-          ..fields['phoneticTarget'] = phoneticTarget
-          ..fields['transcript'] = transcript
-          ..fields['lessonId'] = lessonId ?? ''
-          ..fields['stepId'] = step.id ?? ''
-          ..fields['language'] = language
-          ..fields['passScore'] = '${step.effectivePassScore}'
-          ..files.add(http.MultipartFile.fromBytes(
-            'audio',
-            audioBytes,
-            filename: 'speech.webm',
-          ));
-        final streamed = await _client.send(request);
-        final response = await http.Response.fromStream(streamed);
-        if (response.statusCode >= 200 && response.statusCode < 300) {
-          return SpeechEvaluationResult.fromJson(
-            Map<String, dynamic>.from(jsonDecode(response.body) as Map),
-          );
-        }
-      }
+      // The /api/speech/evaluate endpoint only parses JSON and only performs a
+      // text (Levenshtein) comparison; it ignores any uploaded audio. The old
+      // multipart request therefore always failed with 400 invalid_json before
+      // silently retrying as text. We send a single JSON request instead.
+      // Real audio-based AI scoring is a separate, unimplemented feature.
       final response = await _client.post(
         Uri.parse('$apiBaseUrl/api/speech/evaluate'),
         headers: const {
@@ -178,7 +157,11 @@ class SpeechEvaluationService {
 
   double _similarity(String spoken, String target) {
     if (spoken.isEmpty || target.isEmpty) return 0;
-    if (spoken.contains(target) || target.contains(spoken)) return 1;
+    // A full normalized match already scores 1.0 through the edit metric below
+    // (distance 0). We intentionally do NOT short-circuit on substring
+    // containment: a single recognized letter that happens to appear in the
+    // target must not score a long ayah at 100%. Partial overlap flows through
+    // to the regular Levenshtein / character-set similarity instead.
     final distance = _levenshteinDistance(spoken, target);
     final longest = spoken.length > target.length ? spoken.length : target.length;
     final editSimilarity = longest == 0 ? 0.0 : 1 - (distance / longest);

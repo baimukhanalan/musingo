@@ -1,29 +1,114 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'dart:io';
+import 'package:provider/provider.dart';
 
 import 'package:muslingo/main.dart';
+import 'package:muslingo/screens/login_screen.dart';
+import 'package:muslingo/services/app_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.resetStatic();
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets('Muslingo app starts with splash screen',
       (WidgetTester tester) async {
-    SharedPreferences.setMockInitialValues({});
-
     await tester.pumpWidget(const MuslingoApp());
 
     expect(find.text('muslingo'), findsOneWidget);
     expect(find.byIcon(Icons.add), findsNothing);
 
-    await tester.pumpWidget(const SizedBox.shrink());
+    await _teardown(tester);
   });
 
-  test('login screen offers account and local learning paths', () {
-    final source = File('lib/screens/login_screen.dart').readAsStringSync();
+  // Раньше на этом месте был тест, читавший login_screen.dart как ТЕКСТ и
+  // искавший в нём подстроки. Он не проверял поведение: экран мог быть сломан,
+  // а тест проходил — и наоборот, любое переименование его роняло.
+  testWidgets('Экран логина предлагает вход и путь без аккаунта',
+      (WidgetTester tester) async {
+    final state = AppState();
+    await tester.runAsync(() => _waitUntilInitialized(state));
 
-    expect(source, isNot(contains('Продолжить как гость')));
-    expect(source, isNot(contains('_loginGuest')));
-    expect(source, contains('Нет аккаунта? Зарегистрироваться'));
-    expect(source, contains('Продолжить без аккаунта'));
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppState>.value(
+        value: state,
+        child: MaterialApp(
+          home: const LoginScreen(),
+          // Экран после входа сюда не тащим — достаточно, чтобы переход
+          // состоялся и не упал на неизвестном маршруте.
+          onGenerateRoute: (settings) => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => const SizedBox.shrink(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Нет аккаунта? Зарегистрироваться'), findsOneWidget);
+    expect(find.text('Продолжить без аккаунта'), findsOneWidget);
+    expect(find.byType(TextField), findsWidgets);
+
+    await _teardown(tester);
   });
+
+  testWidgets('Вход без аккаунта заводит гостевой профиль',
+      (WidgetTester tester) async {
+    final state = AppState();
+    await tester.runAsync(() => _waitUntilInitialized(state));
+    expect(state.isLoggedIn, isFalse);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppState>.value(
+        value: state,
+        child: MaterialApp(
+          home: const LoginScreen(),
+          // Экран после входа сюда не тащим — достаточно, чтобы переход
+          // состоялся и не упал на неизвестном маршруте.
+          onGenerateRoute: (settings) => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => const SizedBox.shrink(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    // Премиум-редизайн логина сделал форму выше тестового вьюпорта (600px):
+    // прокручиваем кнопку в зону видимости, иначе tap бьёт мимо off-screen цели.
+    final guestBtn = find.text('Продолжить без аккаунта');
+    await tester.ensureVisible(guestBtn);
+    await tester.pump();
+    await tester.tap(guestBtn);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(state.isLoggedIn, isTrue);
+    expect(state.user, isNotNull);
+
+    await _teardown(tester);
+  });
+}
+
+/// AppState грузится асинхронно и не отдаёт future готовности — ждём флаг.
+/// Вызывать только внутри tester.runAsync: в фейковом времени testWidgets
+/// Future.delayed не двигается без pump и ожидание зависает навсегда.
+Future<void> _waitUntilInitialized(AppState state) async {
+  final deadline = DateTime.now().add(const Duration(seconds: 2));
+  while (!state.isInitialized && DateTime.now().isBefore(deadline)) {
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
+  expect(state.isInitialized, isTrue);
+}
+
+/// Гасит анимации и снимает дерево. Без прокрутки реального интервала
+/// flutter_animate оставляет живой Future.delayed, и тест падает на
+/// «A Timer is still pending». В tearDown это делать поздно — проверка
+/// таймеров срабатывает раньше него.
+Future<void> _teardown(WidgetTester tester) async {
+  await tester.pump(const Duration(milliseconds: 50));
+  await tester.pumpWidget(const SizedBox.shrink());
+  await tester.pump(const Duration(milliseconds: 50));
 }

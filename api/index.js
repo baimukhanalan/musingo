@@ -3,6 +3,7 @@ import authLogin from '../server/routes/auth-login.js';
 import authMe from '../server/routes/auth-me.js';
 import authRegister from '../server/routes/auth-register.js';
 import cronReminders from '../server/routes/cron-reminders.js';
+import friends from '../server/routes/friends.js';
 import health from '../server/routes/health.js';
 import leaderboard from '../server/routes/leaderboard.js';
 import progressComplete from '../server/routes/progress-complete.js';
@@ -19,6 +20,7 @@ const routes = new Map([
   ['auth/me', authMe],
   ['auth/register', authRegister],
   ['cron/reminders', cronReminders],
+  ['friends', friends],
   ['health', health],
   ['leaderboard', leaderboard],
   ['progress/complete', progressComplete],

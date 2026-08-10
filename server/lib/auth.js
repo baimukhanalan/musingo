@@ -1,51 +1,67 @@
 // Shared by the single Vercel API router.
-import { createHmac, randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
+import { randomBytes, randomUUID, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
+
+import { SignJWT, jwtVerify } from 'jose';
 
 import { sql, ensureSchema } from './db.js';
 import { ApiError } from './http.js';
 
 const scrypt = promisify(scryptCallback);
-const tokenLifetimeSeconds = 60 * 60 * 24 * 30;
 
-function secret() {
+// Signed sessions via jose. iss/aud are namespaced (overridable via env) and
+// the token carries iat/nbf/exp/jti. HS256 is pinned on verify to block
+// algorithm-confusion (e.g. a forged alg=none or RS256 token).
+const issuer = process.env.MUSLINGO_JWT_ISS ?? 'muslingo';
+const audience = process.env.MUSLINGO_JWT_AUD ?? 'muslingo-app';
+const tokenTtl = process.env.MUSLINGO_JWT_TTL ?? '30d';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Throwaway credential so login can run scrypt with the same cost even when the
+// email is unknown, keeping response time (and the response body) identical for
+// "no such user" and "wrong password" — closes the enumeration side channel.
+const dummySalt = randomBytes(16).toString('base64url');
+
+export function isUuid(value) {
+  return typeof value === 'string' && UUID_RE.test(value);
+}
+
+function secretKey() {
   const value = process.env.JWT_SECRET;
   if (!value || value.length < 32) throw new Error('JWT_SECRET must be at least 32 characters.');
-  return value;
+  return new TextEncoder().encode(value);
 }
 
-function encode(value) {
-  return Buffer.from(JSON.stringify(value)).toString('base64url');
+export async function issueToken(userId) {
+  return new SignJWT({})
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setSubject(String(userId))
+    .setIssuedAt()
+    .setNotBefore('0s')
+    .setIssuer(issuer)
+    .setAudience(audience)
+    .setJti(randomUUID())
+    .setExpirationTime(tokenTtl)
+    .sign(secretKey());
 }
 
-export function issueToken(userId) {
-  const now = Math.floor(Date.now() / 1000);
-  const header = encode({ alg: 'HS256', typ: 'JWT' });
-  const payload = encode({ sub: userId, iat: now, exp: now + tokenLifetimeSeconds });
-  const unsigned = `${header}.${payload}`;
-  const signature = createHmac('sha256', secret()).update(unsigned).digest('base64url');
-  return `${unsigned}.${signature}`;
-}
-
-export function verifyToken(token) {
-  const parts = String(token ?? '').split('.');
-  if (parts.length !== 3) throw new ApiError(401, 'invalid_session', 'Session is invalid.');
-  const unsigned = `${parts[0]}.${parts[1]}`;
-  const actual = Buffer.from(parts[2], 'base64url');
-  const expected = createHmac('sha256', secret()).update(unsigned).digest();
-  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
-    throw new ApiError(401, 'invalid_session', 'Session is invalid.');
-  }
-  let payload;
+export async function verifyToken(token) {
   try {
-    payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
-  } catch {
+    const { payload } = await jwtVerify(String(token ?? ''), secretKey(), {
+      issuer,
+      audience,
+      algorithms: ['HS256'],
+    });
+    if (!payload.sub) throw new ApiError(401, 'invalid_session', 'Session is invalid.');
+    return payload;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    if (error?.code === 'ERR_JWT_EXPIRED') {
+      throw new ApiError(401, 'expired_session', 'Session has expired.');
+    }
     throw new ApiError(401, 'invalid_session', 'Session is invalid.');
   }
-  if (!payload.sub || !payload.exp || payload.exp <= Math.floor(Date.now() / 1000)) {
-    throw new ApiError(401, 'expired_session', 'Session has expired.');
-  }
-  return payload;
 }
 
 export async function hashPassword(password) {
@@ -60,6 +76,17 @@ export async function passwordMatches(password, salt, expectedHash) {
   return candidate.length === expected.length && timingSafeEqual(candidate, expected);
 }
 
+// Verifies a login password whether or not the account exists. For an unknown
+// email (or a row missing its hash) we still run scrypt against a throwaway
+// salt and return false, so timing does not reveal account existence.
+export async function verifyLoginPassword(user, password) {
+  if (user && user.password_salt && user.password_hash) {
+    return passwordMatches(password, user.password_salt, user.password_hash);
+  }
+  await scrypt(password, dummySalt, 64);
+  return false;
+}
+
 export function bearerToken(request) {
   const header = String(request.headers.authorization ?? '');
   if (!header.startsWith('Bearer ')) throw new ApiError(401, 'authentication_required', 'Authentication required.');
@@ -68,7 +95,13 @@ export function bearerToken(request) {
 
 export async function requireUser(request) {
   await ensureSchema();
-  const payload = verifyToken(bearerToken(request));
+  const payload = await verifyToken(bearerToken(request));
+  // Validate the UUID shape before touching Postgres. A validly-signed token
+  // whose sub was not a UUID previously reached `${sub}::uuid` and surfaced as
+  // a 500 (invalid_text_representation) instead of a clean 401.
+  if (!isUuid(payload.sub)) {
+    throw new ApiError(401, 'invalid_session', 'Session is invalid.');
+  }
   const rows = await sql`
     SELECT id, email, display_name
     FROM muslingo_users

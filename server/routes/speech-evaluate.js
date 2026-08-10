@@ -1,4 +1,15 @@
+import { optionalUser } from '../lib/auth.js';
 import { method, readJson, withApi } from '../lib/http.js';
+
+// Жёсткий предел длины входа ДО вычислений. distance() — O(n·m) и вызывается
+// дважды; при 2000 символах это до 8 млн операций на запрос без авторизации.
+// 400 символов с запасом покрывают самый длинный аят и ответ пользователя, но
+// ограничивают стоимость до ~160k операций — дешёвая защита от «сжигания CPU».
+export const SPEECH_MAX_INPUT = 400;
+
+export function clampInput(value, max = SPEECH_MAX_INPUT) {
+  return String(value ?? '').slice(0, Math.max(0, max));
+}
 
 function normalize(value) {
   return String(value ?? '')
@@ -31,10 +42,15 @@ function score(spoken, target) {
 
 export default withApi(async (request, response) => {
   method(request, ['POST']);
+  // Привязываем запрос к пользователю, если он прислал токен. optionalUser не
+  // отклоняет анонимов: клиент шлёт speech-запросы без Authorization и молча
+  // откатывается на локальную оценку, поэтому requireUser отключил бы серверную
+  // оценку для всех. Защита от перегрузки CPU — жёсткий лимит длины ниже.
+  await optionalUser(request);
   const body = readJson(request);
-  const transcript = String(body.transcript ?? '').slice(0, 2000);
-  const target = String(body.target ?? '').slice(0, 2000);
-  const phoneticTarget = String(body.phoneticTarget ?? '').slice(0, 2000);
+  const transcript = clampInput(body.transcript);
+  const target = clampInput(body.target);
+  const phoneticTarget = clampInput(body.phoneticTarget);
   const normalizedTranscript = normalize(transcript);
   const targetScore = score(normalizedTranscript, normalize(target));
   const phoneticScore = score(normalizedTranscript, normalize(phoneticTarget));

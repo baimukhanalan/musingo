@@ -52,6 +52,12 @@ class _CatCharacterState extends State<CatCharacter>
   @override
   Widget build(BuildContext context) {
     final asset = _assetForMood(widget.mood);
+    // M12: декодируем PNG в разрешении под экранный размер, а не в исходные
+    // 600x900. Коты портретные и рисуются с BoxFit.contain в квадратной рамке
+    // widget.size, поэтому ограничивающая сторона — высота. Задаём только
+    // cacheHeight, чтобы ширина масштабировалась пропорционально (без искажения).
+    final cacheExtent =
+        (widget.size * MediaQuery.of(context).devicePixelRatio).round();
     final cat = Semantics(
       image: true,
       label: _labelForMood(widget.mood),
@@ -64,6 +70,7 @@ class _CatCharacterState extends State<CatCharacter>
             alignment: Alignment.center,
             filterQuality: FilterQuality.high,
             gaplessPlayback: true,
+            cacheHeight: cacheExtent,
           ),
         ),
       ),

@@ -45,4 +45,19 @@ void main() {
     expect(failed.feedbackText, isNotEmpty);
     service.dispose();
   });
+
+  test('a single recognized letter does not pass a full ayah at 100%', () {
+    // Regression guard: previously any substring of the target (e.g. one
+    // letter) short-circuited similarity to 1.0 and passed the step.
+    final service = SpeechEvaluationService();
+    final result = service.evaluateLocally(
+      transcript: 'م',
+      target: 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
+      passScore: 70,
+    );
+
+    expect(result.score, lessThan(50));
+    expect(result.passed, isFalse);
+    service.dispose();
+  });
 }

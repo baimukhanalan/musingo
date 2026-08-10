@@ -7,11 +7,13 @@ export class ApiError extends Error {
   }
 }
 
+const maxBodyBytes = 1_000_000;
+
 export function readJson(request) {
   const body = request.body;
   if (body == null) return {};
   if (typeof body === 'string') {
-    if (body.length > 1_000_000) {
+    if (Buffer.byteLength(body, 'utf8') > maxBodyBytes) {
       throw new ApiError(413, 'payload_too_large', 'Request is too large.');
     }
     try {
@@ -21,7 +23,7 @@ export function readJson(request) {
     }
   }
   if (Buffer.isBuffer(body)) {
-    if (body.length > 1_000_000) {
+    if (body.length > maxBodyBytes) {
       throw new ApiError(413, 'payload_too_large', 'Request is too large.');
     }
     try {
@@ -30,7 +32,22 @@ export function readJson(request) {
       throw new ApiError(400, 'invalid_json', 'Invalid JSON body.');
     }
   }
-  if (typeof body === 'object') return body;
+  if (typeof body === 'object') {
+    // On Vercel the platform parses the JSON body before the function runs, so
+    // request.body arrives as an object and neither branch above executes — the
+    // original size guard was dead code and unbounded payloads slipped through.
+    // Re-estimate the serialized size here so oversized bodies still get a 413.
+    let serialized;
+    try {
+      serialized = JSON.stringify(body);
+    } catch {
+      throw new ApiError(400, 'invalid_json', 'Invalid JSON body.');
+    }
+    if (Buffer.byteLength(serialized ?? '', 'utf8') > maxBodyBytes) {
+      throw new ApiError(413, 'payload_too_large', 'Request is too large.');
+    }
+    return body;
+  }
   throw new ApiError(400, 'invalid_json', 'Invalid JSON body.');
 }
 
@@ -70,12 +87,27 @@ export function integer(value, { min = 0, max = Number.MAX_SAFE_INTEGER } = {}) 
   return parsed;
 }
 
+// Pure and header-only so it can be unit-tested against spoofed values.
+export function trustedClientIp(headers = {}) {
+  // Vercel overwrites X-Forwarded-For with the chain it observes and places the
+  // real peer as the RIGHTMOST entry, so a client-supplied leftmost value must
+  // not be trusted (that is what let an attacker mint unlimited rate-limit
+  // buckets). Take the rightmost hop; fall back to x-real-ip only when XFF is
+  // absent. Docs: https://vercel.com/docs/headers/request-headers
+  const rawForwarded = headers['x-forwarded-for'];
+  const forwarded = Array.isArray(rawForwarded) ? rawForwarded.join(',') : rawForwarded ?? '';
+  const chain = String(forwarded)
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (chain.length > 0) return chain[chain.length - 1].slice(0, 64);
+  const rawReal = headers['x-real-ip'];
+  const real = Array.isArray(rawReal) ? rawReal[0] : rawReal ?? '';
+  return String(real).trim().slice(0, 64);
+}
+
 export function clientIp(request) {
-  const forwarded = request.headers['x-forwarded-for'];
-  return String(Array.isArray(forwarded) ? forwarded[0] : forwarded ?? '')
-    .split(',')[0]
-    .trim()
-    .slice(0, 64);
+  return trustedClientIp(request.headers ?? {});
 }
 
 export function withApi(handler) {

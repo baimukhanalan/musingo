@@ -53,7 +53,12 @@ class NotificationPlatform {
     required List<ReminderMessage> messages,
     int dueCount = 0,
     String learningGoal = '',
+    String name = '',
+    int streak = 0,
   }) async {
+    // На web реальные локальные уведомления не планируем — контент собирает
+    // серверный web-push. Сигнатура совпадает с остальными платформами;
+    // name/streak здесь не используются.
     if (web.Notification.permission != 'granted') return;
     final subscribed = (await _pushSubscribe(
       hour.toJS,

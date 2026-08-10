@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'services/app_state.dart';
@@ -12,7 +13,7 @@ import 'screens/main_tab_screen.dart';
 import 'screens/lesson_screen.dart';
 import 'screens/lesson_review_screen.dart';
 import 'screens/premium_screen.dart';
-import 'screens/leaderboard_screen.dart';
+import 'screens/friends_screen.dart';
 import 'screens/achievements_screen.dart';
 import 'screens/streak_screen.dart';
 import 'screens/settings_screen.dart';
@@ -20,6 +21,8 @@ import 'screens/install_app_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/coach_screen.dart';
 import 'screens/rules_screen.dart';
+import 'screens/academy_screen.dart';
+import 'screens/tajwid_review_screen.dart';
 import 'models/lesson.dart';
 
 void main() async {
@@ -32,28 +35,77 @@ void main() async {
   runApp(const MuslingoApp());
 }
 
-class MuslingoApp extends StatelessWidget {
+class MuslingoApp extends StatefulWidget {
   const MuslingoApp({super.key});
 
   @override
+  State<MuslingoApp> createState() => _MuslingoAppState();
+}
+
+class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
+  // Держим единственный AppState на всё время жизни приложения и сами им владеем
+  // (ChangeNotifierProvider.value не диспоузит), чтобы навесить на него
+  // наблюдатель жизненного цикла.
+  final AppState _appState = AppState();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Мягкий лок жизней (M4): если жизни кончились при открытом приложении, они
+    // раньше восстанавливались только после перезапуска. При возврате на
+    // передний план пересчитываем накопившуюся по времени регенерацию.
+    if (state == AppLifecycleState.resumed) {
+      _appState.refreshHearts();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _appState.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AppState(),
-      child: MaterialApp(
-        title: 'Muslingo',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        builder: (context, child) => ColoredBox(
-          color: AppColors.backgroundGrey,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
-              child: child ?? const SizedBox.shrink(),
+    return ChangeNotifierProvider<AppState>.value(
+      value: _appState,
+      // Подписываемся на AppState, чтобы MaterialApp пересобирался при смене
+      // языка интерфейса (locale) и подхватывал новый Locale.
+      child: Consumer<AppState>(
+        builder: (context, appState, _) => MaterialApp(
+          title: 'Muslingo',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          locale: appState.locale.toLocale(),
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [
+            Locale('ru'),
+            Locale('kk'),
+            Locale('en'),
+          ],
+          builder: (context, child) => ColoredBox(
+            color: AppColors.backgroundGrey,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: child ?? const SizedBox.shrink(),
+              ),
             ),
           ),
+          initialRoute: '/splash',
+          onGenerateRoute: _generateRoute,
         ),
-        initialRoute: '/splash',
-        onGenerateRoute: _generateRoute,
       ),
     );
   }
@@ -82,8 +134,15 @@ class MuslingoApp extends StatelessWidget {
         page = arguments is Lesson
             ? LessonScreen(lesson: arguments)
             : const _RouteFallbackScreen(
-                title: 'Урок не найден',
-                message: 'Открой урок с главного экрана, чтобы начать заново.',
+                titleRu: 'Урок не найден',
+                titleKk: 'Сабақ табылмады',
+                titleEn: 'Lesson not found',
+                messageRu:
+                    'Открой урок с главного экрана, чтобы начать заново.',
+                messageKk:
+                    'Қайта бастау үшін басты экраннан сабақты аш.',
+                messageEn:
+                    'Open a lesson from the home screen to start again.',
               );
         break;
       case '/lesson_review':
@@ -91,15 +150,22 @@ class MuslingoApp extends StatelessWidget {
         page = arguments is Map<String, dynamic>
             ? LessonReviewScreen(result: arguments)
             : const _RouteFallbackScreen(
-                title: 'Итог урока недоступен',
-                message: 'Результат урока не был передан. Вернись к обучению.',
+                titleRu: 'Итог урока недоступен',
+                titleKk: 'Сабақ қорытындысы қолжетімсіз',
+                titleEn: 'Lesson summary unavailable',
+                messageRu:
+                    'Результат урока не был передан. Вернись к обучению.',
+                messageKk:
+                    'Сабақ нәтижесі берілмеді. Оқуға оралыңыз.',
+                messageEn:
+                    'The lesson result was not provided. Return to learning.',
               );
         break;
       case '/premium':
         page = const PremiumScreen();
         break;
-      case '/leaderboard':
-        page = const LeaderboardScreen();
+      case '/friends':
+        page = const FriendsScreen();
         break;
       case '/achievements':
         page = const AchievementsScreen();
@@ -119,13 +185,25 @@ class MuslingoApp extends StatelessWidget {
       case '/rules':
         page = const RulesScreen();
         break;
+      case '/academy':
+        page = const AcademyScreen();
+        break;
+      // Черновик таджвида для ревью специалистом. Достижим только при сборке с
+      // MUSLINGO_DRAFT_CONTENT=true (вход показан в профиле под тем же флагом).
+      case '/review/tajwid':
+        page = const TajwidReviewScreen();
+        break;
       case '/help':
         page = const HelpScreen();
         break;
       default:
         page = const _RouteFallbackScreen(
-          title: 'Страница не найдена',
-          message: 'Такого раздела нет. Можно вернуться к урокам.',
+          titleRu: 'Страница не найдена',
+          titleKk: 'Бет табылмады',
+          titleEn: 'Page not found',
+          messageRu: 'Такого раздела нет. Можно вернуться к урокам.',
+          messageKk: 'Мұндай бөлім жоқ. Сабақтарға оралуға болады.',
+          messageEn: 'There is no such section. You can return to the lessons.',
         );
     }
 
@@ -144,16 +222,27 @@ class MuslingoApp extends StatelessWidget {
 }
 
 class _RouteFallbackScreen extends StatelessWidget {
-  final String title;
-  final String message;
+  final String titleRu;
+  final String? titleKk;
+  final String? titleEn;
+  final String messageRu;
+  final String? messageKk;
+  final String? messageEn;
 
   const _RouteFallbackScreen({
-    required this.title,
-    required this.message,
+    required this.titleRu,
+    this.titleKk,
+    this.titleEn,
+    required this.messageRu,
+    this.messageKk,
+    this.messageEn,
   });
 
   @override
   Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final title = state.tr(ru: titleRu, kk: titleKk, en: titleEn);
+    final message = state.tr(ru: messageRu, kk: messageKk, en: messageEn);
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -207,7 +296,11 @@ class _RouteFallbackScreen extends StatelessWidget {
                     (route) => false,
                   ),
                   icon: const Icon(Icons.school_rounded),
-                  label: const Text('К урокам'),
+                  label: Text(state.tr(
+                    ru: 'К урокам',
+                    kk: 'Сабақтарға',
+                    en: 'To lessons',
+                  )),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.navy,
                     foregroundColor: Colors.white,
@@ -276,6 +369,13 @@ class _SplashScreenState extends State<_SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    // M12: сплэш-кот (900x900 PNG) показывается 190x190. Декодируем растр под
+    // экранный размер, домноженный на devicePixelRatio, а не в исходном
+    // разрешении. Картинка квадратная, поэтому cacheWidth == cacheHeight без
+    // искажения пропорций.
+    final catCache =
+        (190 * MediaQuery.of(context).devicePixelRatio).round();
+    final state = context.watch<AppState>();
     return Scaffold(
       backgroundColor: AppColors.sky,
       body: Center(
@@ -285,17 +385,19 @@ class _SplashScreenState extends State<_SplashScreen>
             opacity: _fade,
             child: ScaleTransition(
               scale: _scale,
-              child: const Column(
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Image(
-                    image: AssetImage('assets/images/muslingo_cat.png'),
+                  Image.asset(
+                    'assets/images/muslingo_cat.png',
                     width: 190,
                     height: 190,
                     fit: BoxFit.contain,
+                    cacheWidth: catCache,
+                    cacheHeight: catCache,
                   ),
-                  SizedBox(height: 18),
-                  Text(
+                  const SizedBox(height: 18),
+                  const Text(
                     'muslingo',
                     style: TextStyle(
                       fontFamily: 'Nunito',
@@ -306,8 +408,12 @@ class _SplashScreenState extends State<_SplashScreen>
                     ),
                   ),
                   Text(
-                    'Коран и ислам шаг за шагом',
-                    style: TextStyle(
+                    state.tr(
+                      ru: 'Коран и ислам шаг за шагом',
+                      kk: 'Құран мен ислам қадам-қадам',
+                      en: 'The Quran and Islam step by step',
+                    ),
+                    style: const TextStyle(
                         fontFamily: 'Nunito',
                         fontSize: 16,
                         color: Colors.white70),

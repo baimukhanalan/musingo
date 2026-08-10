@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 import '../services/app_state.dart';
 import '../utils/colors.dart';
 import '../widgets/cat_character.dart';
-import '../widgets/custom_button.dart';
+import '../widgets/premium_background.dart';
+import '../widgets/premium_button.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -100,38 +101,46 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            children: [
-              const SizedBox(height: 24),
-              const CatCharacter(mood: CatMood.greet, size: 140),
-              const SizedBox(height: 16),
-              Text(
-                _showRegister ? 'Создай аккаунт' : 'Добро пожаловать!',
-                style: const TextStyle(
-                  fontFamily: 'Nunito',
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textDark,
+      body: PremiumBackground(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              children: [
+                const SizedBox(height: 20),
+                const _Wordmark(),
+                const SizedBox(height: 12),
+                const CatCharacter(mood: CatMood.greet, size: 132),
+                const SizedBox(height: 18),
+                Text(
+                  _showRegister ? 'Создай аккаунт' : 'Добро пожаловать!',
+                  style: const TextStyle(
+                    fontFamily: 'Nunito',
+                    fontSize: 30,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.navyDark,
+                    letterSpacing: -0.5,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
-              ),
-              Text(
-                _showRegister
-                    ? 'Начни учиться прямо сейчас'
-                    : 'Muslingo — Коран и ислам шаг за шагом',
-                style: const TextStyle(
+                const SizedBox(height: 6),
+                Text(
+                  _showRegister
+                      ? 'Начни учиться прямо сейчас'
+                      : 'Коран и ислам шаг за шагом',
+                  style: const TextStyle(
                     fontFamily: 'Nunito',
                     fontSize: 15,
-                    color: AppColors.textGrey),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 28),
-              ..._authForm(),
-              const SizedBox(height: 32),
-            ],
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textGrey,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 28),
+                ..._authForm(),
+                const SizedBox(height: 32),
+              ],
+            ),
           ),
         ),
       ),
@@ -163,12 +172,27 @@ class _LoginScreenState extends State<LoginScreen> {
             onPressed: () => setState(() => _passVisible = !_passVisible),
           ),
         ),
-        const SizedBox(height: 20),
-        CustomButton(
-            text: _showRegister ? 'Создать аккаунт' : 'Войти',
-            onPressed: _isLoading ? null : (_showRegister ? _register : _login),
-            isLoading: _isLoading),
-        const SizedBox(height: 12),
+        const SizedBox(height: 22),
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            PremiumButton(
+              label: _showRegister ? 'Создать аккаунт' : 'Войти',
+              onPressed:
+                  _isLoading ? null : (_showRegister ? _register : _login),
+            ),
+            if (_isLoading)
+              const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.6,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 14),
         TextButton(
           onPressed: _isLoading
               ? null
@@ -180,26 +204,51 @@ class _LoginScreenState extends State<LoginScreen> {
             style: const TextStyle(
               fontFamily: 'Nunito',
               fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: AppColors.pistachioDark,
+              fontWeight: FontWeight.w800,
+              color: AppColors.navy,
             ),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         TextButton.icon(
           onPressed: _isLoading ? null : _continueLocally,
-          icon: const Icon(Icons.phone_iphone_rounded),
+          icon: const Icon(Icons.phone_iphone_rounded,
+              size: 18, color: AppColors.textGrey),
           label: const Text(
             'Продолжить без аккаунта',
             style: TextStyle(
               fontFamily: 'Nunito',
               fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: AppColors.navy,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textGrey,
             ),
           ),
         ),
       ];
+}
+
+/// Вордмарк «muslingo.» — navy w900, точка sky.
+class _Wordmark extends StatelessWidget {
+  const _Wordmark();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Text.rich(
+      TextSpan(
+        style: TextStyle(
+          fontFamily: 'Nunito',
+          fontSize: 22,
+          fontWeight: FontWeight.w900,
+          letterSpacing: -0.5,
+          color: AppColors.navyDark,
+        ),
+        children: [
+          TextSpan(text: 'muslingo'),
+          TextSpan(text: '.', style: TextStyle(color: AppColors.sky)),
+        ],
+      ),
+    );
+  }
 }
 
 class _Field extends StatelessWidget {
@@ -221,30 +270,52 @@ class _Field extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      keyboardType: type,
-      obscureText: obscure,
-      style: const TextStyle(
-          fontFamily: 'Nunito', fontSize: 16, color: AppColors.textDark),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle:
-            const TextStyle(fontFamily: 'Nunito', color: AppColors.textGrey),
-        prefixIcon: Icon(icon, color: AppColors.pistachio),
-        suffixIcon: suffix,
-        filled: true,
-        fillColor: AppColors.backgroundGrey,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          // Мягкая premium-тень как у малых карточек.
+          BoxShadow(
+            color: AppColors.navyDark.withValues(alpha: 0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        keyboardType: type,
+        obscureText: obscure,
+        style: const TextStyle(
+            fontFamily: 'Nunito',
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textDark),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(
+              fontFamily: 'Nunito',
+              fontWeight: FontWeight.w600,
+              color: AppColors.textGrey),
+          prefixIcon: Icon(icon, color: AppColors.sky),
+          suffixIcon: suffix,
+          filled: true,
+          fillColor: AppColors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: AppColors.border, width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: AppColors.sky, width: 2),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.pistachio, width: 2),
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
     );
   }

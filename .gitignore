@@ -4,9 +4,13 @@
 .vercel_flutter/
 .idea/
 .claude/
+.agents/
 .packages
 build/
 node_modules/
+
+# Случайно вложенная в проект папка бэкапа — не должна попадать в git/деплой
+Muslingo mobile backup before github 2026-07-16/
 backend/pb_data/
 tools/pocketbase/pb_data/
 tools/pocketbase/pocketbase
@@ -14,3 +18,8 @@ tools/pocketbase/CHANGELOG.md
 tools/pocketbase/LICENSE.md
 .env*
 !.env.example
+
+# Секреты подписи Android — только локально, никогда в git
+android/key.properties
+*.jks
+*.keystore

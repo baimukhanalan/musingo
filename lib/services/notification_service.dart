@@ -25,6 +25,8 @@ class NotificationService {
     required List<ReminderMessage> messages,
     int dueCount = 0,
     String learningGoal = '',
+    String name = '',
+    int streak = 0,
   }) =>
       _platform.scheduleDaily(
         hour: hour,
@@ -32,6 +34,8 @@ class NotificationService {
         messages: messages,
         dueCount: dueCount,
         learningGoal: learningGoal,
+        name: name,
+        streak: streak,
       );
 
   Future<void> cancelAll() => _platform.cancelAll();
