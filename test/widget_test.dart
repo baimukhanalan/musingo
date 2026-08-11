@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 import 'package:muslingo/main.dart';
+import 'package:muslingo/models/learning_profile.dart';
 import 'package:muslingo/screens/login_screen.dart';
 import 'package:muslingo/screens/onboarding_screen.dart';
 import 'package:muslingo/services/app_state.dart';
@@ -119,6 +120,61 @@ void main() {
 
     expect(state.isLoggedIn, isTrue);
     expect(state.user, isNotNull);
+
+    await _teardown(tester);
+  });
+
+  testWidgets('Диагностика запускает рекомендованный первый урок',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final state = AppState();
+    await tester.runAsync(() => _waitUntilInitialized(state));
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppState>.value(
+        value: state,
+        child: MaterialApp(
+          home: const OnboardingScreen(),
+          onGenerateRoute: (settings) => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => Scaffold(
+              body: Text(settings.name == '/lesson'
+                  ? 'lesson-route'
+                  : 'home-route'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Начать — 2 минуты'));
+    await tester.pump();
+    await tester.tap(find.text('Улучшить произношение'));
+    await tester.pump();
+    for (final answer in <String>[
+      'Знаю некоторые',
+      'По слогам и медленно',
+      'Знаю частично',
+      'Некоторые слова',
+      'Есть отдельные ошибки',
+    ]) {
+      await tester.tap(find.text(answer));
+      await tester.pump();
+    }
+
+    expect(find.text('Начать первый урок'), findsOneWidget);
+    await tester.tap(find.text('Начать первый урок'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('lesson-route'), findsOneWidget);
+    expect(state.isGuest, isTrue);
+    expect(state.learningGoal, LearningGoal.pronunciation);
 
     await _teardown(tester);
   });

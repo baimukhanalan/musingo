@@ -180,13 +180,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _finish() async {
     if (_goal == null) return;
     setState(() => _saving = true);
-    await context.read<AppState>().completePlacement(
+    final state = context.read<AppState>();
+    await state.completePlacement(
           goal: _goal!,
           level: _level,
           recommendation: _recommendation,
         );
     if (!mounted) return;
-    Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+    final firstLesson = state.recommendedLesson;
+    if (firstLesson != null) {
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/lesson',
+        (route) => false,
+        arguments: firstLesson,
+      );
+    } else {
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+    }
   }
 
   @override
@@ -702,17 +713,19 @@ class _ResultStep extends StatelessWidget {
                 children: [
                   const Icon(Icons.auto_awesome_rounded, color: AppColors.navy),
                   const SizedBox(width: 8),
-                  Text(
-                    state.tr(
-                      ru: 'Рекомендация Muslingo',
-                      kk: 'Muslingo ұсынысы',
-                      en: 'Muslingo recommendation',
-                    ),
-                    style: const TextStyle(
-                      fontFamily: 'Nunito',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.navy,
+                  Expanded(
+                    child: Text(
+                      state.tr(
+                        ru: 'Рекомендация Muslingo',
+                        kk: 'Muslingo ұсынысы',
+                        en: 'Muslingo recommendation',
+                      ),
+                      style: const TextStyle(
+                        fontFamily: 'Nunito',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.navy,
+                      ),
                     ),
                   ),
                 ],

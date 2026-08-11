@@ -456,7 +456,12 @@ class _LessonScreenState extends State<LessonScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              Navigator.pop(context);
+              final navigator = Navigator.of(context);
+              if (navigator.canPop()) {
+                navigator.pop();
+              } else {
+                navigator.pushReplacementNamed('/home');
+              }
             },
             child: Text(state.tr(ru: 'Выйти', kk: 'Шығу', en: 'Exit'),
                 style: const TextStyle(
