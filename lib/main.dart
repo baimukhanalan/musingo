@@ -401,7 +401,7 @@ class _SplashScreenState extends State<_SplashScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Image.asset(
-                    'assets/images/muslingo_cat.png',
+                    'assets/images/muslingo_cat.webp',
                     width: 190,
                     height: 190,
                     fit: BoxFit.contain,

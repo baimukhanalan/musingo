@@ -79,7 +79,7 @@ void main() {
             widget is Image &&
             widget.image is AssetImage &&
             (widget.image as AssetImage).assetName ==
-                'assets/images/cat_learning_real.png',
+                'assets/images/cat_learning_real.webp',
       ),
       findsOneWidget,
     );

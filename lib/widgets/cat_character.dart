@@ -115,21 +115,21 @@ class _CatCharacterState extends State<CatCharacter>
   String _assetForMood(CatMood mood) {
     switch (mood) {
       case CatMood.idle:
-        return 'assets/images/cat_idle_real.png';
+        return 'assets/images/cat_idle_real.webp';
       case CatMood.success:
-        return 'assets/images/cat_success_real.png';
+        return 'assets/images/cat_success_real.webp';
       case CatMood.error:
-        return 'assets/images/cat_error_real.png';
+        return 'assets/images/cat_error_real.webp';
       case CatMood.greet:
-        return 'assets/images/cat_greet_real.png';
+        return 'assets/images/cat_greet_real.webp';
       case CatMood.support:
-        return 'assets/images/cat_thinking_real.png';
+        return 'assets/images/cat_thinking_real.webp';
       case CatMood.praise:
-        return 'assets/images/cat_praise_real.png';
+        return 'assets/images/cat_praise_real.webp';
       case CatMood.learning:
-        return 'assets/images/cat_learning_real.png';
+        return 'assets/images/cat_learning_real.webp';
       case CatMood.prayer:
-        return 'assets/images/cat_prayer_real.png';
+        return 'assets/images/cat_prayer_real.webp';
     }
   }
 

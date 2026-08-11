@@ -487,7 +487,7 @@ class _MascotGlowState extends State<_MascotGlow>
           _PingRing(animation: _ringController, phase: 0),
           _PingRing(animation: _ringController, phase: 0.65),
           Image.asset(
-            'assets/images/cat_greet_real.png',
+            'assets/images/cat_greet_real.webp',
             key: const ValueKey('premium-intro-mascot'),
             width: 212,
             height: 212,

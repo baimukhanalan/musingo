@@ -16,6 +16,7 @@ node_modules/
 .idea/
 .vscode/
 .claude/
+audit-evidence-*/
 
 # Секреты и локальное окружение — на Vercel свои env-переменные
 .env.local

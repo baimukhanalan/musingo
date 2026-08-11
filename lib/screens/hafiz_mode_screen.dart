@@ -19,6 +19,9 @@ import '../widgets/premium_button.dart';
 import '../widgets/premium_card.dart';
 import '../widgets/progress_ring.dart';
 
+part 'hafiz_mode/hafiz_header.dart';
+part 'hafiz_mode/hafiz_review.dart';
+
 class HafizModeScreen extends StatefulWidget {
   final QuranChapterSummary chapter;
   final QuranVerse verse;
@@ -63,14 +66,12 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
             ru: 'Прослушай образец',
             kk: 'Үлгіні тыңда',
             en: 'Listen to the sample'),
-        state.tr(
-            ru: 'Повтори вместе', kk: 'Бірге қайтала', en: 'Repeat along'),
+        state.tr(ru: 'Повтори вместе', kk: 'Бірге қайтала', en: 'Repeat along'),
         state.tr(
             ru: 'Повтори по частям',
             kk: 'Бөліктеп қайтала',
             en: 'Repeat in parts'),
-        state.tr(
-            ru: 'Скрывай текст', kk: 'Мәтінді жасыр', en: 'Hide the text'),
+        state.tr(ru: 'Скрывай текст', kk: 'Мәтінді жасыр', en: 'Hide the text'),
         state.tr(
             ru: 'Вспомни без подсказки',
             kk: 'Кеңессіз есіңе түсір',
@@ -138,8 +139,7 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
     });
     final sources = [
       widget.verse.audioUrl,
-      if (widget.verse.audioFallbackUrl != null)
-        widget.verse.audioFallbackUrl!,
+      if (widget.verse.audioFallbackUrl != null) widget.verse.audioFallbackUrl!,
     ];
     Object? lastError;
     for (final source in sources) {
@@ -418,9 +418,9 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
     final state = context.watch<AppState>();
     // Real "% в памяти" from stored progress for this verse (read-only).
     final existing = state.hafizProgressFor(
-          widget.chapter.number,
-          widget.verse.numberInChapter,
-        );
+      widget.chapter.number,
+      widget.verse.numberInChapter,
+    );
     final memoryPercent = ((existing?.mastery ?? 0) * 100).round();
 
     return Scaffold(
@@ -506,7 +506,8 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
     final state = context.read<AppState>();
     switch (_stage) {
       case 0:
-        return Column(children: [_VerseText(verse: widget.verse), _audioButton()]);
+        return Column(
+            children: [_VerseText(verse: widget.verse), _audioButton()]);
       case 1:
         return Column(
           children: [
@@ -700,12 +701,12 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
               segments: [
                 ButtonSegment(
                     value: 1,
-                    label: Text(state.tr(
-                        ru: 'Трудно', kk: 'Қиын', en: 'Hard'))),
+                    label:
+                        Text(state.tr(ru: 'Трудно', kk: 'Қиын', en: 'Hard'))),
                 ButtonSegment(
                     value: 2,
-                    label: Text(state.tr(
-                        ru: 'Почти', kk: 'Шамалы', en: 'Almost'))),
+                    label: Text(
+                        state.tr(ru: 'Почти', kk: 'Шамалы', en: 'Almost'))),
                 ButtonSegment(
                     value: 3,
                     label: Text(state.tr(
@@ -741,7 +742,8 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
                             ? state.tr(
                                 ru: 'Текст скрыт. Запиши аят по памяти.',
                                 kk: 'Мәтін жасырылған. Аятты жатқа жазып ал.',
-                                en: 'Text is hidden. Record the verse from memory.')
+                                en:
+                                    'Text is hidden. Record the verse from memory.')
                             : state.tr(
                                 ru: 'Оценка: ${_result!.score}%',
                                 kk: 'Баға: ${_result!.score}%',
@@ -790,7 +792,8 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
               ),
             ),
             FilledButton.icon(
-              onPressed: _evaluating || !_voiceConsent ? null : _toggleRecording,
+              onPressed:
+                  _evaluating || !_voiceConsent ? null : _toggleRecording,
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(52),
                 shape: RoundedRectangleBorder(
@@ -897,515 +900,3 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
 
 /// Premium screen header: back control, title + sura subtitle and a mastery
 /// ring showing "% в памяти" for this verse.
-class _Header extends StatelessWidget {
-  final QuranChapterSummary chapter;
-  final int memoryPercent;
-  final VoidCallback onBack;
-
-  const _Header({
-    required this.chapter,
-    required this.memoryPercent,
-    required this.onBack,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 6, 16, 4),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: onBack,
-            tooltip: state.tr(ru: 'Назад', kk: 'Артқа', en: 'Back'),
-            icon: const Icon(Icons.arrow_back_rounded, color: AppColors.navyDark),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Hafiz Mode',
-                  style: TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.navyDark,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  state.tr(
-                      ru: '${chapter.latinName} · заучивание',
-                      kk: '${chapter.latinName} · жаттау',
-                      en: '${chapter.latinName} · memorization'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textGrey,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ProgressRing(
-                percent: memoryPercent / 100,
-                size: 52,
-                color: AppColors.gold,
-                child: Text(
-                  '$memoryPercent%',
-                  style: const TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.navyDark,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                state.tr(ru: 'В ПАМЯТИ', kk: 'ЖАТТАЛҒАН', en: 'MEMORIZED'),
-                style: const TextStyle(
-                  fontFamily: 'Nunito',
-                  fontSize: 8.5,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.9,
-                  color: AppColors.textLight,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Reading-mode toggle pills. Visual reflection of the current [phase]
-/// (0 Читаю / 1 Подсказки / 2 По памяти) — mirrors the flow, does not drive it.
-class _ModePills extends StatelessWidget {
-  final int phase;
-
-  const _ModePills({required this.phase});
-
-  @override
-  Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    final labels = [
-      state.tr(ru: 'Читаю', kk: 'Оқып жатырмын', en: 'Reading'),
-      state.tr(ru: 'Подсказки', kk: 'Кеңестер', en: 'Hints'),
-      state.tr(ru: 'По памяти', kk: 'Жатқа', en: 'From memory'),
-    ];
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AppColors.ivory.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.navyDark.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          for (var i = 0; i < labels.length; i++)
-            Expanded(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(vertical: 9),
-                decoration: BoxDecoration(
-                  color: i == phase ? AppColors.navyDark : Colors.transparent,
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Text(
-                  labels[i],
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w800,
-                    color: i == phase ? AppColors.white : AppColors.textLight,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Arabic verse laid out as rounded word-chips (Amiri, RTL).
-class _ArabicChips extends StatelessWidget {
-  final String text;
-  final double fontSize;
-
-  const _ArabicChips({required this.text, this.fontSize = 28});
-
-  @override
-  Widget build(BuildContext context) {
-    final words = text
-        .split(RegExp(r'\s+'))
-        .where((word) => word.isNotEmpty)
-        .toList(growable: false);
-    return Wrap(
-      alignment: WrapAlignment.center,
-      textDirection: TextDirection.rtl,
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final word in words)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.backgroundGrey,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Text(
-              word,
-              textDirection: TextDirection.rtl,
-              style: TextStyle(
-                fontFamily: 'Amiri',
-                fontSize: fontSize,
-                height: 1.6,
-                color: AppColors.textDark,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _VerseText extends StatelessWidget {
-  final QuranVerse verse;
-
-  const _VerseText({required this.verse});
-
-  @override
-  Widget build(BuildContext context) {
-    return PremiumCard(
-      child: Column(
-        children: [
-          _ArabicChips(text: verse.arabicText, fontSize: 29),
-          const Divider(height: 26, color: AppColors.border),
-          Text(
-            verse.transliteration,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontFamily: 'Nunito',
-              fontStyle: FontStyle.italic,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textGrey,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Hide-level word grid: words the level marks hidden render as `● ● ●` chips.
-/// The hide computation from [level] is unchanged; tapping a hidden chip locally
-/// reveals that single word (peek), which is display-only session state.
-class _HiddenVerse extends StatefulWidget {
-  final QuranVerse verse;
-  final double level;
-
-  const _HiddenVerse({required this.verse, required this.level});
-
-  @override
-  State<_HiddenVerse> createState() => _HiddenVerseState();
-}
-
-class _HiddenVerseState extends State<_HiddenVerse> {
-  final Set<int> _revealed = {};
-
-  @override
-  void didUpdateWidget(_HiddenVerse oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // A new hide level re-hides the words that were peeked.
-    if (oldWidget.level != widget.level) _revealed.clear();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final words = widget.verse.arabicText
-        .split(RegExp(r'\s+'))
-        .where((word) => word.isNotEmpty)
-        .toList(growable: false);
-    final hiddenEvery = widget.level < 0.34
-        ? 99
-        : widget.level < 0.67
-            ? 3
-            : widget.level < 1
-                ? 2
-                : 1;
-    return PremiumCard(
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        textDirection: TextDirection.rtl,
-        spacing: 8,
-        runSpacing: 8,
-        children: words.indexed.map((item) {
-          final hidden = hiddenEvery != 99 && item.$1 % hiddenEvery == 0;
-          final peeked = _revealed.contains(item.$1);
-          final showHidden = hidden && !peeked;
-          return GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: hidden
-                ? () => setState(() {
-                      if (peeked) {
-                        _revealed.remove(item.$1);
-                      } else {
-                        _revealed.add(item.$1);
-                      }
-                    })
-                : null,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: showHidden ? AppColors.skyLight : AppColors.backgroundGrey,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: showHidden ? AppColors.sky : AppColors.border,
-                ),
-              ),
-              child: showHidden
-                  ? const Text(
-                      '● ● ●',
-                      style: TextStyle(
-                        fontSize: 12,
-                        letterSpacing: 1,
-                        color: AppColors.sky,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    )
-                  : Text(
-                      item.$2,
-                      textDirection: TextDirection.rtl,
-                      style: const TextStyle(
-                        fontFamily: 'Amiri',
-                        fontSize: 28,
-                        height: 1.5,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-            ),
-          );
-        }).toList(growable: false),
-      ),
-    );
-  }
-}
-
-/// Data-driven review schedule card: shows the next spaced-repetition date from
-/// stored progress (real AppState data — no fabricated plan).
-class _ReviewCard extends StatelessWidget {
-  final HafizProgress? progress;
-
-  const _ReviewCard({required this.progress});
-
-  @override
-  Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    final progress = this.progress;
-    return PremiumCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            state.tr(
-                ru: 'РАСПИСАНИЕ ПОВТОРЕНИЙ',
-                kk: 'ҚАЙТАЛАУ КЕСТЕСІ',
-                en: 'REVIEW SCHEDULE'),
-            style: const TextStyle(
-              fontFamily: 'Nunito',
-              fontSize: 10.5,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.1,
-              color: AppColors.textLight,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _row(
-            icon: Icons.play_circle_fill_rounded,
-            color: AppColors.sky,
-            title: state.tr(ru: 'Сегодня', kk: 'Бүгін', en: 'Today'),
-            trailing:
-                state.tr(ru: 'заучивание', kk: 'жаттау', en: 'memorization'),
-          ),
-          const SizedBox(height: 10),
-          if (progress == null)
-            _row(
-              icon: Icons.schedule_rounded,
-              color: AppColors.textLight,
-              title: state.tr(
-                  ru: 'Следующее повторение',
-                  kk: 'Келесі қайталау',
-                  en: 'Next review'),
-              trailing: state.tr(
-                  ru: 'после проверки',
-                  kk: 'тексеруден кейін',
-                  en: 'after checking'),
-            )
-          else ...[
-            _row(
-              icon: Icons.event_repeat_rounded,
-              color: AppColors.gold,
-              title: state.tr(
-                  ru: 'Следующее повторение',
-                  kk: 'Келесі қайталау',
-                  en: 'Next review'),
-              trailing: _dateLabel(progress.nextReviewAt),
-            ),
-            const SizedBox(height: 10),
-            _row(
-              icon: Icons.verified_rounded,
-              color: AppColors.success,
-              title: progress.masteryLabel,
-              trailing: 'mastery ${(progress.mastery * 100).round()}%',
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _row({
-    required IconData icon,
-    required Color color,
-    required String title,
-    required String trailing,
-  }) {
-    return Row(
-      children: [
-        Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: color.withValues(alpha: 0.14),
-          ),
-          child: Icon(icon, size: 17, color: color),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontFamily: 'Nunito',
-              fontSize: 13.5,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textDark,
-            ),
-          ),
-        ),
-        Text(
-          trailing,
-          style: const TextStyle(
-            fontFamily: 'Nunito',
-            fontSize: 12.5,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textGrey,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Small Muslingo+ upsell note.
-class _PlusNote extends StatelessWidget {
-  final String text;
-
-  const _PlusNote({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-      decoration: BoxDecoration(
-        color: AppColors.goldLight.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.workspace_premium_rounded,
-              size: 18, color: AppColors.gold),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                fontFamily: 'Nunito',
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: AppColors.navyDark,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BottomAction extends StatelessWidget {
-  final int stage;
-  final bool enabled;
-  final SpeechEvaluationResult? result;
-  final VoidCallback onContinue;
-
-  const _BottomAction({
-    required this.stage,
-    required this.enabled,
-    required this.result,
-    required this.onContinue,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    return Container(
-      padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
-      decoration: BoxDecoration(
-        color: AppColors.white.withValues(alpha: 0.92),
-        border: const Border(top: BorderSide(color: AppColors.border)),
-      ),
-      child: PremiumButton(
-        label: stage == 5
-            ? result == null
-                ? state.tr(
-                    ru: 'Сначала запиши аят',
-                    kk: 'Алдымен аятты жаз',
-                    en: 'Record the verse first')
-                : state.tr(
-                    ru: 'Сохранить результат',
-                    kk: 'Нәтижені сақтау',
-                    en: 'Save the result')
-            : state.tr(ru: 'Продолжить', kk: 'Жалғастыру', en: 'Continue'),
-        icon: stage == 5 ? Icons.save_rounded : Icons.arrow_forward_rounded,
-        onPressed: enabled ? onContinue : null,
-      ),
-    );
-  }
-}
-
-String _dateLabel(DateTime date) =>
-    '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
