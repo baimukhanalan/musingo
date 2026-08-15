@@ -50,7 +50,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
     // на вкладку «Коран». IndexedStack сохраняет состояние детей по позиции.
     final screens = <Widget>[
       const HomeScreen(),
-      const QuranScreen(),
+      QuranScreen(onOpenHafiz: () => _onTap(3)),
       const CoachScreen(),
       _HafizHubScreen(onOpenQuran: () => _onTap(1)),
       const ProfileScreen(),
@@ -87,15 +87,13 @@ class _MainTabScreenState extends State<MainTabScreen> {
               children: [
                 _NavItem(
                     icon: Icons.home_rounded,
-                    label: appState.tr(
-                        ru: 'Главная', kk: 'Басты', en: 'Home'),
+                    label: appState.tr(ru: 'Главная', kk: 'Басты', en: 'Home'),
                     index: 0,
                     current: _current,
                     onTap: _onTap),
                 _NavItem(
                     icon: Icons.menu_book_rounded,
-                    label: appState.tr(
-                        ru: 'Коран', kk: 'Құран', en: 'Quran'),
+                    label: appState.tr(ru: 'Коран', kk: 'Құран', en: 'Quran'),
                     index: 1,
                     current: _current,
                     onTap: _onTap),
@@ -167,8 +165,7 @@ class _NavItem extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   decoration: BoxDecoration(
-                    color:
-                        isActive ? AppColors.skyLight : Colors.transparent,
+                    color: isActive ? AppColors.skyLight : Colors.transparent,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(icon,
@@ -182,9 +179,8 @@ class _NavItem extends StatelessWidget {
                     fontFamily: 'Nunito',
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
-                    color: isActive
-                        ? AppColors.pistachioDark
-                        : AppColors.textGrey,
+                    color:
+                        isActive ? AppColors.pistachioDark : AppColors.textGrey,
                   ),
                 ),
               ],

@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
+import 'package:muslingo/screens/coach_screen.dart';
 import 'package:muslingo/screens/friends_screen.dart';
 import 'package:muslingo/screens/home_screen.dart';
 import 'package:muslingo/screens/install_app_screen.dart';
 import 'package:muslingo/screens/league_screen.dart';
 import 'package:muslingo/screens/main_tab_screen.dart';
+import 'package:muslingo/screens/quran_screen.dart';
 import 'package:muslingo/services/app_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -177,6 +179,49 @@ void main() {
     await teardown(tester);
   });
 
+  testWidgets('вкладки Quran Reader вызывают реальные разделы', (tester) async {
+    final state = await guestState(tester);
+    QuranSection? selected;
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppState>.value(
+        value: state,
+        child: MaterialApp(
+          home: Scaffold(
+            body: QuranSectionTabs(
+              selected: QuranSection.surahs,
+              onSelected: (value) => selected = value,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('quran-tab-juz')));
+    expect(selected, QuranSection.juz);
+
+    await tester.tap(find.byKey(const ValueKey('quran-tab-hafiz')));
+    expect(selected, QuranSection.hafiz);
+    expect(quranJuzStarts, hasLength(30));
+    expect(quranJuzStarts.first.surahNumber, 1);
+    expect(quranJuzStarts.last.surahNumber, 78);
+
+    await teardown(tester);
+  });
+
+  testWidgets('отдельный AI Coach показывает кнопку возврата', (tester) async {
+    final state = await guestState(tester);
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => state,
+        child: const MaterialApp(home: CoachScreen(showBackButton: true)),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(const Key('coach-back-button')), findsOneWidget);
+  });
+
   testWidgets('Экран «Друзья» рендерится (гость → предложение аккаунта)',
       (tester) async {
     final state = await guestState(tester);
@@ -197,6 +242,7 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('Друзья'), findsOneWidget);
+    expect(find.byKey(const Key('friends-back-button')), findsOneWidget);
     expect(find.text('Учитесь вместе'), findsOneWidget);
     expect(find.text('Недельная лига'), findsOneWidget);
     // Гость видит предложение создать аккаунт, а не выдуманных соперников.

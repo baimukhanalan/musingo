@@ -17,7 +17,9 @@ part 'coach/coach_sources.dart';
 part 'coach/coach_input.dart';
 
 class CoachScreen extends StatefulWidget {
-  const CoachScreen({super.key});
+  final bool showBackButton;
+
+  const CoachScreen({super.key, this.showBackButton = false});
 
   @override
   State<CoachScreen> createState() => _CoachScreenState();
@@ -248,6 +250,10 @@ class _CoachScreenState extends State<CoachScreen> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
+  void _returnHome() {
+    Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -258,7 +264,10 @@ class _CoachScreenState extends State<CoachScreen> {
           bottom: false,
           child: Column(
             children: [
-              const _CoachHeader(),
+              _CoachHeader(
+                showBackButton: widget.showBackButton,
+                onBack: _returnHome,
+              ),
               Expanded(
                 child: ListView.builder(
                   controller: _scrollController,

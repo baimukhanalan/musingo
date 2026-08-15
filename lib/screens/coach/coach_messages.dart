@@ -1,7 +1,10 @@
 part of '../coach_screen.dart';
 
 class _CoachHeader extends StatelessWidget {
-  const _CoachHeader();
+  final bool showBackButton;
+  final VoidCallback onBack;
+
+  const _CoachHeader({required this.showBackButton, required this.onBack});
 
   @override
   Widget build(BuildContext context) {
@@ -10,6 +13,16 @@ class _CoachHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
       child: Row(
         children: [
+          if (showBackButton) ...[
+            IconButton(
+              key: const Key('coach-back-button'),
+              tooltip: state.tr(ru: 'Назад', kk: 'Артқа', en: 'Back'),
+              onPressed: onBack,
+              icon: const Icon(Icons.arrow_back_ios_new_rounded),
+              color: AppColors.navyDark,
+            ),
+            const SizedBox(width: 4),
+          ],
           Container(
             width: 48,
             height: 48,

@@ -92,6 +92,13 @@ class _FriendsHeader extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        IconButton(
+          key: const Key('friends-back-button'),
+          tooltip: state.tr(ru: 'Назад', kk: 'Артқа', en: 'Back'),
+          onPressed: () => Navigator.maybePop(context),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          color: AppColors.navyDark,
+        ),
         Expanded(
           child: Text(state.tr(ru: 'Друзья', kk: 'Достар', en: 'Friends'),
               style: const TextStyle(

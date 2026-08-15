@@ -23,8 +23,54 @@ part 'quran/quran_states.dart';
 
 enum _QuranPlaybackMode { verse, chapter }
 
+enum QuranSection { surahs, juz, hafiz }
+
+@immutable
+class QuranJuzStart {
+  final int number;
+  final int surahNumber;
+  final int ayahNumber;
+
+  const QuranJuzStart(this.number, this.surahNumber, this.ayahNumber);
+}
+
+const quranJuzStarts = <QuranJuzStart>[
+  QuranJuzStart(1, 1, 1),
+  QuranJuzStart(2, 2, 142),
+  QuranJuzStart(3, 2, 253),
+  QuranJuzStart(4, 3, 93),
+  QuranJuzStart(5, 4, 24),
+  QuranJuzStart(6, 4, 148),
+  QuranJuzStart(7, 5, 82),
+  QuranJuzStart(8, 6, 111),
+  QuranJuzStart(9, 7, 88),
+  QuranJuzStart(10, 8, 41),
+  QuranJuzStart(11, 9, 93),
+  QuranJuzStart(12, 11, 6),
+  QuranJuzStart(13, 12, 53),
+  QuranJuzStart(14, 15, 1),
+  QuranJuzStart(15, 17, 1),
+  QuranJuzStart(16, 18, 75),
+  QuranJuzStart(17, 21, 1),
+  QuranJuzStart(18, 23, 1),
+  QuranJuzStart(19, 25, 21),
+  QuranJuzStart(20, 27, 56),
+  QuranJuzStart(21, 29, 46),
+  QuranJuzStart(22, 33, 31),
+  QuranJuzStart(23, 36, 28),
+  QuranJuzStart(24, 39, 32),
+  QuranJuzStart(25, 41, 47),
+  QuranJuzStart(26, 46, 1),
+  QuranJuzStart(27, 51, 31),
+  QuranJuzStart(28, 58, 1),
+  QuranJuzStart(29, 67, 1),
+  QuranJuzStart(30, 78, 1),
+];
+
 class QuranScreen extends StatefulWidget {
-  const QuranScreen({super.key});
+  final VoidCallback? onOpenHafiz;
+
+  const QuranScreen({super.key, this.onOpenHafiz});
 
   @override
   State<QuranScreen> createState() => _QuranScreenState();
@@ -35,6 +81,7 @@ class _QuranScreenState extends State<QuranScreen> {
   late Future<List<QuranChapterSummary>> _chaptersFuture;
   final _searchController = TextEditingController();
   String _query = '';
+  QuranSection _section = QuranSection.surahs;
 
   @override
   void initState() {
@@ -62,6 +109,24 @@ class _QuranScreenState extends State<QuranScreen> {
       showDragHandle: true,
       builder: (_) => const _SourceSheet(),
     );
+  }
+
+  void _selectSection(QuranSection section) {
+    if (section == QuranSection.hafiz) {
+      final callback = widget.onOpenHafiz;
+      if (callback != null) {
+        callback();
+      } else {
+        Navigator.pushNamed(context, '/hafiz');
+      }
+      return;
+    }
+    if (_section == section) return;
+    _searchController.clear();
+    setState(() {
+      _section = section;
+      _query = '';
+    });
   }
 
   @override
@@ -109,6 +174,19 @@ class _QuranScreenState extends State<QuranScreen> {
                               .contains(normalizedQuery) ||
                           chapter.arabicName.contains(_query.trim());
                     }).toList(growable: false);
+              final visibleJuz = normalizedQuery.isEmpty
+                  ? quranJuzStarts
+                  : quranJuzStarts.where((entry) {
+                      final chapter = chapters[entry.surahNumber - 1];
+                      return entry.number.toString() == normalizedQuery ||
+                          chapter.latinName
+                              .toLowerCase()
+                              .contains(normalizedQuery) ||
+                          chapter.arabicName.contains(_query.trim());
+                    }).toList(growable: false);
+              final contentCount = _section == QuranSection.surahs
+                  ? filtered.length
+                  : visibleJuz.length;
 
               return RefreshIndicator(
                 onRefresh: _refresh,
@@ -117,7 +195,7 @@ class _QuranScreenState extends State<QuranScreen> {
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
                   padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
-                  itemCount: filtered.length + 2,
+                  itemCount: contentCount + 2,
                   itemBuilder: (context, index) {
                     if (index == 0) {
                       return _QuranHeader(
@@ -126,10 +204,28 @@ class _QuranScreenState extends State<QuranScreen> {
                         memorizedCount: appState.memorizedVerseCount,
                         dueCount: appState.hafizDueCount,
                         onSources: _openSources,
+                        selectedSection: _section,
+                        onSectionSelected: _selectSection,
                       );
                     }
-                    if (index == filtered.length + 1) {
+                    if (index == contentCount + 1) {
                       return const _AttributionFooter();
+                    }
+                    if (_section == QuranSection.juz) {
+                      final entry = visibleJuz[index - 1];
+                      final chapter = chapters[entry.surahNumber - 1];
+                      return _JuzTile(
+                        entry: entry,
+                        chapter: chapter,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => QuranChapterScreen(
+                              chapter: chapter,
+                              repository: _repository,
+                            ),
+                          ),
+                        ),
+                      );
                     }
                     final chapter = filtered[index - 1];
                     final memorized = memorizedBySurah[chapter.number] ?? 0;
@@ -165,6 +261,8 @@ class _QuranHeader extends StatelessWidget {
   final int memorizedCount;
   final int dueCount;
   final VoidCallback onSources;
+  final QuranSection selectedSection;
+  final ValueChanged<QuranSection> onSectionSelected;
 
   const _QuranHeader({
     required this.controller,
@@ -172,6 +270,8 @@ class _QuranHeader extends StatelessWidget {
     required this.memorizedCount,
     required this.dueCount,
     required this.onSources,
+    required this.selectedSection,
+    required this.onSectionSelected,
   });
 
   @override
@@ -275,8 +375,10 @@ class _QuranHeader extends StatelessWidget {
         // Премиум-строка поиска.
         _SearchField(controller: controller, onChanged: onChanged),
         const SizedBox(height: 14),
-        // Табы-пилюли (визуальные): активна вкладка «Суры».
-        const _QuranTabs(),
+        QuranSectionTabs(
+          selected: selectedSection,
+          onSelected: onSectionSelected,
+        ),
         const SizedBox(height: 16),
       ],
     );
@@ -391,13 +493,15 @@ class _SearchField extends StatelessWidget {
   }
 }
 
-/// Пилюльный контейнер вкладок раздела Корана. Оформление совпадает с
-/// LanguagePills (bg ivory .72, pill navy). Визуальный элемент по прототипу 1e:
-/// активна вкладка «Суры» (единственный реализованный список экрана).
-class _QuranTabs extends StatelessWidget {
-  const _QuranTabs();
+class QuranSectionTabs extends StatelessWidget {
+  final QuranSection selected;
+  final ValueChanged<QuranSection> onSelected;
 
-  static const List<String> _tabs = ['Суры', 'Джузы', 'Hafiz'];
+  const QuranSectionTabs({
+    super.key,
+    required this.selected,
+    required this.onSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -417,8 +521,14 @@ class _QuranTabs extends StatelessWidget {
       ),
       child: Row(
         children: [
-          for (final tab in _tabs)
-            Expanded(child: _tab(_tabLabel(state, tab), active: tab == 'Суры')),
+          for (final section in QuranSection.values)
+            Expanded(
+              child: _tab(
+                _tabLabel(state, section),
+                section: section,
+                active: section == selected,
+              ),
+            ),
         ],
       ),
     );
@@ -426,32 +536,148 @@ class _QuranTabs extends StatelessWidget {
 
   // Локализуем только видимую подпись вкладки; исходные значения _tabs
   // остаются ключами (используются для сравнения активной вкладки).
-  String _tabLabel(AppState state, String tab) {
-    switch (tab) {
-      case 'Суры':
+  String _tabLabel(AppState state, QuranSection section) {
+    switch (section) {
+      case QuranSection.surahs:
         return state.tr(ru: 'Суры', kk: 'Сүрелер', en: 'Surahs');
-      case 'Джузы':
+      case QuranSection.juz:
         return state.tr(ru: 'Джузы', kk: 'Жүздер', en: 'Juz');
-      default:
-        return tab;
+      case QuranSection.hafiz:
+        return 'Hafiz';
     }
   }
 
-  Widget _tab(String label, {required bool active}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
+  Widget _tab(
+    String label, {
+    required QuranSection section,
+    required bool active,
+  }) {
+    return Semantics(
+      button: true,
+      selected: active,
+      child: Material(
         color: active ? AppColors.navyDark : Colors.transparent,
         borderRadius: BorderRadius.circular(30),
+        child: InkWell(
+          key: ValueKey('quran-tab-${section.name}'),
+          onTap: () => onSelected(section),
+          borderRadius: BorderRadius.circular(30),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: active ? AppColors.white : AppColors.textLight,
+              ),
+            ),
+          ),
+        ),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontFamily: 'Nunito',
-          fontSize: 13,
-          fontWeight: FontWeight.w800,
-          color: active ? AppColors.white : AppColors.textLight,
+    );
+  }
+}
+
+class _JuzTile extends StatelessWidget {
+  final QuranJuzStart entry;
+  final QuranChapterSummary chapter;
+  final VoidCallback onTap;
+
+  const _JuzTile({
+    required this.entry,
+    required this.chapter,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    return Padding(
+      key: ValueKey('quran-juz-${entry.number}'),
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: AppColors.skyLight,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    '${entry.number}',
+                    style: const TextStyle(
+                      fontFamily: 'Nunito',
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        state.tr(
+                          ru: 'Джуз ${entry.number}',
+                          kk: '${entry.number}-жүз',
+                          en: 'Juz ${entry.number}',
+                        ),
+                        style: const TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        state.tr(
+                          ru: '${chapter.latinName}, аят ${entry.ayahNumber}',
+                          kk: '${chapter.latinName}, ${entry.ayahNumber}-аят',
+                          en: '${chapter.latinName}, verse ${entry.ayahNumber}',
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 12,
+                          color: AppColors.textGrey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  chapter.arabicName,
+                  textDirection: TextDirection.rtl,
+                  style: const TextStyle(
+                    fontFamily: 'Amiri',
+                    fontSize: 18,
+                    color: AppColors.navy,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textLight,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

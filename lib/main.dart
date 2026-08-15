@@ -141,6 +141,7 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
     Widget page;
 
     switch (settings.name) {
+      case '/':
       case '/splash':
         page = const _SplashScreen();
         break;
@@ -158,6 +159,9 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
         break;
       case '/quran':
         page = const MainTabScreen(initialIndex: 1);
+        break;
+      case '/hafiz':
+        page = const MainTabScreen(initialIndex: 3);
         break;
       case '/lesson':
         final arguments = settings.arguments;
@@ -210,7 +214,7 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
         page = const InstallAppScreen();
         break;
       case '/coach':
-        page = const CoachScreen();
+        page = const CoachScreen(showBackButton: true);
         break;
       case '/rules':
         page = const RulesScreen();

@@ -108,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 20),
-                const _Wordmark(),
+                const _LoginHeader(),
                 const SizedBox(height: 12),
                 const CatCharacter(mood: CatMood.greet, size: 132),
                 const SizedBox(height: 18),
@@ -225,6 +225,35 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ];
+}
+
+class _LoginHeader extends StatelessWidget {
+  const _LoginHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final canPop = Navigator.canPop(context);
+    return SizedBox(
+      height: 42,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          const _Wordmark(),
+          if (canPop)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                key: const Key('login-back-button'),
+                tooltip: 'Назад',
+                onPressed: () => Navigator.maybePop(context),
+                icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                color: AppColors.navyDark,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Вордмарк «muslingo.» — navy w900, точка sky.
