@@ -1,9 +1,9 @@
 # Muslingo: итоговый production-аудит
 
-Дата: 11 августа 2026
-Production app commit: `18117d3`
+Дата последней проверки: 16 августа 2026
+Production app commit: `61d3141`
 Production: <https://muslingo-mobile.vercel.app>
-Vercel deployment: `dpl_2EZh1ZGW2qu7guBxncgxjJe8KGHG`
+Vercel deployment: `dpl_4wUNQhGuVyMqH9LSWrw1AGSeJp1F`
 
 ## Результат
 
@@ -25,6 +25,22 @@ Vercel deployment: `dpl_2EZh1ZGW2qu7guBxncgxjJe8KGHG`
 пролистывания всех 100 уроков.
 
 ## Исправлено
+
+### Повторный аудит 16 августа
+
+- Исправлен перенос гостевого прогресса в локальный аккаунт: список завершённых
+  уроков раньше читался не тем типом и регистрация после первого урока могла
+  завершиться ошибкой. Теперь переносятся уроки, Memory Engine, Hafiz и XP лиги.
+- Logout локального аккаунта больше не удаляет его единственную локальную копию
+  прогресса. После повторного входа восстанавливаются уроки, цель, уровень и
+  персональная рекомендация. Удаление аккаунта по-прежнему очищает эти данные.
+- Web-сборка больше не маскирует сбой same-origin API созданием локального
+  аккаунта. Локальный fallback оставлен только для native development без URL.
+- Черновой таджвид закрыт не только в меню, но и на прямом production-маршруте.
+  `#/review/tajwid` возвращает безопасный экран «Материал недоступен».
+- Пункт несуществующего выбора кари заменён на честный активный переход к аудио
+  Мишари Аль-Афаси в Quran Reader. Privacy открывает реальный документ напрямую.
+- Инициализация portrait-ориентации теперь завершается до запуска интерфейса.
 
 ### Onboarding и первый урок
 
@@ -105,7 +121,7 @@ Vercel deployment: `dpl_2EZh1ZGW2qu7guBxncgxjJe8KGHG`
 
 ## Автоматические проверки
 
-- Flutter: `106/106` тестов успешно.
+- Flutter: `110/110` тестов успешно.
 - Node API: `145/145` тестов успешно.
 - `flutter analyze`: 0 ошибок.
 - Production web build: успешно.
@@ -134,7 +150,7 @@ Vercel deployment: `dpl_2EZh1ZGW2qu7guBxncgxjJe8KGHG`
   Flutter runtime и не менялся.
 - Пустой каталог `assets/audio` удалён. Локальные `audit-evidence-*` исключены
   из Vercel upload и не попадают в публичную сборку.
-- После рефакторинга повторно пройдены 106 Flutter-тестов, 145 API-тестов,
+- После рефакторинга повторно пройдены 110 Flutter-тестов, 145 API-тестов,
   статический анализ, release build, локальный E2E и production smoke-test.
 
 ## Внешние блокеры
@@ -142,7 +158,7 @@ Vercel deployment: `dpl_2EZh1ZGW2qu7guBxncgxjJe8KGHG`
 Это не ошибки кода, их нельзя завершить без владельца аккаунтов или секретов.
 
 1. **GitHub:** после фиксации этого отчёта локальная `main` опережает
-   `origin/main` на 26 commit. Для push
+   `origin/main`; для push
    нужно один раз выполнить `gh auth login` на этом Mac или настроить Git
    credentials. Текущий GitHub CLI не авторизован.
 2. **Подписанный Android APK:** в GitHub Secrets нужны
@@ -157,6 +173,10 @@ Vercel deployment: `dpl_2EZh1ZGW2qu7guBxncgxjJe8KGHG`
    PWA, но TestFlight/App Store artefact не выпущен.
 5. **Юридические данные:** в privacy-документах нужно заменить placeholders на
    название оператора, контакты, страну/адрес и правила пожертвований.
+6. **Локальная Android-сборка:** на этом Mac не установлен Android SDK
+   (`No Android SDK found`). Код и CI-конфигурация проверены, но локальный APK в
+   этом аудите не собран; подписанный release дополнительно требует секреты из
+   пункта 2.
 
 ## Осознанные ограничения
 
