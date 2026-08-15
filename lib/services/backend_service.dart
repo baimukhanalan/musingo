@@ -75,6 +75,20 @@ class BackendService {
   static bool get hasConfiguredApiUrl =>
       const String.fromEnvironment('MUSLINGO_API_URL').isNotEmpty;
 
+  /// Local email accounts are a native development fallback only. Web builds
+  /// always have a same-origin API endpoint, even when no dart-define is set;
+  /// silently creating a device-only account there would hide server outages.
+  static bool shouldUseLocalAccountFallback({
+    required bool isWeb,
+    required String configuredApiUrl,
+  }) =>
+      !isWeb && configuredApiUrl.trim().isEmpty;
+
+  static bool get allowsLocalAccountFallback => shouldUseLocalAccountFallback(
+        isWeb: kIsWeb,
+        configuredApiUrl: const String.fromEnvironment('MUSLINGO_API_URL'),
+      );
+
   bool get isAuthenticated => _token?.isNotEmpty == true;
   String? get authToken => _token;
 

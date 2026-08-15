@@ -43,6 +43,7 @@ class AppState extends ChangeNotifier {
   static const _learningGoalKey = 'learning_goal';
   static const _placementLevelKey = 'placement_level';
   static const _learningRecommendationKey = 'learning_recommendation';
+  static const _learningProfilePrefix = 'learning_profile_';
   static const _memoryEnginePrefix = 'memory_engine_';
   static const _hafizProgressPrefix = 'hafiz_progress_';
   static const _localeKey = 'locale';
@@ -431,6 +432,13 @@ class AppState extends ChangeNotifier {
       try {
         final restored = UserModel.fromJson(jsonDecode(userJson));
         _user = restored;
+        if (restored.id.startsWith('local_')) {
+          await _restoreLearningProfileForUser(
+            prefs,
+            restored.id,
+            migrateGlobalProfile: true,
+          );
+        }
       } catch (_) {
         await prefs.remove('user');
       }
@@ -456,6 +464,7 @@ class AppState extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user', jsonEncode(_user!.toJson()));
     if (_user!.id.startsWith('local_') && _user!.email.isNotEmpty) {
+      await _saveLearningProfileForUser(prefs, _user!.id);
       final accounts = _decodeLocalAccounts(prefs.getString(_localAccountsKey));
       final account = accounts[_normalizeEmail(_user!.email)];
       if (account is Map) {
@@ -508,7 +517,7 @@ class AppState extends ChangeNotifier {
         localState: localState,
         importGuest: localState != null);
     if (serverSuccess) return true;
-    if (!BackendService.hasConfiguredApiUrl) {
+    if (BackendService.allowsLocalAccountFallback) {
       return _registerLocalAccount(name, email, password);
     }
     return false;
@@ -524,7 +533,7 @@ class AppState extends ChangeNotifier {
         localState: localState,
         importGuest: isGuest);
     if (serverSuccess) return true;
-    if (!BackendService.hasConfiguredApiUrl) {
+    if (BackendService.allowsLocalAccountFallback) {
       return _loginLocalAccount(email, password);
     }
     return false;
@@ -611,9 +620,9 @@ class AppState extends ChangeNotifier {
         'user': user.toJson(),
       };
       await preferences.setString(_localAccountsKey, jsonEncode(accounts));
-      final guestLessons = preferences.getString('completed_lessons_guest');
+      final guestLessons = preferences.getStringList('completed_lessons_guest');
       if (guestLessons != null) {
-        await preferences.setString(
+        await preferences.setStringList(
           'completed_lessons_$userId',
           guestLessons,
         );
@@ -628,6 +637,10 @@ class AppState extends ChangeNotifier {
           '$_hafizProgressPrefix$userId',
           guestHafiz,
         );
+      }
+      final guestLeagueXp = preferences.getInt('${_leagueXpPrefix}guest');
+      if (guestLeagueXp != null) {
+        await preferences.setInt('$_leagueXpPrefix$userId', guestLeagueXp);
       }
       await _backend?.logout();
       _user = user;
@@ -681,6 +694,7 @@ class AppState extends ChangeNotifier {
       final userData = Map<String, dynamic>.from(account['user'] as Map);
       _user = UserModel.fromJson(userData);
       await _backend?.logout();
+      await _restoreLearningProfileForUser(preferences, _user!.id);
       await _restoreCourseProgress();
       await _loadKnowledgeStates();
       await _loadHafizProgress();
@@ -710,6 +724,51 @@ class AppState extends ChangeNotifier {
   String _localUserId(String email) =>
       'local_${base64Url.encode(utf8.encode(email)).replaceAll('=', '')}';
 
+  String _scopedLearningKey(String userId, String field) =>
+      '$_learningProfilePrefix${userId}_$field';
+
+  Future<void> _saveLearningProfileForUser(
+    SharedPreferences prefs,
+    String userId,
+  ) async {
+    final goalKey = _scopedLearningKey(userId, 'goal');
+    final recommendationKey = _scopedLearningKey(userId, 'recommendation');
+    if (_learningGoal == null) {
+      await prefs.remove(goalKey);
+    } else {
+      await prefs.setString(goalKey, _learningGoal!.storageValue);
+    }
+    await prefs.setInt(
+      _scopedLearningKey(userId, 'placement_level'),
+      _placementLevel,
+    );
+    if (_learningRecommendation == null) {
+      await prefs.remove(recommendationKey);
+    } else {
+      await prefs.setString(recommendationKey, _learningRecommendation!);
+    }
+  }
+
+  Future<void> _restoreLearningProfileForUser(
+    SharedPreferences prefs,
+    String userId, {
+    bool migrateGlobalProfile = false,
+  }) async {
+    final goalKey = _scopedLearningKey(userId, 'goal');
+    final levelKey = _scopedLearningKey(userId, 'placement_level');
+    final recommendationKey = _scopedLearningKey(userId, 'recommendation');
+    final hasScopedProfile = prefs.containsKey(goalKey) ||
+        prefs.containsKey(levelKey) ||
+        prefs.containsKey(recommendationKey);
+    if (!hasScopedProfile && migrateGlobalProfile) {
+      await _saveLearningProfileForUser(prefs, userId);
+      return;
+    }
+    _learningGoal = LearningGoalDetails.fromStorage(prefs.getString(goalKey));
+    _placementLevel = prefs.getInt(levelKey) ?? 1;
+    _learningRecommendation = prefs.getString(recommendationKey);
+  }
+
   /// Удаляет учебные данные КОНКРЕТНОГО пользователя из SharedPreferences.
   /// Ключи неймспейснуты по id, поэтому данные других локальных аккаунтов
   /// на этом устройстве не затрагиваются.
@@ -721,6 +780,9 @@ class AppState extends ChangeNotifier {
     await prefs.remove('$_memoryEnginePrefix$userId');
     await prefs.remove('$_hafizProgressPrefix$userId');
     await prefs.remove('$_leagueXpPrefix$userId');
+    await prefs.remove(_scopedLearningKey(userId, 'goal'));
+    await prefs.remove(_scopedLearningKey(userId, 'placement_level'));
+    await prefs.remove(_scopedLearningKey(userId, 'recommendation'));
   }
 
   /// Сбрасывает общий (не привязанный к id) учебный профиль: цель, уровень и
@@ -745,11 +807,14 @@ class AppState extends ChangeNotifier {
     }
     await _backend?.logout();
     final prefs = await SharedPreferences.getInstance();
+    if (currentUser?.id.startsWith('local_') == true) {
+      await _saveLearningProfileForUser(prefs, currentUser!.id);
+    }
     await prefs.remove('user');
     // Чистим данные завершаемого пользователя (для гостя — именно guest-ключи,
     // чтобы «Начать заново» реально начинало с чистого листа) и общий учебный
     // профиль. Данные других локальных аккаунтов остаются нетронутыми.
-    if (currentUser != null) {
+    if (currentUser != null && !currentUser.id.startsWith('local_')) {
       await _clearUserScopedData(prefs, currentUser.id);
     }
     await _clearLearningProfile(prefs);
@@ -860,6 +925,9 @@ class AppState extends ChangeNotifier {
       _learningRecommendationKey,
       recommendation,
     );
+    if (_user?.id.startsWith('local_') == true) {
+      await _saveLearningProfileForUser(preferences, _user!.id);
+    }
     await _syncBackendProgress();
     notifyListeners();
   }

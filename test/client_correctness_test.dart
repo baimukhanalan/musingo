@@ -30,7 +30,8 @@ void main() {
       expect(state.user!.dailyProgress, 1);
       // ...но это не сегодняшний прогресс — новый день начинается с нуля.
       expect(state.todayProgress, 0,
-          reason: 'вчерашний прогресс не должен засчитываться в сегодняшнюю цель');
+          reason:
+              'вчерашний прогресс не должен засчитываться в сегодняшнюю цель');
 
       // Занялись СЕГОДНЯ: цель дня учитывает сегодняшний урок.
       await state.completeLesson(
@@ -123,6 +124,46 @@ void main() {
       expect(keys, contains('completed_lessons_local_other'));
       expect(keys, contains('memory_engine_local_other'));
     });
+
+    test('локальный аккаунт сохраняет прогресс и личный план после входа',
+        () async {
+      final state = await _guestState();
+      final quran = state.getCourse(CourseType.quran)!;
+      await state.completePlacement(
+        goal: LearningGoal.shortSurahs,
+        level: 4,
+        recommendation: 'Продолжи Аль-Фатиху',
+      );
+      await state.completeLesson(quran.lessons.first.id, 0);
+
+      expect(
+        await state.registerWithEmail(
+          'Alan',
+          'alan@example.test',
+          'Secret123!',
+        ),
+        isTrue,
+        reason: state.error,
+      );
+      final lessonId = quran.lessons.first.id;
+      await state.logout();
+
+      expect(
+        await state.loginWithPassword('alan@example.test', 'Secret123!'),
+        isTrue,
+      );
+      expect(state.learningGoal, LearningGoal.shortSurahs);
+      expect(state.placementLevel, 4);
+      expect(state.learningRecommendation, 'Продолжи Аль-Фатиху');
+      expect(
+        state
+            .getCourse(CourseType.quran)!
+            .lessons
+            .firstWhere((lesson) => lesson.id == lessonId)
+            .status,
+        LessonStatus.completed,
+      );
+    });
   });
 
   group('Matching перемешивается по-настоящему', () {
@@ -150,7 +191,8 @@ void main() {
       expect(order[3], isNot(3));
     });
 
-    test('детерминирован в пределах показа: одинаковый seed → одинаковый порядок',
+    test(
+        'детерминирован в пределах показа: одинаковый seed → одинаковый порядок',
         () {
       final a = matchingAnswerOrder(5, 42);
       final b = matchingAnswerOrder(5, 42);

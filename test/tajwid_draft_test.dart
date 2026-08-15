@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:muslingo/models/lesson.dart';
+import 'package:muslingo/main.dart';
 import 'package:muslingo/screens/tajwid_review_screen.dart';
 import 'package:muslingo/services/lesson_data.dart';
 import 'package:muslingo/services/tajwid_data.dart';
 
 void main() {
+  test('production route does not expose the Tajwid review screen', () {
+    expect(buildTajwidReviewRoutePage(), isNot(isA<TajwidReviewScreen>()));
+  });
+
   test('черновые уроки таджвида корректно структурированы', () {
     final lessons = TajwidDraftData.lessons();
     expect(lessons, isNotEmpty);
@@ -17,7 +22,8 @@ void main() {
       for (final step in lesson.steps) {
         if (step.type == LessonStepType.question) {
           expect(step.answers, isNotNull, reason: lesson.id);
-          expect(step.answers!.length, greaterThanOrEqualTo(2), reason: lesson.id);
+          expect(step.answers!.length, greaterThanOrEqualTo(2),
+              reason: lesson.id);
           expect(step.correctAnswerIndex, isNotNull, reason: lesson.id);
           expect(step.correctAnswerIndex! >= 0, isTrue, reason: lesson.id);
           expect(step.correctAnswerIndex! < step.answers!.length, isTrue,

@@ -2,6 +2,33 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:muslingo/services/backend_service.dart';
 
 void main() {
+  test('web never hides API failures behind a local-only account', () {
+    expect(
+      BackendService.shouldUseLocalAccountFallback(
+        isWeb: true,
+        configuredApiUrl: '',
+      ),
+      isFalse,
+    );
+  });
+
+  test('local account fallback is limited to unconfigured native builds', () {
+    expect(
+      BackendService.shouldUseLocalAccountFallback(
+        isWeb: false,
+        configuredApiUrl: '',
+      ),
+      isTrue,
+    );
+    expect(
+      BackendService.shouldUseLocalAccountFallback(
+        isWeb: false,
+        configuredApiUrl: 'https://api.example.test',
+      ),
+      isFalse,
+    );
+  });
+
   test('maps duplicate account errors to a readable login hint', () {
     const error = BackendException(
       409,

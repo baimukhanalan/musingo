@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/achievement.dart';
 import '../models/lesson.dart';
 import '../models/user.dart';
@@ -24,6 +25,25 @@ part 'profile/profile_actions.dart';
 /// сохранены как были.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
+
+  Future<void> _openPrivacyPolicy(BuildContext context) async {
+    final state = context.read<AppState>();
+    final opened = await launchUrl(
+      Uri.parse('https://muslingo-mobile.vercel.app/privacy'),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(state.tr(
+            ru: 'Не удалось открыть политику конфиденциальности',
+            kk: 'Құпиялылық саясатын ашу мүмкін болмады',
+            en: 'Could not open the privacy policy',
+          )),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -115,13 +135,17 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     _MenuItem(
                       icon: Icons.record_voice_over_rounded,
-                      label: state.tr(ru: 'Кари', kk: 'Қари', en: 'Qari'),
+                      label: state.tr(
+                        ru: 'Мишари Аль-Афаси',
+                        kk: 'Мишари Әл-Афаси',
+                        en: 'Mishary Alafasy',
+                      ),
                       subtitle: state.tr(
-                          ru: 'Выбор чтеца',
-                          kk: 'Қари таңдау',
-                          en: 'Choose reciter'),
+                          ru: 'Аудио в Quran Reader',
+                          kk: 'Quran Reader аудиосы',
+                          en: 'Audio in Quran Reader'),
                       color: AppColors.gold,
-                      onTap: () => Navigator.pushNamed(context, '/settings'),
+                      onTap: () => Navigator.pushNamed(context, '/quran'),
                     ),
                   ],
                 ),
@@ -148,7 +172,7 @@ class ProfileScreen extends StatelessWidget {
                           kk: 'Құпиялылық саясаты',
                           en: 'Privacy Policy'),
                       color: AppColors.textGrey,
-                      onTap: () => Navigator.pushNamed(context, '/settings'),
+                      onTap: () => _openPrivacyPolicy(context),
                     ),
                     // Виден только в сборке для ревью (MUSLINGO_DRAFT_CONTENT);
                     // в проде флаг выключен и пункта нет.

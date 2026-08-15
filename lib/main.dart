@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'services/app_state.dart';
 import 'utils/theme.dart';
 import 'utils/colors.dart';
+import 'utils/flags.dart';
 import 'screens/carousel_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_tab_screen.dart';
@@ -26,9 +27,22 @@ import 'screens/academy_screen.dart';
 import 'screens/tajwid_review_screen.dart';
 import 'models/lesson.dart';
 
+@visibleForTesting
+Widget buildTajwidReviewRoutePage() {
+  if (kDraftContentEnabled) return const TajwidReviewScreen();
+  return const _RouteFallbackScreen(
+    titleRu: 'Материал недоступен',
+    titleKk: 'Материал қолжетімсіз',
+    titleEn: 'Content unavailable',
+    messageRu: 'Этот черновик не включён в production.',
+    messageKk: 'Бұл жоба production нұсқасына қосылмаған.',
+    messageEn: 'This draft is not enabled in production.',
+  );
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
@@ -142,6 +156,9 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
       case '/home':
         page = const MainTabScreen();
         break;
+      case '/quran':
+        page = const MainTabScreen(initialIndex: 1);
+        break;
       case '/lesson':
         final arguments = settings.arguments;
         page = arguments is Lesson
@@ -204,7 +221,7 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
       // Черновик таджвида для ревью специалистом. Достижим только при сборке с
       // MUSLINGO_DRAFT_CONTENT=true (вход показан в профиле под тем же флагом).
       case '/review/tajwid':
-        page = const TajwidReviewScreen();
+        page = buildTajwidReviewRoutePage();
         break;
       case '/help':
         page = const HelpScreen();
@@ -382,7 +399,7 @@ class _SplashScreenState extends State<_SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    // M12: сплэш-кот (900x900 PNG) показывается 190x190. Декодируем растр под
+    // M12: квадратный WebP показывается 190x190. Декодируем растр под
     // экранный размер, домноженный на devicePixelRatio, а не в исходном
     // разрешении. Картинка квадратная, поэтому cacheWidth == cacheHeight без
     // искажения пропорций.
