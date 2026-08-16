@@ -7,7 +7,15 @@ enum LessonStatus { locked, available, inProgress, completed }
 /// `extraTokens`). [listenChoice] — аудирование: шаг проигрывает аят
 /// (`quranGlobalAyahNumber`) или фразу (`arabicText` через TTS), а ученик
 /// выбирает подходящий вариант из `answers`/`correctAnswerIndex`.
-enum LessonStepType { audio, text, question, matching, speak, wordOrder, listenChoice }
+enum LessonStepType {
+  audio,
+  text,
+  question,
+  matching,
+  speak,
+  wordOrder,
+  listenChoice
+}
 
 enum CourseType { quran, rules, arabic }
 
@@ -83,6 +91,35 @@ class LessonStep {
         return 60;
     }
   }
+
+  LessonStep copyWith({
+    String? id,
+    String? question,
+    List<String>? answers,
+    int? correctAnswerIndex,
+    String? explanation,
+    List<String>? sourceRefs,
+  }) =>
+      LessonStep(
+        id: id ?? this.id,
+        type: type,
+        audioPath: audioPath,
+        quranGlobalAyahNumber: quranGlobalAyahNumber,
+        arabicText: arabicText,
+        transliteration: transliteration,
+        russianText: russianText,
+        question: question ?? this.question,
+        answers: answers ?? this.answers,
+        correctAnswerIndex: correctAnswerIndex ?? this.correctAnswerIndex,
+        matchPairs: matchPairs,
+        speechTarget: speechTarget,
+        speechMode: speechMode,
+        passScore: passScore,
+        explanation: explanation ?? this.explanation,
+        sourceRefs: sourceRefs ?? this.sourceRefs,
+        orderTokens: orderTokens,
+        extraTokens: extraTokens,
+      );
 }
 
 class LessonMatchPair {
@@ -118,13 +155,13 @@ class Lesson {
     this.sourceUrl,
   });
 
-  Lesson copyWith({LessonStatus? status}) => Lesson(
+  Lesson copyWith({LessonStatus? status, List<LessonStep>? steps}) => Lesson(
         id: id,
         title: title,
         subtitle: subtitle,
         course: course,
         order: order,
-        steps: steps,
+        steps: steps ?? this.steps,
         status: status ?? this.status,
         xpReward: xpReward,
         sourceUrl: sourceUrl,

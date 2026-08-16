@@ -1,9 +1,17 @@
 import '../models/lesson.dart';
+import 'lesson_challenge_engine.dart';
 import 'lessons/quran_lessons.dart';
 import 'lessons/arabic_lessons.dart';
 import 'lessons/rules_lessons.dart';
 
 class LessonData {
+  static final List<Lesson> _quranLessons =
+      LessonChallengeEngine.strengthen(quranLessons);
+  static final List<Lesson> _arabicLessons =
+      LessonChallengeEngine.strengthen(arabicLessons);
+  static final List<Lesson> _rulesLessons =
+      LessonChallengeEngine.strengthen(rulesLessons);
+
   static List<Course> getCourses() => [quranCourse, arabicCourse, rulesCourse];
 
   static Course get quranCourse => Course(
@@ -11,7 +19,7 @@ class LessonData {
         title: 'Коран',
         description: 'Изучай аяты с аудио и переводом',
         type: CourseType.quran,
-        lessons: quranLessons,
+        lessons: _quranLessons,
       );
 
   static Course get arabicCourse => Course(
@@ -19,7 +27,7 @@ class LessonData {
         title: 'Арабский язык',
         description: 'Буквы, чтение и произношение в игровом формате',
         type: CourseType.arabic,
-        lessons: arabicLessons,
+        lessons: _arabicLessons,
       );
 
   static Course get rulesCourse => Course(
@@ -27,6 +35,6 @@ class LessonData {
         title: 'Основы ислама',
         description: 'Краткое введение в основы ислама с источниками',
         type: CourseType.rules,
-        lessons: rulesLessons,
+        lessons: _rulesLessons,
       );
 }

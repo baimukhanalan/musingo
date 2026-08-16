@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:muslingo/models/lesson.dart';
 import 'package:muslingo/screens/lesson_screen.dart';
 import 'package:muslingo/services/app_state.dart';
+import 'package:muslingo/services/lesson_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Новые типы шагов (wordOrder и listenChoice) проверяются именно РЕНДЕРОМ
@@ -28,7 +29,8 @@ void main() {
     return state;
   }
 
-  Future<void> pumpLesson(WidgetTester tester, AppState state, Lesson lesson) async {
+  Future<void> pumpLesson(
+      WidgetTester tester, AppState state, Lesson lesson) async {
     await tester.pumpWidget(
       ChangeNotifierProvider<AppState>.value(
         value: state,
@@ -82,7 +84,8 @@ void main() {
         steps: [step],
       );
 
-  testWidgets('wordOrder: банк слов рендерится, «Проверить» открывается только после сборки',
+  testWidgets(
+      'wordOrder: банк слов рендерится, «Проверить» открывается только после сборки',
       (tester) async {
     final state = await guestState(tester);
     await pumpLesson(tester, state, lessonWith(wordOrderStep));
@@ -109,7 +112,8 @@ void main() {
 
     button = tester.widget<GestureDetector>(
         find.widgetWithText(GestureDetector, 'Проверить').first);
-    expect(button.onTap, isNotNull, reason: 'после сборки гейт должен открыться');
+    expect(button.onTap, isNotNull,
+        reason: 'после сборки гейт должен открыться');
 
     // Проверяем правильный ответ — экран отвечает «Правильно!».
     await tester.tap(find.widgetWithText(GestureDetector, 'Проверить').first);
@@ -122,7 +126,8 @@ void main() {
     await teardown(tester);
   });
 
-  testWidgets('wordOrder: неверный порядок засчитывается ошибкой и показывает эталон',
+  testWidgets(
+      'wordOrder: неверный порядок засчитывается ошибкой и показывает эталон',
       (tester) async {
     final state = await guestState(tester);
     await pumpLesson(tester, state, lessonWith(wordOrderStep));
@@ -180,6 +185,35 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Правильно!'), findsOneWidget);
 
+    await teardown(tester);
+  });
+
+  testWidgets('logic challenge: four close options fit a mobile lesson flow',
+      (tester) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final state = await guestState(tester);
+    final challenge = LessonData.rulesCourse.lessons.first.steps.firstWhere(
+      (step) => step.id == 'r1_logic_challenge',
+    );
+    await pumpLesson(tester, state, lessonWith(challenge));
+
+    expect(tester.takeException(), isNull);
+    expect(find.textContaining('Два вывода одновременно'), findsOneWidget);
+    expect(challenge.answers, hasLength(4));
+
+    final correct = find.text(challenge.answers!.first);
+    await tester.ensureVisible(correct);
+    await tester.tap(correct);
+    await tester.pump();
+    await tester.tap(find.widgetWithText(GestureDetector, 'Проверить').first);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Правильно!'), findsOneWidget);
     await teardown(tester);
   });
 }

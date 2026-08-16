@@ -1,6 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:muslingo/models/lesson.dart';
 import 'package:muslingo/services/lesson_data.dart';
+import 'package:muslingo/services/lessons/arabic_lessons.dart';
+import 'package:muslingo/services/lessons/quran_lessons.dart';
+import 'package:muslingo/services/lessons/rules_lessons.dart';
 
 void main() {
   const juzTabarakIds = <String>[
@@ -337,6 +340,53 @@ void main() {
               '(${lesson.steps.length})',
         );
       }
+    }
+  });
+
+  test('all 100 lessons end their question sequence with a logic challenge',
+      () {
+    final lessons = LessonData.getCourses()
+        .expand((course) => course.lessons)
+        .toList(growable: false);
+
+    expect(lessons, hasLength(100));
+    for (final lesson in lessons) {
+      final questions = lesson.steps
+          .where((step) => step.type == LessonStepType.question)
+          .toList(growable: false);
+      expect(questions, isNotEmpty, reason: lesson.id);
+      final challenge = questions.last;
+      expect(challenge.id, '${lesson.id}_logic_challenge', reason: lesson.id);
+      expect(challenge.answers, hasLength(4), reason: lesson.id);
+      expect(challenge.correctAnswerIndex, 0, reason: lesson.id);
+      expect(challenge.question, contains('1.'), reason: lesson.id);
+      expect(challenge.question, contains('2.'), reason: lesson.id);
+      expect(challenge.answers!.toSet(), hasLength(4), reason: lesson.id);
+      expect(
+        challenge.explanation,
+        'Проверь оба вывода отдельно: один верный пункт ещё не делает верной всю пару.',
+        reason: lesson.id,
+      );
+    }
+  });
+
+  test('challenge enrichment preserves every lesson step type and count', () {
+    final rawLessons = <String, Lesson>{
+      for (final lesson in [...quranLessons, ...arabicLessons, ...rulesLessons])
+        lesson.id: lesson,
+    };
+    final strengthened = LessonData.getCourses()
+        .expand((course) => course.lessons)
+        .toList(growable: false);
+
+    for (final lesson in strengthened) {
+      final raw = rawLessons[lesson.id]!;
+      expect(lesson.steps, hasLength(raw.steps.length), reason: lesson.id);
+      expect(
+        lesson.steps.map((step) => step.type),
+        raw.steps.map((step) => step.type),
+        reason: '${lesson.id}: the learning algorithm changed',
+      );
     }
   });
 
