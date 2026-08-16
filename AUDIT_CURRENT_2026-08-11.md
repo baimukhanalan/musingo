@@ -1,9 +1,9 @@
 # Muslingo: итоговый production-аудит
 
 Дата последней проверки: 16 августа 2026
-Production app commit: `c9aeb72`
+Production app commit: `7f11000`
 Production: <https://muslingo-mobile.vercel.app>
-Vercel deployment: `dpl_3aP4v3hFXWkoJLTBjqWg2QyxKkye`
+Vercel deployment: `dpl_4QSDB4sFJC87te8ahZmRWhbg8JqY`
 
 ## Результат
 
@@ -113,6 +113,9 @@ Vercel deployment: `dpl_3aP4v3hFXWkoJLTBjqWg2QyxKkye`
 - Добавлены квоты и проверка разрешённых push endpoint.
 - Native notification обрабатывает cold start и передаёт маршрут приложению.
 - Тексты уведомлений зависят от streak, повторений и учебной цели.
+- После подтверждённой установки PWA карточка «Установить Muslingo» исчезает
+  сразу и не возвращается при следующих открытиях. Если браузер снова сообщает
+  о доступной установке, устаревшая отметка сбрасывается и CTA появляется снова.
 
 ### Доставка и CI/CD
 
@@ -144,7 +147,7 @@ Vercel deployment: `dpl_3aP4v3hFXWkoJLTBjqWg2QyxKkye`
 | Friends -> League -> Login -> назад | Путь работает без навигационных тупиков |
 | League для локального профиля | Корректный login gate |
 | Уведомления без разрешения | Показана инструкция, ложное включение не сохраняется |
-| Установка на главный экран | Экран установки и PWA CTA работают |
+| Установка на главный экран | PWA CTA работает и исчезает после подтверждённой установки |
 | Регистрация -> урок -> replay -> logout -> delete | Production smoke-test успешен |
 | CORS с чужого Origin | HTTP 403 |
 | Privacy и VAPID public key | HTTP 200 |
@@ -152,7 +155,7 @@ Vercel deployment: `dpl_3aP4v3hFXWkoJLTBjqWg2QyxKkye`
 ## Автоматические проверки
 
 - Flutter: `117/117` тестов успешно.
-- Node API: `146/146` тестов успешно.
+- Node API: `147/147` тестов успешно.
 - `flutter analyze`: 0 ошибок.
 - Production web build: успешно.
 - `pnpm audit --prod`: известных уязвимостей нет.
