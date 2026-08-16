@@ -10,7 +10,11 @@ void main() {
   CoachContext context({
     int due = 0,
     List<KnowledgeState> weak = const [],
-  }) => CoachContext(
+    List<String> completedTitles = const [],
+    int hafizDue = 0,
+    int memorized = 0,
+  }) =>
+      CoachContext(
         goal: LearningGoal.shortSurahs,
         placementLevel: 3,
         recommendation: 'Закрепи чтение коротких аятов.',
@@ -18,6 +22,17 @@ void main() {
         recommendedLessonTitle: 'Аль-Фатиха: начало',
         dueReviewCount: due,
         weakKnowledge: weak,
+        totalLessons: 12,
+        totalCatalogLessons: 100,
+        todayProgress: 1,
+        dailyGoal: 3,
+        quranCompleted: 7,
+        arabicCompleted: 3,
+        basicsCompleted: 2,
+        memoryAccuracy: 0.82,
+        hafizDueCount: hafizDue,
+        memorizedVerseCount: memorized,
+        completedLessonTitles: completedTitles,
       );
 
   test('uses personal memory state for todays review', () {
@@ -65,5 +80,45 @@ void main() {
     expect(response.actionType, isNull);
     expect(response.sources, isEmpty);
     expect(response.text, contains('нет достаточно точного ответа'));
+  });
+
+  test('recommends the next short surah from completed material', () {
+    final response = service.answer(
+      'Какую суру мне учить следующей?',
+      context(completedTitles: const ['Аль-Фатиха: начало']),
+    );
+
+    expect(response.text, contains('Аль-Ихлас'));
+    expect(
+        response.sources.any((source) => source.url?.contains('/112') == true),
+        isTrue);
+    expect(response.actionType, CoachActionType.openQuran);
+  });
+
+  test('opens Hafiz with the real repetition context', () {
+    final response = service.answer(
+      'Помоги запомнить суру наизусть',
+      context(hafizDue: 2, memorized: 5),
+    );
+
+    expect(response.text, contains('2 назначенных аятов'));
+    expect(response.text, contains('5 аятов'));
+    expect(response.actionType, CoachActionType.openHafiz);
+  });
+
+  test('mini test starts a real recommended lesson', () {
+    final response = service.answer('Дай мне небольшой тест', context());
+
+    expect(response.text, contains('короткую проверку'));
+    expect(response.lessonId, 'q1');
+    expect(response.actionType, CoachActionType.startLesson);
+  });
+
+  test('known Quran vocabulary stays source grounded', () {
+    final response = service.answer('Что означает слово альхамду?', context());
+
+    expect(response.text, contains('всеобъемлющую хвалу'));
+    expect(response.sources.single.url, 'https://quran.com/ru/1');
+    expect(response.actionType, CoachActionType.openQuran);
   });
 }

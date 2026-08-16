@@ -86,6 +86,22 @@ class _CoachScreenState extends State<CoachScreen> {
     final weak = state.knowledgeStates.where((item) => item.isWeak).toList()
       ..sort((a, b) => a.strength.compareTo(b.strength));
     final lesson = state.recommendedLesson;
+    final quran = state.getCourse(CourseType.quran);
+    final arabic = state.getCourse(CourseType.arabic);
+    final basics = state.getCourse(CourseType.rules);
+    final allLessons =
+        state.courses.expand((course) => course.lessons).toList();
+    final completedTitles = allLessons
+        .where((lesson) => lesson.status == LessonStatus.completed)
+        .map((lesson) => lesson.title)
+        .take(12)
+        .toList(growable: false);
+    final memoryAccuracy = state.knowledgeStates.isEmpty
+        ? 0.0
+        : state.knowledgeStates
+                .map((item) => item.strength)
+                .reduce((a, b) => a + b) /
+            state.knowledgeStates.length;
     return CoachContext(
       goal: state.learningGoal,
       placementLevel: state.placementLevel,
@@ -94,6 +110,19 @@ class _CoachScreenState extends State<CoachScreen> {
       recommendedLessonTitle: lesson?.title,
       dueReviewCount: state.dueReviewCount,
       weakKnowledge: weak,
+      xp: state.user?.xp ?? 0,
+      streak: state.user?.streak ?? 0,
+      totalLessons: state.user?.totalLessons ?? 0,
+      totalCatalogLessons: allLessons.length,
+      todayProgress: state.todayProgress,
+      dailyGoal: state.dailyGoal,
+      memorizedVerseCount: state.memorizedVerseCount,
+      hafizDueCount: state.hafizDueCount,
+      quranCompleted: quran?.completedLessons ?? 0,
+      arabicCompleted: arabic?.completedLessons ?? 0,
+      basicsCompleted: basics?.completedLessons ?? 0,
+      memoryAccuracy: memoryAccuracy,
+      completedLessonTitles: completedTitles,
     );
   }
 
@@ -223,6 +252,9 @@ class _CoachScreenState extends State<CoachScreen> {
           }
         }
         if (source != null) await _openUrl(source.url!);
+        return;
+      case CoachActionType.openHafiz:
+        if (mounted) Navigator.pushNamed(context, '/hafiz');
         return;
       case CoachActionType.contactSpecialist:
         await _openUrl(CoachService.specialistUrl);

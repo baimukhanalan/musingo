@@ -380,6 +380,8 @@ class BackendService {
         return CoachActionType.startLesson;
       case 'openQuran':
         return CoachActionType.openQuran;
+      case 'openHafiz':
+        return CoachActionType.openHafiz;
       case 'contactSpecialist':
         return CoachActionType.contactSpecialist;
       default:

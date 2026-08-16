@@ -1,10 +1,13 @@
 part of '../home_screen.dart';
 
-class _LearningPathPanel extends StatefulWidget {
+class _LearningPathPanel extends StatelessWidget {
   final _LearningMode mode;
   final Course course;
   final List<IconData> icons;
   final NativeLanguage? nativeLanguage;
+  final ScrollController controller;
+  final bool expanded;
+  final VoidCallback onToggleExpanded;
   final ValueChanged<_LearningMode> onModeChanged;
   final VoidCallback onChooseNativeLanguage;
   final void Function(BuildContext context, Lesson lesson) onOpenLesson;
@@ -14,36 +17,23 @@ class _LearningPathPanel extends StatefulWidget {
     required this.course,
     required this.icons,
     required this.nativeLanguage,
+    required this.controller,
+    required this.expanded,
+    required this.onToggleExpanded,
     required this.onModeChanged,
     required this.onChooseNativeLanguage,
     required this.onOpenLesson,
   });
 
   @override
-  State<_LearningPathPanel> createState() => _LearningPathPanelState();
-}
-
-class _LearningPathPanelState extends State<_LearningPathPanel> {
-  final Map<String, ScrollController> _controllers = {};
-
-  ScrollController get _activeController =>
-      _controllers.putIfAbsent(widget.course.id, ScrollController.new);
-
-  @override
-  void dispose() {
-    for (final controller in _controllers.values) {
-      controller.dispose();
-    }
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final panelHeight = (MediaQuery.sizeOf(context).height * 0.59)
-        .clamp(460.0, 550.0)
-        .toDouble();
-    final (kicker, title, subtitle) = switch (widget.mode) {
+    final panelHeight = expanded
+        ? double.infinity
+        : (MediaQuery.sizeOf(context).height * 0.59)
+            .clamp(460.0, 550.0)
+            .toDouble();
+    final (kicker, title, subtitle) = switch (mode) {
       _LearningMode.basics => (
           state.tr(ru: 'Основы', kk: 'Негіздер', en: 'Basics'),
           state.tr(
@@ -76,16 +66,19 @@ class _LearningPathPanelState extends State<_LearningPathPanel> {
               en: 'From letters to Quranic phrases'),
         ),
     };
-    final controller = _activeController;
 
     return Container(
-      key: const ValueKey('learning-path-panel'),
+      key: ValueKey(
+        expanded ? 'learning-path-panel-expanded' : 'learning-path-panel',
+      ),
       height: panelHeight,
-      margin: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+      margin: expanded
+          ? const EdgeInsets.fromLTRB(10, 8, 10, 8)
+          : const EdgeInsets.fromLTRB(20, 16, 20, 12),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(expanded ? 14 : 20),
         border: Border.all(color: AppColors.border, width: 1.5),
         boxShadow: [
           BoxShadow(
@@ -100,8 +93,8 @@ class _LearningPathPanelState extends State<_LearningPathPanel> {
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
             child: _ModeSwitch(
-              mode: widget.mode,
-              onChanged: widget.onModeChanged,
+              mode: mode,
+              onChanged: onModeChanged,
             ),
           ),
           Padding(
@@ -118,9 +111,9 @@ class _LearningPathPanelState extends State<_LearningPathPanel> {
                           const SizedBox(width: 8),
                           Text(
                             state.tr(
-                              ru: _lessonCountRu(widget.course.lessons.length),
-                              kk: '${widget.course.lessons.length} сабақ',
-                              en: '${widget.course.lessons.length} lessons',
+                              ru: _lessonCountRu(course.lessons.length),
+                              kk: '${course.lessons.length} сабақ',
+                              en: '${course.lessons.length} lessons',
                             ),
                             style: const TextStyle(
                               fontFamily: 'Nunito',
@@ -158,12 +151,38 @@ class _LearningPathPanelState extends State<_LearningPathPanel> {
                   ),
                 ),
                 const SizedBox(width: 10),
+                IconButton(
+                  key: ValueKey(
+                    expanded
+                        ? 'collapse-learning-path'
+                        : 'expand-learning-path',
+                  ),
+                  tooltip: expanded
+                      ? state.tr(
+                          ru: 'Свернуть путь',
+                          kk: 'Жолды кішірейту',
+                          en: 'Collapse path',
+                        )
+                      : state.tr(
+                          ru: 'Развернуть путь',
+                          kk: 'Жолды кеңейту',
+                          en: 'Expand path',
+                        ),
+                  onPressed: onToggleExpanded,
+                  icon: Icon(
+                    expanded
+                        ? Icons.fullscreen_exit_rounded
+                        : Icons.fullscreen_rounded,
+                  ),
+                  color: AppColors.navy,
+                ),
+                const SizedBox(width: 2),
                 ProgressRing(
-                  percent: widget.course.progress,
+                  percent: course.progress,
                   size: 46,
                   color: AppColors.sky,
                   child: Text(
-                    '${(widget.course.progress * 100).round()}%',
+                    '${(course.progress * 100).round()}%',
                     style: const TextStyle(
                       fontFamily: 'Nunito',
                       fontSize: 11,
@@ -175,7 +194,7 @@ class _LearningPathPanelState extends State<_LearningPathPanel> {
               ],
             ),
           ),
-          if (widget.mode == _LearningMode.arabic)
+          if (mode == _LearningMode.arabic)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
               child: SizedBox(
@@ -183,18 +202,18 @@ class _LearningPathPanelState extends State<_LearningPathPanel> {
                 height: 34,
                 child: OutlinedButton.icon(
                   key: const ValueKey('choose-native-language'),
-                  onPressed: widget.onChooseNativeLanguage,
+                  onPressed: onChooseNativeLanguage,
                   icon: const Icon(Icons.language_rounded, size: 17),
                   label: Text(
-                    widget.nativeLanguage == null
+                    nativeLanguage == null
                         ? state.tr(
                             ru: 'Выбрать язык объяснений',
                             kk: 'Түсіндіру тілін таңдау',
                             en: 'Choose explanation language')
                         : state.tr(
-                            ru: 'Язык объяснений: ${widget.nativeLanguage!.label}',
-                            kk: 'Түсіндіру тілі: ${widget.nativeLanguage!.label}',
-                            en: 'Explanation language: ${widget.nativeLanguage!.label}'),
+                            ru: 'Язык объяснений: ${nativeLanguage!.label}',
+                            kk: 'Түсіндіру тілі: ${nativeLanguage!.label}',
+                            en: 'Explanation language: ${nativeLanguage!.label}'),
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.navy,
@@ -215,14 +234,14 @@ class _LearningPathPanelState extends State<_LearningPathPanel> {
               thumbVisibility: true,
               radius: const Radius.circular(8),
               child: CustomScrollView(
-                key: ValueKey('course-path-${widget.course.id}'),
+                key: ValueKey('course-path-${course.id}'),
                 controller: controller,
                 primary: false,
                 slivers: [
                   _LessonPath(
-                    lessons: widget.course.lessons,
-                    icons: widget.icons,
-                    onOpenLesson: widget.onOpenLesson,
+                    lessons: course.lessons,
+                    icons: icons,
+                    onOpenLesson: onOpenLesson,
                   ),
                 ],
               ),

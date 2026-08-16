@@ -56,7 +56,10 @@ function clampCatalog(value) {
     out.push({
       id,
       title: clampString(raw.title, MAX_STRING),
+      subtitle: clampString(raw.subtitle, MAX_STRING),
       course: clampString(raw.course, 80),
+      order: clampInt(raw.order, 0, 1000),
+      completed: raw.completed === true,
     });
     if (out.length >= MAX_CATALOG) break;
   }
@@ -74,7 +77,23 @@ export function buildCoachContext(bodyContext = {}, progressDocument = null) {
     streak: clampInt(ctx.streak, 0, 100_000),
     accuracy: clampInt(ctx.accuracy, 0, 100),
     totalLessons: clampInt(ctx.totalLessons, 0, 100_000),
+    totalCatalogLessons: clampInt(ctx.totalCatalogLessons, 0, 100_000),
+    placementLevel: clampInt(ctx.placementLevel, 1, 8),
+    goal: clampString(ctx.goal, 80) || null,
+    goalTitle: clampString(ctx.goalTitle, MAX_STRING) || null,
+    recommendation: clampString(ctx.recommendation, 500) || null,
+    todayProgress: clampInt(ctx.todayProgress, 0, 1000),
+    dailyGoal: clampInt(ctx.dailyGoal, 1, 1000),
+    memorizedVerseCount: clampInt(ctx.memorizedVerseCount, 0, 10_000),
+    hafizDueCount: clampInt(ctx.hafizDueCount, 0, 10_000),
+    quranCompleted: clampInt(ctx.quranCompleted, 0, 10_000),
+    arabicCompleted: clampInt(ctx.arabicCompleted, 0, 10_000),
+    basicsCompleted: clampInt(ctx.basicsCompleted, 0, 10_000),
     completedLessonIds: clampStringList(ctx.completedLessonIds, { maxItems: MAX_LIST, maxLen: 100 }),
+    completedLessonTitles: clampStringList(ctx.completedLessonTitles, {
+      maxItems: 20,
+      maxLen: MAX_STRING,
+    }),
     weakAreas: clampStringList(ctx.weakAreas, { maxItems: MAX_LIST, maxLen: 120 }),
     recommendedLessonId: clampString(ctx.recommendedLessonId, 100) || null,
     recommendedLessonTitle: clampString(ctx.recommendedLessonTitle, MAX_STRING) || null,
@@ -99,6 +118,15 @@ export function buildCoachContext(bodyContext = {}, progressDocument = null) {
         maxLen: 100,
       });
     }
+    if (progressDocument.learningGoal) {
+      context.goal = clampString(progressDocument.learningGoal, 80) || context.goal;
+    }
+    if (Number.isFinite(Number(progressDocument.placementLevel))) {
+      context.placementLevel = clampInt(progressDocument.placementLevel, 1, 8);
+    }
+    if (progressDocument.learningRecommendation) {
+      context.recommendation = clampString(progressDocument.learningRecommendation, 500);
+    }
     // knowledgeStates -> число «слабых»/просроченных карточек как ориентир.
     if (Array.isArray(progressDocument.knowledgeStates)) {
       const now = Date.now();
@@ -122,19 +150,26 @@ export function buildSystemPrompt(locale) {
   const lang = clampLocale(locale);
   const langName = lang === 'kk' ? 'казахском (kk)' : lang === 'en' ? 'английском (en)' : 'русском (ru)';
   return [
-    'Ты — тёплый знающий наставник в приложении Muslingo по изучению Корана, арабского и основ ислама.',
-    'Тебе дают данные ученика (context) — используй их, чтобы отвечать персонально.',
-    'Помогай: подсказывай что учить дальше (рекомендуй урок по id из catalog или recommendedLessonId),',
-    'объясняй суры, таджвид и арабский, мотивируй ученика.',
-    'Правила:',
+    'Ты — персональный учебный наставник Muslingo по чтению и запоминанию Корана, арабскому и основам ислама.',
+    'Тебе дают подтверждённый контекст ученика и реальный catalog уроков. Всегда персонализируй ответ по ним.',
+    'Ты умеешь: выбрать следующий урок или суру; составить ежедневный/7-дневный план; поднять просроченные повторения;',
+    'объяснить известное слово или аят простыми словами; предложить короткий тест; помочь разбить аят для Hafiz Mode;',
+    'разобрать слабые буквы, чтение и вероятные ошибки произношения; показать измеримый прогресс.',
+    'Жёсткие правила:',
     `- отвечай на языке locale — на ${langName};`,
-    '- по Корану опирайся на общепризнанные смыслы;',
+    '- урок можно рекомендовать только с lessonId из catalog или recommendedLessonId; не придумывай недоступный контент;',
+    '- сначала назначай dueReviewCount/hafizDueCount и слабые места, затем новый материал;',
+    '- по Корану опирайся только на конкретный аят/суру; для содержательного религиозного ответа добавь sources;',
+    '- sources — массив объектов {title, category, verification, url?}; URL только https://quran.com или https://www.muftyat.kz;',
+    '- не выдумывай хадисы, степень достоверности, тафсир, обещанный материальный/медицинский/мистический эффект;',
+    '- оценку речи называй образовательной вероятностной проверкой, не заключением преподавателя таджвида;',
     '- сложные вопросы фикха, фетвы и спорные темы НЕ решай сам — мягко направь к квалифицированному специалисту',
     '  (в приложении есть кнопка «спросить специалиста», используй action contactSpecialist);',
-    '- без сектантских утверждений;',
-    '- отвечай кратко и по делу.',
+    '- не оценивай религиозность человека и не делай сектантских утверждений;',
+    '- если проверенного основания недостаточно, честно скажи об этом; отвечай кратко и конкретно.',
     'Верни СТРОГО JSON-объект такого вида:',
-    '{"reply": string, "action"?: {"type": "startLesson"|"openQuran"|"contactSpecialist", "lessonId"?: string, "label"?: string}, "sources"?: string[]}.',
+    '{"reply": string, "action"?: {"type": "startLesson"|"openQuran"|"openHafiz"|"contactSpecialist", "lessonId"?: string, "label"?: string},',
+    ' "sources"?: [{"title": string, "category": string, "verification": string, "url"?: string}]}.',
     'Поле reply обязательно. lessonId в action бери из catalog/recommendedLessonId. Ничего кроме JSON не пиши.',
   ].join('\n');
 }
@@ -166,7 +201,7 @@ export function parseCoachReply(raw) {
   const result = { text };
 
   const action = parsed.action;
-  const allowedActions = new Set(['startLesson', 'openQuran', 'contactSpecialist']);
+  const allowedActions = new Set(['startLesson', 'openQuran', 'openHafiz', 'contactSpecialist']);
   if (action && typeof action === 'object' && allowedActions.has(action.type)) {
     const clean = { type: action.type };
     const lessonId = clampString(action.lessonId, 100);
@@ -177,7 +212,28 @@ export function parseCoachReply(raw) {
   }
 
   if (Array.isArray(parsed.sources)) {
-    const sources = clampStringList(parsed.sources, { maxItems: 10, maxLen: 300 });
+    const sources = [];
+    for (const source of parsed.sources.slice(0, 10)) {
+      if (!source || typeof source !== 'object') continue;
+      const title = clampString(source.title, 300);
+      if (!title) continue;
+      const clean = {
+        title,
+        category: clampString(source.category, 120),
+        verification: clampString(source.verification, 300),
+      };
+      const rawUrl = clampString(source.url, 500);
+      if (rawUrl) {
+        try {
+          const url = new URL(rawUrl);
+          const allowedHosts = new Set(['quran.com', 'www.quran.com', 'www.muftyat.kz', 'muftyat.kz']);
+          if (url.protocol === 'https:' && allowedHosts.has(url.hostname)) clean.url = url.toString();
+        } catch {
+          // Invalid or unapproved source URLs are omitted, not returned to the client.
+        }
+      }
+      sources.push(clean);
+    }
     if (sources.length > 0) result.sources = sources;
   }
 

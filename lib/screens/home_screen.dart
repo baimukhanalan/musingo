@@ -34,6 +34,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   _LearningMode _mode = _LearningMode.quran;
   bool _languagePromptOpen = false;
+  bool _learningPathExpanded = false;
+  final Map<String, ScrollController> _pathControllers = {};
 
   static const _quranIcons = [
     Icons.auto_awesome_rounded,
@@ -60,6 +62,27 @@ class _HomeScreenState extends State<HomeScreen> {
     Icons.translate_rounded,
     Icons.school_rounded,
   ];
+
+  ScrollController _pathControllerFor(String courseId) =>
+      _pathControllers.putIfAbsent(courseId, ScrollController.new);
+
+  @override
+  void dispose() {
+    for (final controller in _pathControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  void _changeLearningMode(_LearningMode mode) {
+    HapticsService.tap();
+    setState(() => _mode = mode);
+  }
+
+  void _toggleLearningPath() {
+    HapticsService.tap();
+    setState(() => _learningPathExpanded = !_learningPathExpanded);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,6 +112,33 @@ class _HomeScreenState extends State<HomeScreen> {
     final double memoryAccuracy = memory.isEmpty
         ? 0
         : memory.map((k) => k.strength).reduce((a, b) => a + b) / memory.length;
+
+    final learningPath = activeCourse == null
+        ? null
+        : _LearningPathPanel(
+            mode: _mode,
+            course: activeCourse,
+            icons: activeIcons,
+            nativeLanguage: state.nativeLanguage,
+            controller: _pathControllerFor(activeCourse.id),
+            expanded: _learningPathExpanded,
+            onToggleExpanded: _toggleLearningPath,
+            onModeChanged: _changeLearningMode,
+            onChooseNativeLanguage: () => _askNativeLanguage(context),
+            onOpenLesson: _openLesson,
+          );
+
+    if (_learningPathExpanded && learningPath != null) {
+      return Scaffold(
+        backgroundColor: AppColors.ivory,
+        body: PremiumBackground(
+          child: SafeArea(
+            bottom: false,
+            child: SizedBox.expand(child: learningPath),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.ivory,
@@ -162,21 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // Один компактный учебный экран с собственной прокруткой. Даже
               // при сотне уроков следующие разделы остаются рядом, а не после
               // десятков экранов длинного пути.
-              if (activeCourse != null)
-                SliverToBoxAdapter(
-                  child: _LearningPathPanel(
-                    mode: _mode,
-                    course: activeCourse,
-                    icons: activeIcons,
-                    nativeLanguage: state.nativeLanguage,
-                    onModeChanged: (mode) {
-                      HapticsService.tap();
-                      setState(() => _mode = mode);
-                    },
-                    onChooseNativeLanguage: () => _askNativeLanguage(context),
-                    onOpenLesson: _openLesson,
-                  ),
-                ),
+              if (learningPath != null) SliverToBoxAdapter(child: learningPath),
               SliverToBoxAdapter(
                 child: _AcademyEntryCard(
                   onTap: () => Navigator.pushNamed(context, '/academy'),

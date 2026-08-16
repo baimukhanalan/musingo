@@ -3,7 +3,7 @@ import 'learning_profile.dart';
 
 enum CoachRole { user, coach }
 
-enum CoachActionType { startLesson, openQuran, contactSpecialist }
+enum CoachActionType { startLesson, openQuran, openHafiz, contactSpecialist }
 
 class CoachSource {
   final String title;
@@ -65,6 +65,19 @@ class CoachContext {
   final String? recommendedLessonTitle;
   final int dueReviewCount;
   final List<KnowledgeState> weakKnowledge;
+  final int xp;
+  final int streak;
+  final int totalLessons;
+  final int totalCatalogLessons;
+  final int todayProgress;
+  final int dailyGoal;
+  final int memorizedVerseCount;
+  final int hafizDueCount;
+  final int quranCompleted;
+  final int arabicCompleted;
+  final int basicsCompleted;
+  final double memoryAccuracy;
+  final List<String> completedLessonTitles;
 
   const CoachContext({
     required this.goal,
@@ -74,5 +87,18 @@ class CoachContext {
     required this.recommendedLessonTitle,
     required this.dueReviewCount,
     required this.weakKnowledge,
+    this.xp = 0,
+    this.streak = 0,
+    this.totalLessons = 0,
+    this.totalCatalogLessons = 0,
+    this.todayProgress = 0,
+    this.dailyGoal = 3,
+    this.memorizedVerseCount = 0,
+    this.hafizDueCount = 0,
+    this.quranCompleted = 0,
+    this.arabicCompleted = 0,
+    this.basicsCompleted = 0,
+    this.memoryAccuracy = 0,
+    this.completedLessonTitles = const [],
   });
 }

@@ -184,9 +184,12 @@ class _MessageView extends StatelessWidget {
                           message.actionType ==
                                   CoachActionType.contactSpecialist
                               ? Icons.support_agent_rounded
-                              : message.actionType == CoachActionType.openQuran
-                                  ? Icons.menu_book_rounded
-                                  : Icons.play_arrow_rounded,
+                              : message.actionType == CoachActionType.openHafiz
+                                  ? Icons.self_improvement_rounded
+                                  : message.actionType ==
+                                          CoachActionType.openQuran
+                                      ? Icons.menu_book_rounded
+                                      : Icons.play_arrow_rounded,
                           size: 19,
                         ),
                         label: Text(message.actionLabel ??

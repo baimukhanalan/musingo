@@ -179,6 +179,61 @@ void main() {
     await teardown(tester);
   });
 
+  testWidgets('развёрнутый путь сохраняет нижнее меню и переключение курсов',
+      (tester) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final state = await guestState(tester);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppState>.value(
+        value: state,
+        child: MaterialApp(
+          home: const MainTabScreen(),
+          onGenerateRoute: (settings) => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => const SizedBox.shrink(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final outerScroll = find.byType(CustomScrollView).first;
+    for (var i = 0; i < 4; i++) {
+      await tester.drag(outerScroll, const Offset(0, -420));
+      await tester.pump(const Duration(milliseconds: 120));
+      if (find
+          .byKey(const ValueKey('expand-learning-path'))
+          .evaluate()
+          .isNotEmpty) {
+        break;
+      }
+    }
+    await tester.tap(find.byKey(const ValueKey('expand-learning-path')));
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.byKey(const ValueKey('learning-path-panel-expanded')),
+        findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('collapse-learning-path')), findsOneWidget);
+    expect(find.text('Главная'), findsOneWidget);
+    expect(find.text('Hafiz'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('course-mode-basics')));
+    await tester.pump(const Duration(milliseconds: 220));
+    expect(find.byKey(const ValueKey('course-path-rules')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('collapse-learning-path')));
+    await tester.pump(const Duration(milliseconds: 220));
+    expect(find.byKey(const ValueKey('learning-path-panel')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await teardown(tester);
+  });
+
   testWidgets('вкладки Quran Reader вызывают реальные разделы', (tester) async {
     final state = await guestState(tester);
     QuranSection? selected;
