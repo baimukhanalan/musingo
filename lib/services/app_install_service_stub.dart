@@ -5,6 +5,7 @@ class AppInstallPlatform {
   static bool get isInstalled => true;
   static bool get canPrompt => false;
   static bool get needsIosInstructions => false;
+  static Stream<void> get statusChanges => const Stream.empty();
 
   static Future<AppInstallResult> install() async =>
       AppInstallResult.unavailable;

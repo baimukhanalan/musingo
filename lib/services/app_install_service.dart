@@ -14,6 +14,9 @@ class AppInstallService {
   static bool get needsIosInstructions =>
       platform.AppInstallPlatform.needsIosInstructions;
 
+  static Stream<void> get statusChanges =>
+      platform.AppInstallPlatform.statusChanges;
+
   static Future<AppInstallResult> install() =>
       platform.AppInstallPlatform.install();
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -35,6 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
   _LearningMode _mode = _LearningMode.quran;
   bool _languagePromptOpen = false;
   bool _learningPathExpanded = false;
+  StreamSubscription<void>? _installStatusSubscription;
   final Map<String, ScrollController> _pathControllers = {};
 
   static const _quranIcons = [
@@ -67,7 +70,16 @@ class _HomeScreenState extends State<HomeScreen> {
       _pathControllers.putIfAbsent(courseId, ScrollController.new);
 
   @override
+  void initState() {
+    super.initState();
+    _installStatusSubscription = AppInstallService.statusChanges.listen((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
   void dispose() {
+    _installStatusSubscription?.cancel();
     for (final controller in _pathControllers.values) {
       controller.dispose();
     }

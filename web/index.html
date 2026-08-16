@@ -126,21 +126,56 @@
 
     (() => {
       let installPrompt = null;
+      const installStateKey = 'muslingo_app_installed';
+
+      const runsStandalone = () =>
+        window.matchMedia('(display-mode: standalone)').matches ||
+        window.navigator.standalone === true;
+
+      const storedAsInstalled = () => {
+        try {
+          return window.localStorage.getItem(installStateKey) === 'true';
+        } catch (_) {
+          return false;
+        }
+      };
+
+      const markInstalled = () => {
+        try {
+          window.localStorage.setItem(installStateKey, 'true');
+        } catch (_) {
+          // Standalone display mode remains the source of truth when storage
+          // is unavailable (for example, in a restricted browser profile).
+        }
+        window.dispatchEvent(new CustomEvent('muslingo-installed'));
+      };
+
+      const markInstallAvailable = () => {
+        try {
+          window.localStorage.removeItem(installStateKey);
+        } catch (_) {}
+      };
+
+      if (runsStandalone()) {
+        try {
+          window.localStorage.setItem(installStateKey, 'true');
+        } catch (_) {}
+      }
 
       window.addEventListener('beforeinstallprompt', (event) => {
         event.preventDefault();
+        markInstallAvailable();
         installPrompt = event;
         window.dispatchEvent(new CustomEvent('muslingo-install-ready'));
       });
 
       window.addEventListener('appinstalled', () => {
         installPrompt = null;
-        window.dispatchEvent(new CustomEvent('muslingo-installed'));
+        markInstalled();
       });
 
       window.muslingoIsInstalled = () =>
-        window.matchMedia('(display-mode: standalone)').matches ||
-        window.navigator.standalone === true;
+        runsStandalone() || storedAsInstalled();
 
       window.muslingoCanInstall = () => installPrompt !== null;
 
@@ -159,6 +194,7 @@
         installPrompt.prompt();
         const choice = await installPrompt.userChoice;
         installPrompt = null;
+        if (choice.outcome === 'accepted') markInstalled();
         return choice.outcome;
       };
     })();
