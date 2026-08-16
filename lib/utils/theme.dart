@@ -114,8 +114,8 @@ class AppTheme {
         backgroundColor: AppColors.white,
         selectedItemColor: AppColors.pistachio,
         unselectedItemColor: AppColors.textGrey,
-        showSelectedLabels: true,
-        showUnselectedLabels: true,
+        showSelectedLabels: false,
+        showUnselectedLabels: false,
         type: BottomNavigationBarType.fixed,
         selectedLabelStyle: TextStyle(
           fontFamily: 'Nunito',

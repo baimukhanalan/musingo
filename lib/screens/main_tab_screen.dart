@@ -69,48 +69,47 @@ class _MainTabScreenState extends State<MainTabScreen> {
         ],
       ),
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: AppColors.white,
-          border:
-              const Border(top: BorderSide(color: AppColors.border, width: 1)),
-          boxShadow: [
-            BoxShadow(
-                color: AppColors.navy.withValues(alpha: 0.08),
-                blurRadius: 16,
-                offset: const Offset(0, -3))
-          ],
+          border: Border(top: BorderSide(color: AppColors.border, width: 1)),
         ),
         child: SafeArea(
+          top: false,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             child: Row(
               children: [
                 _NavItem(
-                    icon: Icons.home_rounded,
+                    icon: Icons.home_outlined,
+                    activeIcon: Icons.home_rounded,
                     label: appState.tr(ru: 'Главная', kk: 'Басты', en: 'Home'),
                     index: 0,
                     current: _current,
                     onTap: _onTap),
                 _NavItem(
-                    icon: Icons.menu_book_rounded,
+                    icon: Icons.menu_book_outlined,
+                    activeIcon: Icons.menu_book_rounded,
                     label: appState.tr(ru: 'Коран', kk: 'Құран', en: 'Quran'),
                     index: 1,
                     current: _current,
                     onTap: _onTap),
                 _NavItem(
-                    icon: Icons.auto_awesome_rounded,
+                    icon: Icons.auto_awesome_outlined,
+                    activeIcon: Icons.auto_awesome_rounded,
                     label: 'Coach',
                     index: 2,
                     current: _current,
                     onTap: _onTap),
                 _NavItem(
-                    icon: Icons.self_improvement_rounded,
+                    icon: Icons.self_improvement_outlined,
+                    activeIcon: Icons.self_improvement_rounded,
                     label: 'Hafiz',
                     index: 3,
                     current: _current,
                     onTap: _onTap),
                 _NavItem(
-                    icon: Icons.person_rounded,
+                    icon: Icons.person_outline_rounded,
+                    activeIcon: Icons.person_rounded,
                     label: appState.tr(
                         ru: 'Профиль', kk: 'Профиль', en: 'Profile'),
                     index: 4,
@@ -129,6 +128,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
 
 class _NavItem extends StatelessWidget {
   final IconData icon;
+  final IconData activeIcon;
   final String label;
   final int index;
   final int current;
@@ -136,6 +136,7 @@ class _NavItem extends StatelessWidget {
 
   const _NavItem({
     required this.icon,
+    required this.activeIcon,
     required this.label,
     required this.index,
     required this.current,
@@ -147,43 +148,38 @@ class _NavItem extends StatelessWidget {
     final isActive = index == current;
 
     return Expanded(
-      child: Semantics(
-        button: true,
-        selected: isActive,
-        label: label,
-        child: GestureDetector(
-          onTap: () => onTap(index),
-          behavior: HitTestBehavior.opaque,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOut,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isActive ? AppColors.skyLight : Colors.transparent,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(icon,
-                      color: isActive ? AppColors.sky : AppColors.textLight,
-                      size: 25),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    color:
-                        isActive ? AppColors.pistachioDark : AppColors.textGrey,
+      child: Tooltip(
+        message: label,
+        excludeFromSemantics: true,
+        child: Semantics(
+          button: true,
+          selected: isActive,
+          label: label,
+          excludeSemantics: true,
+          child: Material(
+            color: Colors.transparent,
+            child: InkResponse(
+              key: ValueKey('bottom-nav-$index'),
+              onTap: () => onTap(index),
+              radius: 28,
+              containedInkWell: true,
+              highlightShape: BoxShape.circle,
+              child: SizedBox(
+                height: 52,
+                child: Center(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 160),
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeIn,
+                    child: Icon(
+                      isActive ? activeIcon : icon,
+                      key: ValueKey(isActive),
+                      color: isActive ? AppColors.textDark : AppColors.textGrey,
+                      size: 27,
+                    ),
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ),

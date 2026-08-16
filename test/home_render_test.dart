@@ -147,7 +147,7 @@ void main() {
     await teardown(tester);
   });
 
-  testWidgets('Нижняя навигация: премиум-таббар без Лиги/Основ',
+  testWidgets('Нижняя навигация: Instagram-паттерн без подписей',
       (tester) async {
     final state = await guestState(tester);
 
@@ -166,15 +166,54 @@ void main() {
     await tester.pump();
 
     expect(tester.takeException(), isNull);
-    // Новый таббар прототипа: Главная · Коран · Coach · Hafiz · Профиль.
-    expect(find.text('Главная'), findsOneWidget);
-    expect(find.bySemanticsLabel('Коран'), findsOneWidget);
-    expect(find.text('Hafiz'), findsOneWidget);
-    expect(find.text('Профиль'), findsOneWidget);
+    // Подписи остаются в semantics/tooltip, но не занимают место на экране.
+    expect(find.text('Главная'), findsNothing);
+    expect(find.bySemanticsLabel('Главная'), findsOneWidget);
+    expect(find.bySemanticsLabel('Коран'), findsWidgets);
+    expect(find.text('Hafiz'), findsNothing);
+    expect(find.bySemanticsLabel('Hafiz'), findsOneWidget);
+    expect(find.text('Профиль'), findsNothing);
+    expect(find.bySemanticsLabel('Профиль'), findsOneWidget);
+    expect(find.byKey(const ValueKey('bottom-nav-0')), findsOneWidget);
+    expect(find.byKey(const ValueKey('bottom-nav-4')), findsOneWidget);
     // Лига доступна отдельной страницей из «Друзей», но не перегружает таббар;
     // «Основы» переехали во внутреннюю вкладку на главной; «Уроки» → «Главная».
     expect(find.text('Лига'), findsNothing);
     expect(find.text('Уроки'), findsNothing);
+
+    await teardown(tester);
+  });
+
+  testWidgets('каждая кнопка нижнего меню открывает свою вкладку',
+      (tester) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final state = await guestState(tester);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppState>.value(
+        value: state,
+        child: const MaterialApp(home: MainTabScreen()),
+      ),
+    );
+    await tester.pump();
+
+    int selectedIndex() =>
+        tester.widget<IndexedStack>(find.byType(IndexedStack)).index ?? 0;
+
+    expect(selectedIndex(), 0);
+    for (var index = 1; index < 5; index++) {
+      await tester.tap(find.byKey(ValueKey('bottom-nav-$index')));
+      await tester.pump(const Duration(milliseconds: 220));
+      expect(selectedIndex(), index);
+      expect(tester.takeException(), isNull);
+    }
+
+    await tester.tap(find.byKey(const ValueKey('bottom-nav-0')));
+    await tester.pump(const Duration(milliseconds: 220));
+    expect(selectedIndex(), 0);
 
     await teardown(tester);
   });
@@ -219,8 +258,8 @@ void main() {
         findsOneWidget);
     expect(
         find.byKey(const ValueKey('collapse-learning-path')), findsOneWidget);
-    expect(find.text('Главная'), findsOneWidget);
-    expect(find.text('Hafiz'), findsOneWidget);
+    expect(find.bySemanticsLabel('Главная'), findsOneWidget);
+    expect(find.bySemanticsLabel('Hafiz'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('course-mode-basics')));
     await tester.pump(const Duration(milliseconds: 220));
