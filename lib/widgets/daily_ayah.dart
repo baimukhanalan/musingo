@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -62,19 +64,26 @@ class DailyAyahData {
       ..sort((a, b) => a.globalAyahNumber.compareTo(b.globalAyahNumber));
   }
 
-  /// Порядковый номер дня в году (0-based) — основа стабильного выбора.
-  static int dayOfYearIndex(DateTime date) {
-    final startOfYear = DateTime(date.year, 1, 1);
-    final today = DateTime(date.year, date.month, date.day);
-    return today.difference(startOfYear).inDays;
+  /// Абсолютный номер локальной календарной даты. UTC-конструктор здесь нужен
+  /// только для чистой арифметики: переходы часовых поясов и летнего времени
+  /// не могут сделать календарный день короче или длиннее 24 часов.
+  static int calendarDayIndex(DateTime date) {
+    return DateTime.utc(date.year, date.month, date.day)
+            .millisecondsSinceEpoch ~/
+        Duration.millisecondsPerDay;
   }
 
   /// Детерминированный аят на конкретный календарный день:
-  /// индекс = день года % число аятов в пуле.
+  /// индекс = абсолютный календарный день % число аятов в пуле.
   static AyahOfDay? ofDay(DateTime date, {List<AyahOfDay>? pool}) {
     final ayahs = pool ?? buildPool();
     if (ayahs.isEmpty) return null;
-    return ayahs[dayOfYearIndex(date) % ayahs.length];
+    return ayahs[calendarDayIndex(date) % ayahs.length];
+  }
+
+  static Duration untilNextLocalDay(DateTime date) {
+    final tomorrow = DateTime(date.year, date.month, date.day + 1);
+    return tomorrow.difference(date);
   }
 }
 
@@ -84,8 +93,9 @@ class DailyAyahData {
 class DailyAyahCard extends StatefulWidget {
   /// Дата для выбора аята. По умолчанию — сегодня; параметр нужен для тестов.
   final DateTime? date;
+  final DateTime Function()? now;
 
-  const DailyAyahCard({super.key, this.date});
+  const DailyAyahCard({super.key, this.date, this.now});
 
   @override
   State<DailyAyahCard> createState() => _DailyAyahCardState();
@@ -96,6 +106,7 @@ class _DailyAyahCardState extends State<DailyAyahCard>
   // Плеер создаём лениво — только при первом нажатии «Прослушать», чтобы не
   // держать аудиоресурс на каждом рендере главной (важно и для виджет-тестов).
   QuranAudioPlayer? _audioPlayer;
+  Timer? _dayChangeTimer;
   bool _playing = false;
   // Пул строим один раз (список фиксирован на время жизни виджета), а сам
   // «аят дня» выбираем по ТЕКУЩЕЙ дате при каждом build — так карточка не
@@ -106,13 +117,23 @@ class _DailyAyahCardState extends State<DailyAyahCard>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _scheduleDayChange();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _dayChangeTimer?.cancel();
     _audioPlayer?.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant DailyAyahCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.date != widget.date || oldWidget.now != widget.now) {
+      _scheduleDayChange();
+    }
   }
 
   @override
@@ -121,12 +142,29 @@ class _DailyAyahCardState extends State<DailyAyahCard>
     // карточку, чтобы «аят дня» пересчитался под новую дату.
     if (state == AppLifecycleState.resumed && mounted) {
       setState(() {});
+      _scheduleDayChange();
     }
   }
 
+  DateTime _currentDate() =>
+      widget.date ?? widget.now?.call() ?? DateTime.now();
+
+  void _scheduleDayChange() {
+    _dayChangeTimer?.cancel();
+    if (widget.date != null) return;
+
+    final now = _currentDate();
+    final delay = DailyAyahData.untilNextLocalDay(now) +
+        const Duration(milliseconds: 100);
+    _dayChangeTimer = Timer(delay, () {
+      if (!mounted) return;
+      setState(() {});
+      _scheduleDayChange();
+    });
+  }
+
   /// Аят на текущий календарный день (или на дату из теста).
-  AyahOfDay? get _ayah =>
-      DailyAyahData.ofDay(widget.date ?? DateTime.now(), pool: _pool);
+  AyahOfDay? get _ayah => DailyAyahData.ofDay(_currentDate(), pool: _pool);
 
   Future<void> _toggleListen() async {
     final ayah = _ayah;

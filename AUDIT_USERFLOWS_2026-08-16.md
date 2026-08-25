@@ -68,3 +68,23 @@ reason this report does not present those images as valid visual evidence. Layou
 health is instead backed by render tests at two mobile viewports; a real-device
 screen-reader, microphone-permission and push-delivery pass remains necessary for
 store certification.
+
+## Daily-cycle follow-up: 2026-08-25
+
+The complete daily-content path was rechecked before release:
+
+- Ayah of the Day now uses an absolute local calendar-day index, so it remains
+  stable during one day and changes on every adjacent day, including New Year.
+- An open Home screen schedules its own refresh just after local midnight and
+  also recalculates after the app resumes from the background.
+- The ayah pool is deduplicated, deterministic and built only from Quran lesson
+  content that already has Arabic, transliteration, translation and a canonical
+  global ayah number. No religious text is generated for this card.
+- Regression tests cover same-day stability, adjacent-day rotation, New Year,
+  empty data, midnight delay and widget refresh after a date change.
+- Existing tests reconfirm daily progress reset, streak rewards, daily League XP
+  limits, reminder selection and timezone-aware notification batches.
+
+Verification after this follow-up: Flutter analysis passed, 126 Flutter tests
+passed and 147 API tests passed. The Vercel build runs both full suites again
+before publishing the production bundle.
