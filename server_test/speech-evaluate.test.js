@@ -6,6 +6,8 @@ import { callOpenAITranscription } from '../server/lib/openai.js';
 import speechEvaluate, {
   decodeSpeechAudio,
   evaluateSpeechBody,
+  normalizeArabicVowelHints,
+  normalizePhonetic,
   normalizeSpeech,
   scoreSpeech,
 } from '../server/routes/speech-evaluate.js';
@@ -38,6 +40,39 @@ test('speech scoring tolerates a small recognition omission', () => {
   const spoken = normalizeSpeech('بسم الله الرحمن الرحيم');
   const target = normalizeSpeech('بسم الله الرحمن الرحيم');
   assert.ok(scoreSpeech(spoken.slice(0, -1), target) >= 80);
+});
+
+test('speech normalization accepts ASR long-vowel spelling for short harakat drills', async () => {
+  assert.equal(normalizeArabicVowelHints('بَ بِ بُ'), 'بابيبو');
+  const result = await evaluateSpeechBody({
+    transcript: 'بابيبو',
+    target: 'بَ بِ بُ',
+    passScore: 60,
+  });
+  assert.equal(result.payload.score, 100);
+  assert.equal(result.payload.passed, true);
+});
+
+test('speech scoring accepts a full target followed by an ASR repetition', () => {
+  const target = normalizeSpeech('وأنفقوا مما رزقناكم');
+  const spoken = normalizeSpeech('وأنفقوا مما رزقناكم وأنفقوا مما');
+  assert.equal(scoreSpeech(spoken, target), 100);
+});
+
+test('speech scoring does not use substring acceptance for one-letter targets', () => {
+  assert.ok(scoreSpeech(normalizeSpeech('سلام'), normalizeSpeech('ل')) < 60);
+});
+
+test('phonetic normalization compares Latin ASR with Cyrillic transliteration', async () => {
+  assert.equal(normalizePhonetic('ба, би, бу'), 'babibu');
+  const result = await evaluateSpeechBody({
+    transcript: 'ba, bi, bu',
+    target: 'بَ بِ بُ',
+    phoneticTarget: 'ба би бу',
+    passScore: 60,
+  });
+  assert.equal(result.payload.score, 100);
+  assert.equal(result.payload.passed, true);
 });
 
 test('audio decoder rejects unsupported and oversized recordings', () => {

@@ -74,6 +74,7 @@ class _WordOrderStep extends StatelessWidget {
                     runSpacing: 8,
                     children: List.generate(picks.length, (position) {
                       return _WordChip(
+                        key: ValueKey('lesson_order_pick_$position'),
                         text: bank[picks[position]],
                         tone: answered
                             ? (isCorrect
@@ -97,6 +98,7 @@ class _WordOrderStep extends StatelessWidget {
           children: List.generate(bank.length, (bankIndex) {
             final isUsed = used.contains(bankIndex);
             return _WordChip(
+              key: ValueKey('lesson_order_bank_$bankIndex'),
               text: bank[bankIndex],
               tone: isUsed ? _WordChipTone.used : _WordChipTone.bank,
               onTap: isUsed || onPick == null ? null : () => onPick!(bankIndex),
@@ -133,7 +135,12 @@ class _WordChip extends StatelessWidget {
   final _WordChipTone tone;
   final VoidCallback? onTap;
 
-  const _WordChip({required this.text, required this.tone, this.onTap});
+  const _WordChip({
+    super.key,
+    required this.text,
+    required this.tone,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -39,6 +39,7 @@ class _QuestionStep extends StatelessWidget {
         ...List.generate(displayOrder.length, (displayPos) {
           final i = displayOrder[displayPos];
           return _AnswerOptionCard(
+            key: ValueKey('lesson_answer_$i'),
             text: step.answers![i],
             letter: String.fromCharCode(65 + displayPos),
             selected: selectedAnswer == i,
@@ -138,6 +139,7 @@ class _AnswerOptionCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const _AnswerOptionCard({
+    super.key,
     required this.text,
     required this.letter,
     required this.selected,

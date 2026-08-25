@@ -119,6 +119,7 @@ class _MatchingStepState extends State<_MatchingStep> {
               child: Column(
                 children: List.generate(_pairs.length, (index) {
                   return _MatchCard(
+                    key: ValueKey('lesson_match_prompt_$index'),
                     text: _pairs[index].prompt,
                     selected: _selectedPrompt == index,
                     matched: _matchedPrompts.contains(index),
@@ -132,6 +133,7 @@ class _MatchingStepState extends State<_MatchingStep> {
               child: Column(
                 children: _answerOrder.map((pairIndex) {
                   return _MatchCard(
+                    key: ValueKey('lesson_match_answer_$pairIndex'),
                     text: _pairs[pairIndex].answer,
                     selected: _selectedAnswer == pairIndex,
                     matched: _matchedPrompts.contains(pairIndex),
@@ -154,6 +156,7 @@ class _MatchCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const _MatchCard({
+    super.key,
     required this.text,
     required this.selected,
     required this.matched,

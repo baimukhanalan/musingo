@@ -1329,7 +1329,7 @@ final List<Lesson> quranJuzAmmaB = [
         type: LessonStepType.audio,
         quranGlobalAyahNumber: 6133,
         arabicText: 'فِيهَا كُتُبٌۭ قَيِّمَةٌۭ',
-        transliteration: 'фиха кутубун кайима',
+        transliteration: 'фииха кутубун каййиматун',
         russianText: 'В них — правдивые Писания',
       ),
       LessonStep(
@@ -1463,7 +1463,7 @@ final List<Lesson> quranJuzAmmaB = [
         question: 'Соедини транслитерацию и перевод',
         matchPairs: [
           LessonMatchPair(
-              prompt: 'фиха кутубун кайима',
+              prompt: 'фииха кутубун каййиматун',
               answer: 'В них — правдивые Писания'),
           LessonMatchPair(
               prompt:
@@ -1478,7 +1478,7 @@ final List<Lesson> quranJuzAmmaB = [
         type: LessonStepType.speak,
         quranGlobalAyahNumber: 6133,
         arabicText: 'فِيهَا كُتُبٌۭ قَيِّمَةٌۭ',
-        transliteration: 'фиха кутубун кайима',
+        transliteration: 'фииха кутубун каййиматун',
         russianText: 'Расскажи третий аят суры Аль-Баййина.',
       ),
     ],

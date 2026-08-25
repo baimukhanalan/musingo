@@ -180,6 +180,7 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
         ...List.generate(displayOrder.length, (displayPos) {
           final i = displayOrder[displayPos];
           return _AnswerOptionCard(
+            key: ValueKey('lesson_answer_$i'),
             text: answers[i],
             letter: String.fromCharCode(65 + displayPos),
             selected: widget.selectedAnswer == i,

@@ -110,6 +110,7 @@ class _BottomBar extends StatelessWidget {
               Expanded(
                 flex: 3,
                 child: PremiumButton(
+                  key: const ValueKey('lesson_primary_action'),
                   label: actionLabel,
                   onPressed: resolvedAction,
                   variant: answered && !isCorrect

@@ -2,6 +2,8 @@ part of '../lesson_screen.dart';
 
 class _SpeakStep extends StatefulWidget {
   final LessonStep step;
+  final Future<SpeechEvaluationResult> Function(LessonStep step)?
+      speechSimulator;
   final ValueChanged<bool> onVerified;
 
   /// Распознавание речи недоступно на устройстве (и нет удалённой проверки):
@@ -15,6 +17,7 @@ class _SpeakStep extends StatefulWidget {
   const _SpeakStep({
     super.key,
     required this.step,
+    this.speechSimulator,
     required this.onVerified,
     required this.onUnavailable,
     required this.onSkip,
@@ -88,6 +91,11 @@ class _SpeakStepState extends State<_SpeakStep> {
           en: 'First listen to the sample, then record your voice.',
         );
       });
+      return;
+    }
+
+    if (widget.speechSimulator != null) {
+      await _runSimulatedSpeech();
       return;
     }
 
@@ -216,6 +224,15 @@ class _SpeakStepState extends State<_SpeakStep> {
     if (_recording || _evaluating || _initializing) return;
     final state = context.read<AppState>();
 
+    if (widget.speechSimulator != null) {
+      setState(() {
+        _samplePlayed = true;
+        _samplePlaying = false;
+        _speechError = null;
+      });
+      return;
+    }
+
     if (_samplePlaying) {
       await _tts.stop();
       await _audioPlayer.stop();
@@ -319,23 +336,7 @@ class _SpeakStepState extends State<_SpeakStep> {
         audioBytes: _recordedAudio,
       );
       if (!mounted) return;
-      setState(() {
-        if (result.transcript.trim().isNotEmpty) {
-          _recognizedWords = result.transcript;
-        }
-        _recording = false;
-        _done = _recognizedWords.trim().isNotEmpty ||
-            (_recordedAudio?.isNotEmpty ?? false);
-        _evaluating = false;
-        _gradingRequested = false;
-        _score = result.score / 100;
-        _passed = result.passed;
-        if (!result.passed) _failedAttempts++;
-        _fallbackUsed = result.engine == SpeechEvaluationEngine.localFallback ||
-            result.fallbackUsed;
-        _speechError = result.passed ? null : result.feedbackText;
-      });
-      widget.onVerified(result.passed);
+      _applySpeechResult(result);
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -351,6 +352,51 @@ class _SpeakStepState extends State<_SpeakStep> {
       });
       widget.onVerified(false);
     }
+  }
+
+  Future<void> _runSimulatedSpeech() async {
+    if (_evaluating || !mounted) return;
+    setState(() {
+      _evaluating = true;
+      _speechError = null;
+    });
+    try {
+      final result = await widget.speechSimulator!(widget.step);
+      if (!mounted) return;
+      _applySpeechResult(result);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _evaluating = false;
+        _failedAttempts++;
+        _speechError = context.read<AppState>().tr(
+              ru: 'Симулятор произношения не завершил проверку.',
+              kk: 'Айтылым симуляторы тексеруді аяқтамады.',
+              en: 'The pronunciation simulator did not complete the check.',
+            );
+      });
+      widget.onVerified(false);
+    }
+  }
+
+  void _applySpeechResult(SpeechEvaluationResult result) {
+    setState(() {
+      if (result.transcript.trim().isNotEmpty) {
+        _recognizedWords = result.transcript;
+      }
+      _recording = false;
+      _done = _recognizedWords.trim().isNotEmpty ||
+          (_recordedAudio?.isNotEmpty ?? false);
+      _evaluating = false;
+      _gradingRequested = false;
+      _score = result.score / 100;
+      _passed = result.passed;
+      if (!result.passed) _failedAttempts++;
+      _fallbackUsed = result.engine == SpeechEvaluationEngine.localFallback ||
+          result.fallbackUsed;
+      _speechError = result.passed ? null : result.feedbackText;
+    });
+    widget.onVerified(result.passed);
   }
 
   @override
@@ -421,6 +467,7 @@ class _SpeakStepState extends State<_SpeakStep> {
                   kk: 'Айтылым үлгісін тыңдау',
                   en: 'Listen to the pronunciation sample'),
           child: GestureDetector(
+            key: const ValueKey('lesson_speech_sample'),
             onTap: _recording || _evaluating || _initializing
                 ? null
                 : _toggleSample,
@@ -496,6 +543,7 @@ class _SpeakStepState extends State<_SpeakStep> {
                   kk: 'Сөзді тануды бастау',
                   en: 'Start speech recognition'),
           child: GestureDetector(
+            key: const ValueKey('lesson_speech_record'),
             onTap: _initializing || _evaluating ? null : _toggleListening,
             child: Container(
               width: 84,

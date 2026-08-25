@@ -137,10 +137,24 @@ class SpeechEvaluationService {
       normalizedTranscript,
       [target, phoneticTarget],
     );
-    final score = (_similarity(normalizedTranscript, normalizedTarget) * 100)
-        .round()
-        .clamp(0, 100)
-        .toInt();
+    final regularSimilarity = _similarity(
+      normalizedTranscript,
+      normalizedTarget,
+    );
+    final vowelSimilarity = _similarity(
+      _normalizeArabicVowelHints(transcript),
+      _normalizeArabicVowelHints(target),
+    );
+    final phoneticSimilarity = _similarity(
+      _normalizePhonetic(transcript),
+      _normalizePhonetic(phoneticTarget),
+    );
+    final similarity = [
+      regularSimilarity,
+      vowelSimilarity,
+      phoneticSimilarity,
+    ].reduce((best, value) => best > value ? best : value);
+    final score = (similarity * 100).round().clamp(0, 100).toInt();
     final passed = transcript.trim().isNotEmpty && score >= passScore;
     return SpeechEvaluationResult(
       transcript: transcript,
@@ -161,9 +175,68 @@ class SpeechEvaluationService {
 
   String normalizeSpeech(String value) => value
       .toLowerCase()
-      .replaceAll(RegExp(r'[\u064B-\u065F\u0670]'), '')
+      .replaceAll(RegExp(r'[\u064B-\u065F\u0670\u06D6-\u06ED]'), '')
+      .replaceAll(RegExp(r'[یى]'), 'ي')
+      .replaceAll('ک', 'ك')
       .replaceAll('ё', 'е')
       .replaceAll(RegExp(r'[^\u0600-\u06FFa-zа-яе0-9]+', unicode: true), '');
+
+  String _normalizeArabicVowelHints(String value) => value
+      .toLowerCase()
+      .replaceAll('\u064B', 'ان')
+      .replaceAll('\u064C', 'ون')
+      .replaceAll('\u064D', 'ين')
+      .replaceAll('\u064E', 'ا')
+      .replaceAll('\u064F', 'و')
+      .replaceAll('\u0650', 'ي')
+      .replaceAll(RegExp(r'[\u0651-\u065F\u0670\u06D6-\u06ED]'), '')
+      .replaceAll(RegExp(r'[یى]'), 'ي')
+      .replaceAll('ک', 'ك')
+      .replaceAll(RegExp(r'[^\u0600-\u06FF]+', unicode: true), '');
+
+  String _normalizePhonetic(String value) {
+    const cyrillicToLatin = <String, String>{
+      'а': 'a',
+      'б': 'b',
+      'в': 'v',
+      'г': 'g',
+      'д': 'd',
+      'е': 'e',
+      'ё': 'yo',
+      'ж': 'zh',
+      'з': 'z',
+      'и': 'i',
+      'й': 'y',
+      'к': 'k',
+      'л': 'l',
+      'м': 'm',
+      'н': 'n',
+      'о': 'o',
+      'п': 'p',
+      'р': 'r',
+      'с': 's',
+      'т': 't',
+      'у': 'u',
+      'ф': 'f',
+      'х': 'kh',
+      'ц': 'ts',
+      'ч': 'ch',
+      'ш': 'sh',
+      'щ': 'sh',
+      'ы': 'y',
+      'э': 'e',
+      'ю': 'yu',
+      'я': 'ya',
+      'ъ': '',
+      'ь': '',
+    };
+    final buffer = StringBuffer();
+    for (final rune in value.toLowerCase().runes) {
+      final character = String.fromCharCode(rune);
+      buffer.write(cyrillicToLatin[character] ?? character);
+    }
+    return buffer.toString().replaceAll(RegExp(r'[^a-z0-9]+'), '');
+  }
 
   String _bestNormalizedTarget(String transcript, List<String> targets) {
     var best = '';
@@ -182,6 +255,7 @@ class SpeechEvaluationService {
 
   double _similarity(String spoken, String target) {
     if (spoken.isEmpty || target.isEmpty) return 0;
+    if (target.runes.length >= 8 && spoken.contains(target)) return 1;
     final distance = _levenshteinDistance(spoken, target);
     final longest =
         spoken.length > target.length ? spoken.length : target.length;

@@ -30,9 +30,41 @@ export function normalizeSpeech(value) {
   return String(value ?? '')
     .toLowerCase()
     .normalize('NFKD')
-    .replace(/[\u064B-\u065F\u0670]/g, '')
+    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '')
+    .replace(/[یى]/g, 'ي')
+    .replace(/ک/g, 'ك')
     .replace(/ё/g, 'е')
     .replace(/[^\u0600-\u06ffa-zа-яе0-9]+/gu, '');
+}
+
+export function normalizeArabicVowelHints(value) {
+  return String(value ?? '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/\u064B/g, 'ان')
+    .replace(/\u064C/g, 'ون')
+    .replace(/\u064D/g, 'ين')
+    .replace(/\u064E/g, 'ا')
+    .replace(/\u064F/g, 'و')
+    .replace(/\u0650/g, 'ي')
+    .replace(/[\u0651-\u065F\u0670\u06D6-\u06ED]/g, '')
+    .replace(/[یى]/g, 'ي')
+    .replace(/ک/g, 'ك')
+    .replace(/[^\u0600-\u06ff]+/gu, '');
+}
+
+export function normalizePhonetic(value) {
+  const cyrillicToLatin = {
+    а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'yo', ж: 'zh',
+    з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o',
+    п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'kh', ц: 'ts',
+    ч: 'ch', ш: 'sh', щ: 'sh', ы: 'y', э: 'e', ю: 'yu', я: 'ya',
+    ъ: '', ь: '',
+  };
+  return Array.from(String(value ?? '').toLowerCase().normalize('NFKD'))
+    .map((character) => cyrillicToLatin[character] ?? character)
+    .join('')
+    .replace(/[^a-z0-9]+/g, '');
 }
 
 export function decodeSpeechAudio(audioBase64, mimeType) {
@@ -64,8 +96,17 @@ export async function evaluateSpeechBody(body, { transcribe = transcribeSpeech }
     }
   }
   const normalizedTranscript = normalizeSpeech(transcript);
-  const targetScore = scoreSpeech(normalizedTranscript, normalizeSpeech(target));
-  const phoneticScore = scoreSpeech(normalizedTranscript, normalizeSpeech(phoneticTarget));
+  const targetScore = Math.max(
+    scoreSpeech(normalizedTranscript, normalizeSpeech(target)),
+    scoreSpeech(
+      normalizeArabicVowelHints(transcript),
+      normalizeArabicVowelHints(target),
+    ),
+  );
+  const phoneticScore = Math.max(
+    scoreSpeech(normalizedTranscript, normalizeSpeech(phoneticTarget)),
+    scoreSpeech(normalizePhonetic(transcript), normalizePhonetic(phoneticTarget)),
+  );
   const finalScore = Math.max(targetScore, phoneticScore);
   const passScore = Math.min(100, Math.max(0, Number(body.passScore ?? 60)));
   const passed = normalizedTranscript.length > 0 && finalScore >= passScore;
@@ -111,6 +152,7 @@ function distance(a, b) {
 
 export function scoreSpeech(spoken, target) {
   if (!spoken || !target) return 0;
+  if (Array.from(target).length >= 8 && spoken.includes(target)) return 100;
   const spokenRunes = Array.from(spoken);
   const targetRunes = Array.from(target);
   const longest = Math.max(spokenRunes.length, targetRunes.length);

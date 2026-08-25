@@ -61,7 +61,14 @@ String _stepTypeLabel(LessonStep step, AppState state) {
 
 class LessonScreen extends StatefulWidget {
   final Lesson lesson;
-  const LessonScreen({super.key, required this.lesson});
+  final Future<SpeechEvaluationResult> Function(LessonStep step)?
+      speechSimulator;
+
+  const LessonScreen({
+    super.key,
+    required this.lesson,
+    @visibleForTesting this.speechSimulator,
+  });
 
   @override
   State<LessonScreen> createState() => _LessonScreenState();
@@ -394,6 +401,7 @@ class _LessonScreenState extends State<LessonScreen> {
           key: ValueKey(
               'speak_${widget.lesson.id}_${_stepIndex}_$_reviewingMistakes'),
           step: _step,
+          speechSimulator: widget.speechSimulator,
           onVerified: (passed) {
             if (passed) {
               HapticsService.speechPassed();
