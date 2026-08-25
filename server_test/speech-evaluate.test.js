@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { callGroqTranscription } from '../server/lib/groq.js';
+import { callOpenAITranscription } from '../server/lib/openai.js';
 import speechEvaluate, {
   decodeSpeechAudio,
   evaluateSpeechBody,
@@ -98,9 +99,41 @@ test('Groq transcription sends audio as multipart form data', async () => {
   }
 });
 
+test('OpenAI transcription sends audio as multipart form data', async () => {
+  const previousKey = process.env.OPENAI_API_KEY;
+  const previousFetch = globalThis.fetch;
+  process.env.OPENAI_API_KEY = 'test-only-key';
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, 'https://api.openai.com/v1/audio/transcriptions');
+    assert.equal(options.method, 'POST');
+    assert.match(options.headers.Authorization, /^Bearer /);
+    assert.ok(options.body instanceof FormData);
+    assert.equal(options.body.get('model'), 'gpt-4o-mini-transcribe');
+    assert.equal(options.body.get('language'), 'ar');
+    return new Response(JSON.stringify({ text: 'بسم الله' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+  try {
+    const transcript = await callOpenAITranscription({
+      audio: Buffer.from('recorded voice'),
+      mimeType: 'audio/webm',
+      prompt: 'بسم الله',
+    });
+    assert.equal(transcript, 'بسم الله');
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousKey;
+  }
+});
+
 test('route returns a clear error when audio transcription is not configured', async () => {
   const previousKey = process.env.GROQ_API_KEY;
+  const previousOpenAI = process.env.OPENAI_API_KEY;
   delete process.env.GROQ_API_KEY;
+  delete process.env.OPENAI_API_KEY;
   try {
     const response = mockResponse();
     await speechEvaluate({
@@ -117,5 +150,7 @@ test('route returns a clear error when audio transcription is not configured', a
   } finally {
     if (previousKey === undefined) delete process.env.GROQ_API_KEY;
     else process.env.GROQ_API_KEY = previousKey;
+    if (previousOpenAI === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousOpenAI;
   }
 });

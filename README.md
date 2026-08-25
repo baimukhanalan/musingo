@@ -134,6 +134,7 @@ pnpm run test:api
 | `VAPID_PUBLIC_KEY`  | Публичный ключ VAPID для веб-пушей.           |
 | `VAPID_PRIVATE_KEY` | Приватный ключ VAPID.                         |
 | `VAPID_SUBJECT`     | Контактный subject для VAPID (mailto/URL).    |
+| `OPENAI_API_KEY`    | Серверная транскрипция аудио произношения.    |
 
 Дополнительно бэкенд читает необязательные `MUSLINGO_APP_ORIGIN`,
 `MUSLINGO_JWT_ISS`, `MUSLINGO_JWT_AUD`, `MUSLINGO_JWT_TTL`,

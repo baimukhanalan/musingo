@@ -1,7 +1,10 @@
 import { optionalUser } from '../lib/auth.js';
 import { clientIp, method, readJson, withApi } from '../lib/http.js';
-import { callGroqTranscription, hasGroqKey } from '../lib/groq.js';
 import { consumeSpeechAttempt, speechKey } from '../lib/login-rate-limit.js';
+import {
+  hasSpeechTranscriptionProvider,
+  transcribeSpeech,
+} from '../lib/speech-transcription.js';
 
 // Жёсткий предел длины входа ДО вычислений. distance() — O(n·m) и вызывается
 // дважды; при 2000 символах это до 8 млн операций на запрос без авторизации.
@@ -42,7 +45,7 @@ export function decodeSpeechAudio(audioBase64, mimeType) {
   return { audio, mimeType: normalizedMimeType };
 }
 
-export async function evaluateSpeechBody(body, { transcribe = callGroqTranscription } = {}) {
+export async function evaluateSpeechBody(body, { transcribe = transcribeSpeech } = {}) {
   let transcript = clampInput(body.transcript);
   const target = clampInput(body.target);
   const phoneticTarget = clampInput(body.phoneticTarget);
@@ -143,7 +146,7 @@ export default withApi(async (request, response) => {
         message: 'Invalid speech audio.',
       });
     }
-    if (!hasGroqKey()) {
+    if (!hasSpeechTranscriptionProvider()) {
       return response.status(503).json({
         error: 'speech_transcription_unavailable',
         message: 'Speech transcription is not configured.',

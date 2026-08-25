@@ -49,6 +49,8 @@
    - `JWT_SECRET` — секрет для подписи JWT.
    - `CRON_SECRET` — секрет для cron-эндпоинта напоминаний.
    - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` — для веб-пушей.
+   - `OPENAI_API_KEY` — серверная транскрипция произношения на устройствах,
+     где локальное распознавание речи недоступно.
    - `MUSLINGO_API_URL` и `MUSLINGO_SPEECH_API_URL` — обычно URL самого
      проекта (например `https://muslingo-mobile.vercel.app`), чтобы клиент
      ходил в свой же бэкенд.

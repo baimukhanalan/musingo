@@ -15,8 +15,10 @@ function mockResponse() {
 }
 
 test('speech capabilities reflect server transcription configuration', async () => {
-  const previous = process.env.GROQ_API_KEY;
-  process.env.GROQ_API_KEY = 'test-only-key';
+  const previousOpenAI = process.env.OPENAI_API_KEY;
+  const previousGroq = process.env.GROQ_API_KEY;
+  process.env.OPENAI_API_KEY = 'test-only-key';
+  delete process.env.GROQ_API_KEY;
   try {
     const response = mockResponse();
     await speechCapabilities({ method: 'GET', headers: {} }, response);
@@ -26,7 +28,9 @@ test('speech capabilities reflect server transcription configuration', async () 
       audioTranscription: true,
     });
   } finally {
-    if (previous === undefined) delete process.env.GROQ_API_KEY;
-    else process.env.GROQ_API_KEY = previous;
+    if (previousOpenAI === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousOpenAI;
+    if (previousGroq === undefined) delete process.env.GROQ_API_KEY;
+    else process.env.GROQ_API_KEY = previousGroq;
   }
 });
