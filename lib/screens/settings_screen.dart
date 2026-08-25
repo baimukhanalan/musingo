@@ -102,7 +102,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             kk: 'Негізгі экранға белгіше қосу',
                             en: 'Add an icon to your home screen'),
                     color: AppColors.navy,
-                    onTap: () => Navigator.pushNamed(context, '/install'),
+                    onTap: () {
+                      ScaffoldMessenger.of(context).clearSnackBars();
+                      Navigator.pushNamed(context, '/install');
+                    },
                   ),
                 ]),
                 const SizedBox(height: 22),
