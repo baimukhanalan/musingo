@@ -16,6 +16,7 @@ import pushPublicKey from '../server/routes/push-public-key.js';
 import pushSubscribe from '../server/routes/push-subscribe.js';
 import pushUnsubscribe from '../server/routes/push-unsubscribe.js';
 import speechEvaluate from '../server/routes/speech-evaluate.js';
+import speechCapabilities from '../server/routes/speech-capabilities.js';
 
 const routes = new Map([
   ['account', account],
@@ -36,6 +37,7 @@ const routes = new Map([
   ['push/subscribe', pushSubscribe],
   ['push/unsubscribe', pushUnsubscribe],
   ['speech/evaluate', speechEvaluate],
+  ['speech/capabilities', speechCapabilities],
 ]);
 
 export default async function handler(request, response) {

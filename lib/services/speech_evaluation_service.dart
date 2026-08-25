@@ -16,6 +16,7 @@ class SpeechEvaluationService {
   final String apiBaseUrl;
   final SpeechRecorder _recorder;
   final bool _hasExplicitApiBaseUrl;
+  bool? _audioTranscriptionAvailable;
 
   SpeechEvaluationService({
     http.Client? client,
@@ -43,6 +44,28 @@ class SpeechEvaluationService {
 
   Future<void> cancel() => _recorder.cancel();
 
+  Future<bool> supportsAudioTranscription() async {
+    if (!hasRemoteEvaluator) return false;
+    final cached = _audioTranscriptionAvailable;
+    if (cached != null) return cached;
+    try {
+      final response = await _client.get(
+        Uri.parse('$apiBaseUrl/api/speech/capabilities'),
+        headers: const {'Accept': 'application/json'},
+      ).timeout(const Duration(seconds: 4));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final body = Map<String, dynamic>.from(
+          jsonDecode(response.body) as Map,
+        );
+        return _audioTranscriptionAvailable =
+            body['audioTranscription'] == true;
+      }
+    } catch (_) {
+      // A missing capability endpoint means audio upload is not safe to use.
+    }
+    return _audioTranscriptionAvailable = false;
+  }
+
   Future<SpeechEvaluationResult> evaluate({
     required LessonStep step,
     required String transcript,
@@ -51,8 +74,7 @@ class SpeechEvaluationService {
   }) async {
     final target = step.effectiveSpeechTarget;
     final phoneticTarget = step.transliteration?.trim() ?? '';
-    final isQuranSpeech =
-        step.speechMode == SpeechMode.quran ||
+    final isQuranSpeech = step.speechMode == SpeechMode.quran ||
         step.quranGlobalAyahNumber != null;
     final language = isQuranSpeech ? 'quran-ar' : 'arabic';
     try {
@@ -64,25 +86,30 @@ class SpeechEvaluationService {
           passScore: step.effectivePassScore,
         );
       }
-      // The current production evaluator scores the recognized transcript.
-      // Audio stays on-device; the UI labels this as an educational estimate,
-      // not a phoneme-level tajwid verdict.
-      final response = await _client.post(
-        Uri.parse('$apiBaseUrl/api/speech/evaluate'),
-        headers: const {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'target': target,
-          'phoneticTarget': phoneticTarget,
-          'transcript': transcript,
-          'lessonId': lessonId ?? '',
-          'stepId': step.id ?? '',
-          'language': language,
-          'passScore': step.effectivePassScore,
-        }),
-      ).timeout(const Duration(seconds: 8));
+      final encodedAudio = audioBytes == null || audioBytes.isEmpty
+          ? null
+          : base64Encode(audioBytes);
+      final response = await _client
+          .post(
+            Uri.parse('$apiBaseUrl/api/speech/evaluate'),
+            headers: const {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'target': target,
+              'phoneticTarget': phoneticTarget,
+              'transcript': transcript,
+              'lessonId': lessonId ?? '',
+              'stepId': step.id ?? '',
+              'language': language,
+              'passScore': step.effectivePassScore,
+              if (encodedAudio != null) 'audioBase64': encodedAudio,
+              if (encodedAudio != null)
+                'audioMimeType': _recorder.mimeType ?? 'audio/webm',
+            }),
+          )
+          .timeout(const Duration(seconds: 8));
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return SpeechEvaluationResult.fromJson(
           Map<String, dynamic>.from(jsonDecode(response.body) as Map),
@@ -156,14 +183,16 @@ class SpeechEvaluationService {
   double _similarity(String spoken, String target) {
     if (spoken.isEmpty || target.isEmpty) return 0;
     final distance = _levenshteinDistance(spoken, target);
-    final longest = spoken.length > target.length ? spoken.length : target.length;
+    final longest =
+        spoken.length > target.length ? spoken.length : target.length;
     final editSimilarity = longest == 0 ? 0.0 : 1 - (distance / longest);
     final spokenRunes = spoken.runes.toSet();
     final targetRunes = target.runes.toSet();
     final overlap = spokenRunes.intersection(targetRunes).length;
     final total = targetRunes.union(spokenRunes).length;
     final setSimilarity = total == 0 ? 0.0 : overlap / total;
-    final shortest = spoken.length < target.length ? spoken.length : target.length;
+    final shortest =
+        spoken.length < target.length ? spoken.length : target.length;
     final coverage = longest == 0 ? 0.0 : shortest / longest;
     final coveragePenalty = (coverage * 1.15).clamp(0.0, 1.0);
     final raw = editSimilarity > setSimilarity ? editSimilarity : setSimilarity;

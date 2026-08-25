@@ -10,15 +10,18 @@ class SpeechRecorder {
   final List<web.Blob> _chunks = [];
   Completer<Uint8List?>? _stopCompleter;
   bool _isRecording = false;
+  String? _mimeType;
 
   bool get isRecording => _isRecording;
+  String? get mimeType => _mimeType;
 
   Future<void> start() async {
     if (_isRecording) return;
     _chunks.clear();
     final constraints = web.MediaStreamConstraints(audio: true.toJS);
-    final stream =
-        await web.window.navigator.mediaDevices.getUserMedia(constraints).toDart;
+    final stream = await web.window.navigator.mediaDevices
+        .getUserMedia(constraints)
+        .toDart;
     _stream = stream;
 
     final mimeType = _bestMimeType();
@@ -26,6 +29,7 @@ class SpeechRecorder {
         ? web.MediaRecorderOptions()
         : web.MediaRecorderOptions(mimeType: mimeType);
     final recorder = web.MediaRecorder(stream, options);
+    _mimeType = mimeType ?? recorder.mimeType;
     recorder.ondataavailable = ((web.Event event) {
       final blobEvent = event as web.BlobEvent;
       if (blobEvent.data.size > 0) _chunks.add(blobEvent.data);

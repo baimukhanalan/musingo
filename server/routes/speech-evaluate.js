@@ -1,11 +1,23 @@
 import { optionalUser } from '../lib/auth.js';
-import { method, readJson, withApi } from '../lib/http.js';
+import { clientIp, method, readJson, withApi } from '../lib/http.js';
+import { callGroqTranscription, hasGroqKey } from '../lib/groq.js';
+import { consumeSpeechAttempt, speechKey } from '../lib/login-rate-limit.js';
 
 // Жёсткий предел длины входа ДО вычислений. distance() — O(n·m) и вызывается
 // дважды; при 2000 символах это до 8 млн операций на запрос без авторизации.
 // 400 символов с запасом покрывают самый длинный аят и ответ пользователя, но
 // ограничивают стоимость до ~160k операций — дешёвая защита от «сжигания CPU».
 export const SPEECH_MAX_INPUT = 400;
+export const SPEECH_MAX_AUDIO_BYTES = 650_000;
+const allowedAudioTypes = new Set([
+  'audio/webm',
+  'audio/webm;codecs=opus',
+  'audio/mp4',
+  'audio/ogg',
+  'audio/ogg;codecs=opus',
+  'audio/wav',
+  'audio/x-wav',
+]);
 
 export function clampInput(value, max = SPEECH_MAX_INPUT) {
   return String(value ?? '').slice(0, Math.max(0, max));
@@ -18,6 +30,60 @@ export function normalizeSpeech(value) {
     .replace(/[\u064B-\u065F\u0670]/g, '')
     .replace(/ё/g, 'е')
     .replace(/[^\u0600-\u06ffa-zа-яе0-9]+/gu, '');
+}
+
+export function decodeSpeechAudio(audioBase64, mimeType) {
+  const encoded = String(audioBase64 ?? '');
+  const normalizedMimeType = String(mimeType ?? '').toLowerCase();
+  if (!encoded || !allowedAudioTypes.has(normalizedMimeType)) return null;
+  if (!/^[a-z0-9+/]+={0,2}$/i.test(encoded)) return null;
+  const audio = Buffer.from(encoded, 'base64');
+  if (audio.length === 0 || audio.length > SPEECH_MAX_AUDIO_BYTES) return null;
+  return { audio, mimeType: normalizedMimeType };
+}
+
+export async function evaluateSpeechBody(body, { transcribe = callGroqTranscription } = {}) {
+  let transcript = clampInput(body.transcript);
+  const target = clampInput(body.target);
+  const phoneticTarget = clampInput(body.phoneticTarget);
+  let transcribedAudio = false;
+  if (!transcript) {
+    const recording = decodeSpeechAudio(body.audioBase64, body.audioMimeType);
+    if (body.audioBase64 && !recording) {
+      return {
+        status: 400,
+        payload: { error: 'invalid_speech_audio', message: 'Invalid speech audio.' },
+      };
+    }
+    if (recording) {
+      transcript = clampInput(await transcribe({ ...recording, prompt: target }));
+      transcribedAudio = true;
+    }
+  }
+  const normalizedTranscript = normalizeSpeech(transcript);
+  const targetScore = scoreSpeech(normalizedTranscript, normalizeSpeech(target));
+  const phoneticScore = scoreSpeech(normalizedTranscript, normalizeSpeech(phoneticTarget));
+  const finalScore = Math.max(targetScore, phoneticScore);
+  const passScore = Math.min(100, Math.max(0, Number(body.passScore ?? 60)));
+  const passed = normalizedTranscript.length > 0 && finalScore >= passScore;
+  return {
+    status: 200,
+    payload: {
+      transcript,
+      normalizedTranscript,
+      target,
+      score: finalScore,
+      passed,
+      weakParts: passed ? [] : target.split(/\s+/).filter(Boolean).slice(0, 3),
+      feedbackText: passed
+        ? 'Произношение принято.'
+        : normalizedTranscript.length === 0
+          ? 'Я не услышал фразу. Нажми микрофон и повтори еще раз.'
+          : 'Есть расхождение с образцом. Прослушай фрагмент и повтори медленнее.',
+      engine: transcribedAudio ? 'serverAudioTranscription' : 'serverTextComparison',
+      fallbackUsed: !transcribedAudio,
+    },
+  };
 }
 
 function distance(a, b) {
@@ -68,30 +134,26 @@ export default withApi(async (request, response) => {
   // отклоняет анонимов: клиент шлёт speech-запросы без Authorization и молча
   // откатывается на локальную оценку, поэтому requireUser отключил бы серверную
   // оценку для всех. Защита от перегрузки CPU — жёсткий лимит длины ниже.
-  await optionalUser(request);
   const body = readJson(request);
-  const transcript = clampInput(body.transcript);
-  const target = clampInput(body.target);
-  const phoneticTarget = clampInput(body.phoneticTarget);
-  const normalizedTranscript = normalizeSpeech(transcript);
-  const targetScore = scoreSpeech(normalizedTranscript, normalizeSpeech(target));
-  const phoneticScore = scoreSpeech(normalizedTranscript, normalizeSpeech(phoneticTarget));
-  const finalScore = Math.max(targetScore, phoneticScore);
-  const passScore = Math.min(100, Math.max(0, Number(body.passScore ?? 60)));
-  const passed = normalizedTranscript.length > 0 && finalScore >= passScore;
-  return response.status(200).json({
-    transcript,
-    normalizedTranscript,
-    target,
-    score: finalScore,
-    passed,
-    weakParts: passed ? [] : target.split(/\s+/).filter(Boolean).slice(0, 3),
-    feedbackText: passed
-      ? 'Произношение принято.'
-      : normalizedTranscript.length === 0
-        ? 'Я не услышал фразу. Нажми микрофон и повтори еще раз.'
-        : 'Есть расхождение с образцом. Прослушай фрагмент и повтори медленнее.',
-    engine: 'serverTextComparison',
-    fallbackUsed: true,
-  });
+  if (!clampInput(body.transcript) && body.audioBase64) {
+    const recording = decodeSpeechAudio(body.audioBase64, body.audioMimeType);
+    if (!recording) {
+      return response.status(400).json({
+        error: 'invalid_speech_audio',
+        message: 'Invalid speech audio.',
+      });
+    }
+    if (!hasGroqKey()) {
+      return response.status(503).json({
+        error: 'speech_transcription_unavailable',
+        message: 'Speech transcription is not configured.',
+      });
+    }
+    const user = await optionalUser(request);
+    await consumeSpeechAttempt(speechKey(clientIp(request), user?.id), {
+      authenticated: Boolean(user),
+    });
+  }
+  const result = await evaluateSpeechBody(body);
+  return response.status(result.status).json(result.payload);
 });

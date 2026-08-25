@@ -4,6 +4,7 @@ class SpeechRecorder {
   bool _isRecording = false;
 
   bool get isRecording => _isRecording;
+  String? get mimeType => null;
 
   Future<void> start() async {
     _isRecording = true;

@@ -17,6 +17,9 @@ export const PUSH_MAX_ATTEMPTS = 30;
 export const COACH_WINDOW_MINUTES = 60;
 export const COACH_ANONYMOUS_MAX_ATTEMPTS = 20;
 export const COACH_USER_MAX_ATTEMPTS = 120;
+export const SPEECH_WINDOW_MINUTES = 60;
+export const SPEECH_ANONYMOUS_MAX_ATTEMPTS = 20;
+export const SPEECH_USER_MAX_ATTEMPTS = 120;
 // Rows older than this can no longer trip any limiter; delete them so the table
 // cannot grow unbounded (previously one row per distinct key was never cleaned).
 const retentionHours = 6;
@@ -47,6 +50,12 @@ export function pushKey(ip, installationId) {
 
 export function coachKey(ip, userId = '') {
   return `coach:${createHash('sha256')
+    .update(`${String(ip ?? '')}|${String(userId ?? '')}`)
+    .digest('hex')}`;
+}
+
+export function speechKey(ip, userId = '') {
+  return `speech:${createHash('sha256')
     .update(`${String(ip ?? '')}|${String(userId ?? '')}`)
     .digest('hex')}`;
 }
@@ -107,6 +116,14 @@ export async function consumeCoachAttempt(key, { authenticated = false } = {}) {
     limit: authenticated ? COACH_USER_MAX_ATTEMPTS : COACH_ANONYMOUS_MAX_ATTEMPTS,
     windowMinutes: COACH_WINDOW_MINUTES,
     message: 'Too many AI coach requests. Try again later.',
+  });
+}
+
+export async function consumeSpeechAttempt(key, { authenticated = false } = {}) {
+  return consumeAttempt(key, {
+    limit: authenticated ? SPEECH_USER_MAX_ATTEMPTS : SPEECH_ANONYMOUS_MAX_ATTEMPTS,
+    windowMinutes: SPEECH_WINDOW_MINUTES,
+    message: 'Too many speech transcription requests. Try again later.',
   });
 }
 

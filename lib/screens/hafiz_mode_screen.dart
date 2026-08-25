@@ -55,6 +55,8 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
   bool _recording = false;
   bool _evaluating = false;
   bool _gradingRequested = false;
+  bool _speechAvailable = false;
+  bool _switchingToAudioFallback = false;
   String _transcript = '';
   String? _speechError;
   Uint8List? _audioBytes;
@@ -223,38 +225,32 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
       _gradingRequested = false;
       _audioBytes = null;
     });
+    final state = context.read<AppState>();
     try {
-      await _speechEvaluation.record();
       final available = await _speech.initialize(
         onStatus: (status) {
           if (!mounted) return;
-          if ((status == 'done' || status == 'notListening') && _recording) {
+          if ((status == 'done' || status == 'notListening') &&
+              _recording &&
+              _speechAvailable &&
+              !_switchingToAudioFallback) {
             unawaited(_gradeSpeech());
           }
         },
         onError: (_) {
           if (!mounted) return;
-          setState(() {
-            _recording = false;
-            _speechError = context.read<AppState>().tr(
-                ru: 'Микрофон недоступен. Разреши доступ и повтори.',
-                kk: 'Микрофон қолжетімсіз. Рұқсат беріп, қайтала.',
-                en: 'Microphone unavailable. Grant access and try again.');
-          });
+          unawaited(_startHafizAudioFallback(state));
         },
       );
       if (!available) {
-        await _speechEvaluation.cancel();
-        if (mounted) {
-          setState(() => _speechError = context.read<AppState>().tr(
-              ru: 'Распознавание речи недоступно на этом устройстве.',
-              kk: 'Бұл құрылғыда сөйлеуді тану қолжетімсіз.',
-              en: 'Speech recognition is unavailable on this device.'));
-        }
+        await _startHafizAudioFallback(state);
         return;
       }
       if (!mounted) return;
-      setState(() => _recording = true);
+      setState(() {
+        _recording = true;
+        _speechAvailable = true;
+      });
       await _speech.listen(
         onResult: _onSpeechResult,
         listenOptions: SpeechListenOptions(
@@ -275,6 +271,52 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
               en: 'Could not start the microphone. Try again.');
         });
       }
+    }
+  }
+
+  Future<void> _startHafizAudioFallback(AppState state) async {
+    if (_switchingToAudioFallback || !mounted) return;
+    _switchingToAudioFallback = true;
+    try {
+      await _speech.cancel();
+      final supported = await _speechEvaluation.supportsAudioTranscription();
+      if (!mounted) return;
+      if (!supported) {
+        await _speechEvaluation.cancel();
+        setState(() {
+          _recording = false;
+          _speechAvailable = false;
+          _speechError = state.tr(
+            ru: 'Распознавание речи недоступно на этом устройстве.',
+            kk: 'Бұл құрылғыда сөйлеуді тану қолжетімсіз.',
+            en: 'Speech recognition is unavailable on this device.',
+          );
+        });
+        return;
+      }
+      await _speechEvaluation.record();
+      if (!mounted) return;
+      setState(() {
+        _recording = true;
+        _speechAvailable = false;
+        _speechError = state.tr(
+          ru: 'Говори: аудио будет отправлено на проверку.',
+          kk: 'Сөйле: аудио тексеруге жіберіледі.',
+          en: 'Speak now: the audio will be sent for review.',
+        );
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _recording = false;
+        _speechError = state.tr(
+          ru: 'Микрофон недоступен. Разреши доступ и повтори.',
+          kk: 'Микрофон қолжетімсіз. Рұқсат беріп, қайтала.',
+          en: 'Microphone unavailable. Grant access and try again.',
+        );
+      });
+    } finally {
+      _switchingToAudioFallback = false;
     }
   }
 

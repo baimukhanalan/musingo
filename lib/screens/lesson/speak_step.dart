@@ -35,6 +35,7 @@ class _SpeakStepState extends State<_SpeakStep> {
   bool _initializing = false;
   bool _evaluating = false;
   bool _gradingRequested = false;
+  bool _switchingToAudioFallback = false;
   bool _speechAvailable = false;
   bool _samplePlayed = false;
   bool _samplePlaying = false;
@@ -104,36 +105,19 @@ class _SpeakStepState extends State<_SpeakStep> {
     });
     late final bool available;
     try {
-      await _speechEvaluation.record();
       available = await _speech.initialize(
         onStatus: (status) {
           if (!mounted) return;
-          if (status == 'done' || status == 'notListening') {
-            _gradeSpeech();
+          if ((status == 'done' || status == 'notListening') &&
+              _recording &&
+              _speechAvailable &&
+              !_switchingToAudioFallback) {
+            unawaited(_gradeSpeech());
           }
         },
-        onError: (error) {
+        onError: (_) {
           if (!mounted) return;
-          if (_speechEvaluation.hasRemoteEvaluator && _recording) {
-            setState(() {
-              _speechAvailable = false;
-              _speechError = state.tr(
-                ru: 'Распознавание на устройстве не сработало. Запиши голос, я отправлю аудио на проверку.',
-                kk: 'Құрылғыдағы тану жұмыс істемеді. Дауысыңды жаз, аудионы тексеруге жіберемін.',
-                en: 'On-device recognition failed. Record your voice and I will send the audio for review.',
-              );
-            });
-            return;
-          }
-          setState(() {
-            _recording = false;
-            _speechError = state.tr(
-              ru: 'Не удалось распознать речь. Попробуй ещё раз.',
-              kk: 'Сөзді тану мүмкін болмады. Қайта көр.',
-              en: 'Could not recognize speech. Please try again.',
-            );
-          });
-          unawaited(_speechEvaluation.cancel());
+          unawaited(_startAudioFallback(state));
         },
       );
     } catch (_) {
@@ -152,31 +136,7 @@ class _SpeakStepState extends State<_SpeakStep> {
     }
     if (!mounted) return;
     if (!available) {
-      if (!_speechEvaluation.hasRemoteEvaluator) {
-        await _speechEvaluation.cancel();
-        setState(() {
-          _initializing = false;
-          _speechUnavailable = true;
-          _speechError = state.tr(
-            ru: 'Распознавание речи недоступно на этом устройстве. Можешь продолжить.',
-            kk: 'Бұл құрылғыда сөзді тану қолжетімсіз. Жалғастыра бересің.',
-            en: 'Speech recognition is unavailable on this device. You can continue.',
-          );
-        });
-        // Мягкий проход: гейт открывается, ошибка не засчитывается (H1-а).
-        widget.onUnavailable();
-        return;
-      }
-      setState(() {
-        _initializing = false;
-        _recording = true;
-        _speechAvailable = false;
-        _speechError = state.tr(
-          ru: 'Распознавание на устройстве недоступно. Говори, аудио уйдет на проверку.',
-          kk: 'Құрылғыдағы тану қолжетімсіз. Сөйле, аудио тексеруге кетеді.',
-          en: 'On-device recognition is unavailable. Speak, and the audio will be sent for review.',
-        );
-      });
+      await _startAudioFallback(state);
       return;
     }
 
@@ -199,6 +159,56 @@ class _SpeakStepState extends State<_SpeakStep> {
         pauseFor: const Duration(seconds: 3),
       ),
     );
+  }
+
+  Future<void> _startAudioFallback(AppState state) async {
+    if (_switchingToAudioFallback || !mounted) return;
+    _switchingToAudioFallback = true;
+    try {
+      await _speech.cancel();
+      final supported = await _speechEvaluation.supportsAudioTranscription();
+      if (!mounted) return;
+      if (!supported) {
+        await _speechEvaluation.cancel();
+        setState(() {
+          _initializing = false;
+          _recording = false;
+          _speechUnavailable = true;
+          _speechError = state.tr(
+            ru: 'Распознавание речи недоступно на этом устройстве. Можешь продолжить.',
+            kk: 'Бұл құрылғыда сөзді тану қолжетімсіз. Жалғастыра бересің.',
+            en: 'Speech recognition is unavailable on this device. You can continue.',
+          );
+        });
+        widget.onUnavailable();
+        return;
+      }
+      await _speechEvaluation.record();
+      if (!mounted) return;
+      setState(() {
+        _initializing = false;
+        _recording = true;
+        _speechAvailable = false;
+        _speechError = state.tr(
+          ru: 'Говори: аудио будет отправлено на проверку.',
+          kk: 'Сөйле: аудио тексеруге жіберіледі.',
+          en: 'Speak now: the audio will be sent for review.',
+        );
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _initializing = false;
+        _recording = false;
+        _speechError = state.tr(
+          ru: 'Микрофон недоступен. Разреши доступ и попробуй ещё раз.',
+          kk: 'Микрофон қолжетімсіз. Рұқсат беріп, қайта көр.',
+          en: 'Microphone is unavailable. Grant access and try again.',
+        );
+      });
+    } finally {
+      _switchingToAudioFallback = false;
+    }
   }
 
   Future<void> _toggleSample() async {
