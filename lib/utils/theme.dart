@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'colors.dart';
 
 class AppTheme {
+  static const fontFallback = <String>['Amiri'];
+
   static ThemeData get light {
     return ThemeData(
       useMaterial3: true,
       fontFamily: 'Nunito',
+      fontFamilyFallback: fontFallback,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.pistachio,
         primary: AppColors.pistachio,

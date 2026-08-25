@@ -94,23 +94,15 @@ class _SpeakStepState extends State<_SpeakStep> {
       return;
     }
 
+    _prepareNewAttempt();
+    widget.onVerified(false);
+
     if (widget.speechSimulator != null) {
       await _runSimulatedSpeech();
       return;
     }
 
-    setState(() {
-      _initializing = true;
-      _evaluating = false;
-      _speechError = null;
-      _recognizedWords = '';
-      _done = false;
-      _passed = false;
-      _score = 0;
-      _fallbackUsed = false;
-      _gradingRequested = false;
-      _recordedAudio = null;
-    });
+    setState(() => _initializing = true);
     late final bool available;
     try {
       available = await _speech.initialize(
@@ -167,6 +159,23 @@ class _SpeakStepState extends State<_SpeakStep> {
         pauseFor: const Duration(seconds: 3),
       ),
     );
+  }
+
+  void _prepareNewAttempt() {
+    setState(() {
+      _initializing = false;
+      _evaluating = false;
+      _speechError = null;
+      _recognizedWords = '';
+      _done = false;
+      _passed = false;
+      _score = 0;
+      _fallbackUsed = false;
+      _gradingRequested = false;
+      _recordedAudio = null;
+      _speechUnavailable = false;
+      _skipped = false;
+    });
   }
 
   Future<void> _startAudioFallback(AppState state) async {
@@ -671,6 +680,37 @@ class _SpeakStepState extends State<_SpeakStep> {
                 fontSize: 14,
                 fontWeight: FontWeight.w900,
                 color: _passed ? AppColors.pistachioDark : AppColors.error,
+              ),
+            ),
+          ),
+        ],
+        if (_done && !_recording && !_evaluating && !_initializing) ...[
+          const SizedBox(height: 12),
+          Semantics(
+            button: true,
+            label: state.tr(
+              ru: 'Записать произношение ещё раз',
+              kk: 'Айтылымды қайта жазу',
+              en: 'Record pronunciation again',
+            ),
+            child: TextButton.icon(
+              key: const ValueKey('lesson_speech_retry'),
+              onPressed: _toggleListening,
+              icon: const Icon(Icons.refresh_rounded),
+              label: Text(
+                state.tr(
+                  ru: 'Записать ещё раз',
+                  kk: 'Қайта жазу',
+                  en: 'Record again',
+                ),
+              ),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.navy,
+                textStyle: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ),
