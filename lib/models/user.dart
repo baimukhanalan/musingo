@@ -169,7 +169,7 @@ class UserModel {
         xp: 0,
         level: 1,
         streak: 0,
-        hearts: 3,
+        hearts: 5,
         energy: 0,
       );
 }

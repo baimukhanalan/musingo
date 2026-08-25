@@ -75,7 +75,6 @@ class _PremiumScreenState extends State<PremiumScreen> {
                 ..._features(state).map(_buildFeatureRow),
                 const SizedBox(height: 22),
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(
                       child: _PlanCard(

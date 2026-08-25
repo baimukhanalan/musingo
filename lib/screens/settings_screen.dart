@@ -185,10 +185,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 _SettingsRow(
                   icon: Icons.delete_outline_rounded,
-                  label: state.tr(
-                      ru: 'Удалить аккаунт',
-                      kk: 'Аккаунтты жою',
-                      en: 'Delete account'),
+                  label: state.isGuest
+                      ? state.tr(
+                          ru: 'Сбросить прогресс',
+                          kk: 'Прогресті өшіру',
+                          en: 'Reset progress')
+                      : state.tr(
+                          ru: 'Удалить аккаунт',
+                          kk: 'Аккаунтты жою',
+                          en: 'Delete account'),
                   color: AppColors.error,
                   danger: true,
                   onTap: () => _confirmDelete(context),
@@ -302,16 +307,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _confirmDelete(BuildContext context) {
     final state = context.read<AppState>();
+    final isGuest = state.isGuest;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
         title: Text(
-            state.tr(
-                ru: 'Удалить аккаунт?',
-                kk: 'Аккаунтты жою керек пе?',
-                en: 'Delete account?'),
+            isGuest
+                ? state.tr(
+                    ru: 'Сбросить прогресс?',
+                    kk: 'Прогресті өшіру керек пе?',
+                    en: 'Reset progress?')
+                : state.tr(
+                    ru: 'Удалить аккаунт?',
+                    kk: 'Аккаунтты жою керек пе?',
+                    en: 'Delete account?'),
             style: const TextStyle(
                 fontFamily: 'Nunito',
                 fontWeight: FontWeight.w900,
@@ -319,11 +330,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: AppColors.navyDark)),
         content: Text(
             state.tr(
-                ru:
-                    'Весь прогресс будет потерян. Это действие нельзя отменить.',
-                kk:
-                    'Барлық прогресс жоғалады. Бұл әрекетті кері қайтару мүмкін емес.',
-                en: 'All progress will be lost. This action cannot be undone.'),
+                ru: isGuest
+                    ? 'Локальный прогресс на этом устройстве будет удалён. Это действие нельзя отменить.'
+                    : 'Аккаунт и весь прогресс будут удалены. Это действие нельзя отменить.',
+                kk: isGuest
+                    ? 'Осы құрылғыдағы жергілікті прогресс өшіріледі. Бұл әрекетті кері қайтару мүмкін емес.'
+                    : 'Аккаунт пен барлық прогресс өшіріледі. Бұл әрекетті кері қайтару мүмкін емес.',
+                en: isGuest
+                    ? 'Local progress on this device will be removed. This action cannot be undone.'
+                    : 'The account and all progress will be deleted. This action cannot be undone.'),
             style: const TextStyle(
                 fontFamily: 'Nunito',
                 fontSize: 14.5,
@@ -357,7 +372,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 );
               }
             },
-            child: Text(state.tr(ru: 'Удалить', kk: 'Жою', en: 'Delete'),
+            child: Text(
+                isGuest
+                    ? state.tr(ru: 'Сбросить', kk: 'Өшіру', en: 'Reset')
+                    : state.tr(ru: 'Удалить', kk: 'Жою', en: 'Delete'),
                 style: const TextStyle(
                     fontFamily: 'Nunito',
                     fontWeight: FontWeight.w800,

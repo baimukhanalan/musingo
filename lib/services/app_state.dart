@@ -918,6 +918,7 @@ class AppState extends ChangeNotifier {
     _learningGoal = goal;
     _placementLevel = level.clamp(1, 8).toInt();
     _learningRecommendation = recommendation;
+    _applyPlacementCourseStart();
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(_learningGoalKey, goal.storageValue);
     await preferences.setInt(_placementLevelKey, _placementLevel);
@@ -928,8 +929,45 @@ class AppState extends ChangeNotifier {
     if (_user?.id.startsWith('local_') == true) {
       await _saveLearningProfileForUser(preferences, _user!.id);
     }
+    await _saveCourseProgress();
     await _syncBackendProgress();
     notifyListeners();
+  }
+
+  void _applyPlacementCourseStart() {
+    if (_learningGoal != LearningGoal.arabicReading) return;
+    final courseIndex = _courses.indexWhere(
+      (course) => course.type == CourseType.arabic,
+    );
+    if (courseIndex < 0) return;
+    final course = _courses[courseIndex];
+    if (course.lessons.any((lesson) =>
+        lesson.status == LessonStatus.completed ||
+        lesson.status == LessonStatus.inProgress)) {
+      return;
+    }
+
+    const startIndexByLevel = <int>[0, 0, 2, 4, 6, 8, 12, 15];
+    final startIndex = startIndexByLevel[_placementLevel - 1]
+        .clamp(0, course.lessons.length - 1)
+        .toInt();
+    if (startIndex == 0) return;
+    final lessons = <Lesson>[];
+    for (var index = 0; index < course.lessons.length; index += 1) {
+      final status = index < startIndex
+          ? LessonStatus.completed
+          : index == startIndex
+              ? LessonStatus.available
+              : LessonStatus.locked;
+      lessons.add(course.lessons[index].copyWith(status: status));
+    }
+    _courses[courseIndex] = Course(
+      id: course.id,
+      title: course.title,
+      description: course.description,
+      type: course.type,
+      lessons: lessons,
+    );
   }
 
   Future<bool> setNotificationsEnabled(bool enabled) async {

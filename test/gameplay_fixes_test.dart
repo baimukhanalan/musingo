@@ -78,7 +78,9 @@ void main() {
 
     test('гость с потерянными жизнями восстанавливает их со временем', () async {
       final state = await _guestState();
-      // Тратим все три жизни — запускается таймер.
+      // Тратим все пять жизней — запускается таймер.
+      state.loseHeart();
+      state.loseHeart();
       state.loseHeart();
       state.loseHeart();
       state.loseHeart();

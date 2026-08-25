@@ -49,9 +49,9 @@ class HelpScreen extends StatelessWidget {
       },
       {
         'q': state.tr(
-            ru: 'Когда появится muslingo+?',
-            kk: 'muslingo+ қашан шығады?',
-            en: 'When will muslingo+ arrive?'),
+            ru: 'Когда появится Muslingo+?',
+            kk: 'Muslingo+ қашан шығады?',
+            en: 'When will Muslingo+ arrive?'),
         'a': state.tr(
             ru: 'Подписка откроется после подключения безопасной оплаты через App Store и Google Play.',
             kk: 'Жазылым App Store және Google Play арқылы қауіпсіз төлем қосылғаннан кейін ашылады.',

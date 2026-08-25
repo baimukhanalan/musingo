@@ -154,12 +154,12 @@ class _CarouselScreenState extends State<CarouselScreen> {
                       ),
                     ),
                     SizedBox(
-                      width: 80,
+                      width: 108,
                       child: Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: () => Navigator.pushReplacementNamed(
-                              context, '/login'),
+                          onPressed: () =>
+                              Navigator.pushReplacementNamed(context, '/login'),
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 4),
@@ -176,7 +176,7 @@ class _CarouselScreenState extends State<CarouselScreen> {
                                   fontFamily: 'Nunito',
                                   fontSize: 11,
                                   fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.8,
+                                  letterSpacing: 0,
                                   color: AppColors.textLight)),
                         ),
                       ),

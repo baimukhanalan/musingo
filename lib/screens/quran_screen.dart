@@ -9,6 +9,7 @@ import '../services/app_state.dart';
 import '../services/quran_audio_player.dart';
 import '../services/quran_repository.dart';
 import '../utils/colors.dart';
+import '../utils/quran_search.dart';
 import '../widgets/cat_character.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_card.dart';
@@ -164,25 +165,19 @@ class _QuranScreenState extends State<QuranScreen> {
               }
 
               final chapters = snapshot.data ?? const <QuranChapterSummary>[];
-              final normalizedQuery = _query.trim().toLowerCase();
+              final normalizedQuery = _query.trim();
               final filtered = normalizedQuery.isEmpty
                   ? chapters
-                  : chapters.where((chapter) {
-                      return chapter.number.toString() == normalizedQuery ||
-                          chapter.latinName
-                              .toLowerCase()
-                              .contains(normalizedQuery) ||
-                          chapter.arabicName.contains(_query.trim());
-                    }).toList(growable: false);
+                  : chapters
+                      .where((chapter) =>
+                          quranChapterMatches(chapter, normalizedQuery))
+                      .toList(growable: false);
               final visibleJuz = normalizedQuery.isEmpty
                   ? quranJuzStarts
                   : quranJuzStarts.where((entry) {
                       final chapter = chapters[entry.surahNumber - 1];
                       return entry.number.toString() == normalizedQuery ||
-                          chapter.latinName
-                              .toLowerCase()
-                              .contains(normalizedQuery) ||
-                          chapter.arabicName.contains(_query.trim());
+                          quranChapterMatches(chapter, normalizedQuery);
                     }).toList(growable: false);
               final contentCount = _section == QuranSection.surahs
                   ? filtered.length

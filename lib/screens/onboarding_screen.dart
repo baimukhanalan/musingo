@@ -137,11 +137,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   String get _recommendation {
     final state = context.read<AppState>();
     final goal = _goal;
-    if (goal == LearningGoal.arabicReading || _score <= 2) {
+    if (_score <= 2 || (goal == LearningGoal.arabicReading && _level <= 2)) {
       return state.tr(
         ru: 'Начни с арабских букв и их звучания. Первый урок поможет увидеть различия и сразу потренировать слух.',
         kk: 'Араб әріптері мен олардың дыбысталуынан баста. Бірінші сабақ айырмашылықтарды көруге және есту қабілетін бірден жаттықтыруға көмектеседі.',
         en: 'Start with the Arabic letters and their sounds. The first lesson helps you see the differences and train your ear right away.',
+      );
+    }
+    if (goal == LearningGoal.arabicReading) {
+      if (_level <= 4) {
+        return state.tr(
+          ru: 'Ты узнаёшь буквы. Начни со сборки слогов и чтения коротких сочетаний, не повторяя весь алфавит с нуля.',
+          kk: 'Әріптерді танисың. Әліпбиді қайта бастамай, буындар мен қысқа тіркестерді оқудан баста.',
+          en: 'You recognize the letters. Start with syllables and short combinations instead of repeating the whole alphabet.',
+        );
+      }
+      return state.tr(
+        ru: 'Базовое чтение уже есть. Маршрут начнётся с огласовок, сложных букв и коранических слов.',
+        kk: 'Негізгі оқу қалыптасқан. Бағыт харакаттардан, күрделі әріптерден және Құран сөздерінен басталады.',
+        en: 'Your basic reading is in place. The path will start with vowel marks, difficult letters, and Quranic words.',
       );
     }
     if (goal == LearningGoal.islamBasics) {
@@ -182,10 +196,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     setState(() => _saving = true);
     final state = context.read<AppState>();
     await state.completePlacement(
-          goal: _goal!,
-          level: _level,
-          recommendation: _recommendation,
-        );
+      goal: _goal!,
+      level: _level,
+      recommendation: _recommendation,
+    );
     if (!mounted) return;
     final firstLesson = state.recommendedLesson;
     if (firstLesson != null) {

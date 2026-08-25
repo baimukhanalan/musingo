@@ -19,10 +19,10 @@ void main() {
     await state.loginAsGuest();
 
     state.loseHeart();
-    expect(state.user?.hearts, 2);
+    expect(state.user?.hearts, 4);
 
     await state.completeLesson('r1', 1);
-    expect(state.user?.hearts, 2);
+    expect(state.user?.hearts, 4);
 
     final rules = state.getCourse(CourseType.rules)!;
     expect(rules.lessons.first.status, LessonStatus.completed);
@@ -59,6 +59,30 @@ void main() {
     expect(restored.learningRecommendation, 'Начни с букв.');
   });
 
+  test('strong Arabic placement starts after already demonstrated lessons',
+      () async {
+    final state = AppState();
+    await _waitUntilInitialized(state);
+
+    await state.completePlacement(
+      goal: LearningGoal.arabicReading,
+      level: 5,
+      recommendation: 'Продолжи со сложных букв.',
+    );
+
+    expect(state.recommendedLesson?.id, 'a7');
+    expect(
+      state.getCourse(CourseType.arabic)!.lessons.take(6).every(
+            (lesson) => lesson.status == LessonStatus.completed,
+          ),
+      isTrue,
+    );
+
+    final restored = AppState();
+    await _waitUntilInitialized(restored);
+    expect(restored.recommendedLesson?.id, 'a7');
+  });
+
   test('restores old user json with production progress defaults', () {
     final user = UserModel.fromJson({
       'id': 'u1',
@@ -89,7 +113,8 @@ void main() {
     expect(state.user?.rewardHistory, hasLength(1));
   });
 
-  test('memory engine persists weak steps and prioritizes due review', () async {
+  test('memory engine persists weak steps and prioritizes due review',
+      () async {
     final state = AppState();
     await _waitUntilInitialized(state);
     await state.loginAsGuest();
@@ -226,7 +251,7 @@ void main() {
 
     expect(restored, isTrue);
     expect(state.user?.energy, 4);
-    expect(state.user?.hearts, 3);
+    expect(state.user?.hearts, 5);
   });
 }
 
