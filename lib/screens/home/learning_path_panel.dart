@@ -240,22 +240,52 @@ class _LearningPathPanel extends StatelessWidget {
             ),
           const Divider(height: 1, color: AppColors.border),
           Expanded(
-            child: Scrollbar(
-              controller: controller,
-              thumbVisibility: true,
-              radius: const Radius.circular(8),
-              child: CustomScrollView(
-                key: ValueKey('course-path-${course.id}'),
-                controller: controller,
-                primary: false,
-                slivers: [
-                  _LessonPath(
-                    lessons: course.lessons,
-                    icons: icons,
-                    onOpenLesson: onOpenLesson,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Image.asset(
+                    'assets/images/learning_path_world.webp',
+                    key: const ValueKey('learning-path-world'),
+                    fit: BoxFit.cover,
+                    alignment: Alignment.topCenter,
+                    color: Colors.white.withValues(alpha: 0.22),
+                    colorBlendMode: BlendMode.srcATop,
                   ),
-                ],
-              ),
+                ),
+                const Positioned.fill(child: _PathAtmosphere()),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 320),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: ScaleTransition(
+                      scale: Tween<double>(begin: 0.985, end: 1).animate(
+                        animation,
+                      ),
+                      child: child,
+                    ),
+                  ),
+                  child: Scrollbar(
+                    key: ValueKey('course-scrollbar-${course.id}'),
+                    controller: controller,
+                    thumbVisibility: true,
+                    radius: const Radius.circular(8),
+                    child: CustomScrollView(
+                      key: ValueKey('course-path-${course.id}'),
+                      controller: controller,
+                      primary: false,
+                      slivers: [
+                        _LessonPath(
+                          lessons: course.lessons,
+                          icons: icons,
+                          onOpenLesson: onOpenLesson,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

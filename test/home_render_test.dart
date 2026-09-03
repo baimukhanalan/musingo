@@ -126,11 +126,13 @@ void main() {
 
     expect(find.byKey(const ValueKey('learning-path-panel')), findsOneWidget);
     expect(find.byKey(const ValueKey('course-path-quran')), findsOneWidget);
+    expect(find.byKey(const ValueKey('learning-path-world')), findsOneWidget);
     expect(find.byType(CustomScrollView), findsNWidgets(2));
     expect(find.text('68 уроков'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('course-mode-arabic')));
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 450));
 
     expect(find.byKey(const ValueKey('course-path-quran')), findsNothing);
     expect(find.byKey(const ValueKey('course-path-arabic')), findsOneWidget);
@@ -140,7 +142,8 @@ void main() {
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.byKey(const ValueKey('course-mode-tajwid')));
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 450));
 
     expect(find.byKey(const ValueKey('course-path-arabic')), findsNothing);
     expect(find.byKey(const ValueKey('course-path-tajwid')), findsOneWidget);

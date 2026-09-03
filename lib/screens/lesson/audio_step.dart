@@ -2,7 +2,14 @@ part of '../lesson_screen.dart';
 
 class _AudioStep extends StatefulWidget {
   final LessonStep step;
-  const _AudioStep({required this.step});
+  final bool simulatePlayback;
+  final VoidCallback onListened;
+
+  const _AudioStep({
+    required this.step,
+    required this.simulatePlayback,
+    required this.onListened,
+  });
 
   @override
   State<_AudioStep> createState() => _AudioStepState();
@@ -29,6 +36,14 @@ class _AudioStepState extends State<_AudioStep> {
 
   Future<void> _toggleSpeech() async {
     HapticsService.tap();
+    if (widget.simulatePlayback) {
+      widget.onListened();
+      setState(() {
+        _played = true;
+        _speaking = false;
+      });
+      return;
+    }
     if (_speaking) {
       await _tts.stop();
       await _audioPlayer.stop();
@@ -38,12 +53,14 @@ class _AudioStepState extends State<_AudioStep> {
 
     final ayahNumber = widget.step.quranGlobalAyahNumber;
     if (ayahNumber != null) {
+      widget.onListened();
       await _playQuranAyah(ayahNumber);
       return;
     }
 
     final text = widget.step.arabicText;
     if (text == null || text.isEmpty) return;
+    widget.onListened();
     try {
       await _tts.setLanguage('ar-SA');
       await _tts.setSpeechRate(0.38);
@@ -115,7 +132,7 @@ class _AudioStepState extends State<_AudioStep> {
 
   @override
   void dispose() {
-    _tts.stop();
+    if (!widget.simulatePlayback) _tts.stop();
     _audioPlayer.dispose();
     super.dispose();
   }
@@ -206,6 +223,7 @@ class _AudioStepState extends State<_AudioStep> {
                   kk: 'Тіркесті тыңдау',
                   en: 'Listen to the phrase'),
           child: Listener(
+            key: const ValueKey('lesson_audio_play'),
             behavior: HitTestBehavior.opaque,
             onPointerDown: (_) => _toggleSpeech(),
             child: AnimatedContainer(
@@ -285,9 +303,15 @@ class _TextStep extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
             state.tr(
-                ru: 'Изучи и запомни эту фразу',
-                kk: 'Осы тіркесті үйреніп, есте сақта',
-                en: 'Study and memorize this phrase'),
+                ru: step.arabicText == null
+                    ? 'Прочитай объяснение и выдели главное'
+                    : 'Сравни написание, звучание и смысл',
+                kk: step.arabicText == null
+                    ? 'Түсіндірмені оқып, негізгісін белгіле'
+                    : 'Жазылуын, дыбысталуын және мағынасын салыстыр',
+                en: step.arabicText == null
+                    ? 'Read the explanation and identify the key idea'
+                    : 'Compare the writing, sound, and meaning'),
             textAlign: TextAlign.center,
             style: const TextStyle(
                 fontFamily: 'Nunito',
@@ -339,6 +363,18 @@ class _TextStep extends StatelessWidget {
                         fontSize: 16,
                         color: AppColors.textDark,
                         height: 1.5)),
+              ] else if (step.explanation != null) ...[
+                const SizedBox(height: 14),
+                Text(
+                  step.explanation!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: 'Nunito',
+                    fontSize: 16,
+                    color: AppColors.textDark,
+                    height: 1.5,
+                  ),
+                ),
               ],
             ],
           ),

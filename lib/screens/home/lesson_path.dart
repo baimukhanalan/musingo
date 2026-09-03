@@ -34,6 +34,7 @@ class _LessonPath extends StatelessWidget {
             final mascotSize = compact ? 82.0 : 94.0;
             final isCurrent = lesson.status == LessonStatus.available ||
                 lesson.status == LessonStatus.inProgress;
+            final nextOffset = offsets[(index + 1) % offsets.length];
             return SizedBox(
               // Узел урока (круг 70 + отступ 12 + плашка названия ~29 ≈ 111px)
               // не влезал в 104 → Column переполнялся на 7px. Даём запас.
@@ -41,6 +42,16 @@ class _LessonPath extends StatelessWidget {
               child: Stack(
                 alignment: Alignment.topCenter,
                 children: [
+                  if (index < lessons.length - 1)
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _PathTrailPainter(
+                          from: nodeOffset,
+                          to: nextOffset,
+                          completed: lesson.status == LessonStatus.completed,
+                        ),
+                      ),
+                    ),
                   Align(
                     alignment: Alignment(nodeOffset, -0.65),
                     child: _PathNode(
@@ -163,7 +174,7 @@ class _PathNode extends StatelessWidget {
         ? const Color(0xFF93A8B5)
         : (completed ? const Color(0xFFC88A25) : AppColors.navy);
 
-    return Semantics(
+    final node = Semantics(
       button: true,
       label:
           '${lesson.title}. ${locked ? state.tr(ru: 'Закрыто', kk: 'Жабық', en: 'Locked') : state.tr(ru: 'Открыть урок', kk: 'Сабақты ашу', en: 'Open lesson')}',
@@ -210,6 +221,123 @@ class _PathNode extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+
+    if (lesson.status != LessonStatus.available &&
+        lesson.status != LessonStatus.inProgress) {
+      return node;
+    }
+    return node
+        .animate(onPlay: (controller) => controller.repeat(reverse: true))
+        .scale(
+          begin: const Offset(1, 1),
+          end: const Offset(1.045, 1.045),
+          duration: 1100.ms,
+          curve: Curves.easeInOut,
+        );
+  }
+}
+
+class _PathTrailPainter extends CustomPainter {
+  final double from;
+  final double to;
+  final bool completed;
+
+  const _PathTrailPainter({
+    required this.from,
+    required this.to,
+    required this.completed,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final start = Offset(size.width * (from + 1) / 2, 58);
+    final end = Offset(size.width * (to + 1) / 2, size.height + 4);
+    final path = Path()
+      ..moveTo(start.dx, start.dy)
+      ..quadraticBezierTo(
+        size.width / 2,
+        size.height * 0.72,
+        end.dx,
+        end.dy,
+      );
+    final paint = Paint()
+      ..color = (completed ? AppColors.gold : AppColors.navy)
+          .withValues(alpha: completed ? 0.55 : 0.25)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+    for (final metric in path.computeMetrics()) {
+      var distance = 0.0;
+      while (distance < metric.length) {
+        canvas.drawPath(
+          metric.extractPath(distance, distance + 7),
+          paint,
+        );
+        distance += 14;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PathTrailPainter oldDelegate) =>
+      oldDelegate.from != from ||
+      oldDelegate.to != to ||
+      oldDelegate.completed != completed;
+}
+
+class _PathAtmosphere extends StatelessWidget {
+  const _PathAtmosphere();
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    Widget sparkle(IconData icon, double size, Color color) => Icon(
+          icon,
+          size: size,
+          color: color.withValues(alpha: 0.46),
+        );
+
+    final first = sparkle(Icons.auto_awesome_rounded, 22, AppColors.gold);
+    final second = sparkle(Icons.cloud_rounded, 34, AppColors.white);
+    final third = sparkle(Icons.star_rounded, 17, AppColors.coral);
+
+    return IgnorePointer(
+      child: Stack(
+        children: [
+          Positioned(
+            left: 22,
+            top: 34,
+            child: reduceMotion
+                ? first
+                : first
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .fade(begin: 0.35, end: 0.9, duration: 1600.ms)
+                    .scale(
+                      begin: const Offset(0.88, 0.88),
+                      end: const Offset(1.08, 1.08),
+                    ),
+          ),
+          Positioned(
+            right: 18,
+            top: 112,
+            child: reduceMotion
+                ? second
+                : second
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .moveX(begin: -7, end: 7, duration: 3200.ms),
+          ),
+          Positioned(
+            right: 42,
+            bottom: 40,
+            child: reduceMotion
+                ? third
+                : third
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .rotate(begin: -0.04, end: 0.04, duration: 2100.ms),
+          ),
+        ],
       ),
     );
   }

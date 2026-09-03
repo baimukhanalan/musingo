@@ -2,12 +2,16 @@ part of '../lesson_screen.dart';
 
 class _TopBar extends StatelessWidget {
   final double progress;
+  final int currentStep;
+  final int totalSteps;
   final int hearts;
   final bool isPremium;
   final VoidCallback onClose;
 
   const _TopBar(
       {required this.progress,
+      required this.currentStep,
+      required this.totalSteps,
       required this.hearts,
       required this.isPremium,
       required this.onClose});
@@ -46,22 +50,40 @@ class _TopBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 14),
-          // Тонкий прогресс-бар шага — пилюля.
+          // Прогресс шага с явным номером: пользователь понимает длину урока,
+          // а не пытается угадать её по одной полосе.
           Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(99),
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: progress.clamp(0.0, 1.0)),
-                duration: const Duration(milliseconds: 320),
-                curve: Curves.easeOut,
-                builder: (context, value, _) => LinearProgressIndicator(
-                  value: value,
-                  minHeight: 9,
-                  backgroundColor: AppColors.border.withValues(alpha: 0.6),
-                  valueColor:
-                      const AlwaysStoppedAnimation<Color>(AppColors.sky),
+            child: Column(
+              children: [
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    '$currentStep / $totalSteps',
+                    style: const TextStyle(
+                      fontFamily: 'Nunito',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textGrey,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: progress.clamp(0.0, 1.0)),
+                    duration: const Duration(milliseconds: 320),
+                    curve: Curves.easeOut,
+                    builder: (context, value, _) => LinearProgressIndicator(
+                      value: value,
+                      minHeight: 9,
+                      backgroundColor: AppColors.border.withValues(alpha: 0.6),
+                      valueColor:
+                          const AlwaysStoppedAnimation<Color>(AppColors.sky),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 14),

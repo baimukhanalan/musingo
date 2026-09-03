@@ -105,8 +105,12 @@ void main() {
     expect(button.onTap, isNull, reason: 'гейт должен быть закрыт до сборки');
 
     // Собираем ответ в правильном порядке.
+    final bank = wordOrderBank(wordOrderStep);
     for (final token in wordOrderStep.orderTokens) {
-      await tester.tap(find.text(token).first);
+      final bankIndex = bank.indexOf(token);
+      final chip = find.byKey(ValueKey('lesson_order_bank_$bankIndex'));
+      await tester.ensureVisible(chip);
+      await tester.tap(chip);
       await tester.pump();
     }
 
@@ -115,13 +119,14 @@ void main() {
     expect(button.onTap, isNotNull,
         reason: 'после сборки гейт должен открыться');
 
-    // Проверяем правильный ответ — экран отвечает «Правильно!».
+    // Проверяем правильный ответ — экран даёт короткую понятную обратную связь.
     await tester.tap(find.widgetWithText(GestureDetector, 'Проверить').first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(tester.takeException(), isNull);
-    expect(find.text('Правильно!'), findsOneWidget);
+    expect(find.text('Верно!'), findsOneWidget);
+    expect(find.text('Задача шага'), findsOneWidget);
 
     await teardown(tester);
   });
@@ -133,8 +138,12 @@ void main() {
     await pumpLesson(tester, state, lessonWith(wordOrderStep));
 
     // Собираем задом наперёд — порядок заведомо неверный.
+    final bank = wordOrderBank(wordOrderStep);
     for (final token in wordOrderStep.orderTokens.reversed) {
-      await tester.tap(find.text(token).first);
+      final bankIndex = bank.indexOf(token);
+      final chip = find.byKey(ValueKey('lesson_order_bank_$bankIndex'));
+      await tester.ensureVisible(chip);
+      await tester.tap(chip);
       await tester.pump();
     }
     await tester.tap(find.widgetWithText(GestureDetector, 'Проверить').first);
@@ -142,7 +151,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(tester.takeException(), isNull);
-    expect(find.textContaining('Неправильно'), findsOneWidget);
+    expect(find.text('Разберём ответ'), findsOneWidget);
     expect(find.textContaining('Верный порядок'), findsOneWidget);
 
     await teardown(tester);
@@ -162,15 +171,36 @@ void main() {
     for (final answer in listenStep.answers!) {
       expect(find.text(answer), findsOneWidget);
     }
+    expect(
+      find.text('Варианты откроются после прослушивания.'),
+      findsOneWidget,
+    );
 
     GestureDetector button = tester.widget<GestureDetector>(
         find.widgetWithText(GestureDetector, 'Проверить').first);
     expect(button.onTap, isNull, reason: 'без выбора варианта гейт закрыт');
 
-    // Варианты лежат ниже кнопки воспроизведения: без прокрутки тап не
-    // попадает по виджету (тестовый экран 800×600).
+    // До прослушивания выбор заблокирован.
     await tester.ensureVisible(find.text(listenStep.answers!.first));
     await tester.pump();
+    await tester.tap(find.text(listenStep.answers!.first));
+    await tester.pump();
+
+    button = tester.widget<GestureDetector>(
+        find.widgetWithText(GestureDetector, 'Проверить').first);
+    expect(button.onTap, isNull);
+
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('lesson_listen_play')),
+    );
+    await tester.tap(find.byKey(const ValueKey('lesson_listen_play')));
+    await tester.pump();
+    expect(
+      find.text('Варианты откроются после прослушивания.'),
+      findsNothing,
+    );
+
+    await tester.ensureVisible(find.text(listenStep.answers!.first));
     await tester.tap(find.text(listenStep.answers!.first));
     await tester.pump();
 
@@ -183,7 +213,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(tester.takeException(), isNull);
-    expect(find.text('Правильно!'), findsOneWidget);
+    expect(find.text('Верно!'), findsOneWidget);
 
     await teardown(tester);
   });
@@ -213,7 +243,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(tester.takeException(), isNull);
-    expect(find.text('Правильно!'), findsOneWidget);
+    expect(find.text('Верно!'), findsOneWidget);
     await teardown(tester);
   });
 }

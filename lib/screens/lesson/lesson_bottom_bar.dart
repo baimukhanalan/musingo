@@ -5,10 +5,12 @@ class _BottomBar extends StatelessWidget {
   final bool answered;
   final int? selectedAnswer;
   final bool speakPassed;
+  final bool audioReady;
   final bool matchingComplete;
   final bool orderComplete;
   final bool reviewingMistakes;
   final bool isCorrect;
+  final String? feedbackText;
   final bool showHint;
   final VoidCallback onCheck;
   final VoidCallback onContinue;
@@ -19,10 +21,12 @@ class _BottomBar extends StatelessWidget {
     required this.answered,
     required this.selectedAnswer,
     required this.speakPassed,
+    required this.audioReady,
     required this.matchingComplete,
     required this.orderComplete,
     required this.reviewingMistakes,
     required this.isCorrect,
+    required this.feedbackText,
     required this.showHint,
     required this.onCheck,
     required this.onContinue,
@@ -58,33 +62,69 @@ class _BottomBar extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (answered) ...[
-            Row(
-              children: [
-                Icon(
-                    isCorrect
-                        ? Icons.check_circle_rounded
-                        : Icons.cancel_rounded,
-                    color: isCorrect ? AppColors.success : AppColors.error,
-                    size: 28),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    isCorrect
-                        ? state.tr(
-                            ru: 'Правильно!', kk: 'Дұрыс!', en: 'Correct!')
-                        : state.tr(
-                            ru: 'Неправильно. Верный ответ показан ниже',
-                            kk: 'Қате. Дұрыс жауап төменде көрсетілген',
-                            en: 'Wrong. The correct answer is shown below'),
-                    style: TextStyle(
-                      fontFamily: 'Nunito',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: isCorrect ? AppColors.success : AppColors.error,
-                    ),
-                  ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 220),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                decoration: BoxDecoration(
+                  color: (isCorrect ? AppColors.success : AppColors.error)
+                      .withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ],
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                        isCorrect
+                            ? Icons.check_circle_rounded
+                            : Icons.cancel_rounded,
+                        color: isCorrect ? AppColors.success : AppColors.error,
+                        size: 26),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isCorrect
+                                ? state.tr(
+                                    ru: 'Верно!', kk: 'Дұрыс!', en: 'Correct!')
+                                : state.tr(
+                                    ru: 'Разберём ответ',
+                                    kk: 'Жауапты талдайық',
+                                    en: 'Let’s review it'),
+                            style: TextStyle(
+                              fontFamily: 'Nunito',
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                              color: isCorrect
+                                  ? AppColors.success
+                                  : AppColors.error,
+                            ),
+                          ),
+                          if (feedbackText != null &&
+                              feedbackText!.trim().isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              feedbackText!,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: 'Nunito',
+                                fontSize: 13,
+                                height: 1.3,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 12),
           ],
@@ -139,6 +179,7 @@ class _BottomBar extends StatelessWidget {
       case LessonStepType.speak:
         return speakPassed;
       case LessonStepType.audio:
+        return audioReady;
       case LessonStepType.text:
         return true;
     }

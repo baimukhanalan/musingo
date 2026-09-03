@@ -23,6 +23,7 @@ import '../widgets/premium_card.dart';
 import '../widgets/section_label.dart';
 
 part 'lesson/lesson_top_bar.dart';
+part 'lesson/step_guide.dart';
 part 'lesson/audio_step.dart';
 part 'lesson/question_step.dart';
 part 'lesson/matching_step.dart';
@@ -90,6 +91,7 @@ class _LessonScreenState extends State<LessonScreen> {
   bool _showHint = false;
   int _errors = 0;
   bool _speakPassed = false;
+  bool _audioReady = false;
   bool _matchingComplete = false;
   bool _reviewingMistakes = false;
   final List<LessonStep> _mistakeSteps = [];
@@ -103,6 +105,8 @@ class _LessonScreenState extends State<LessonScreen> {
 
   /// speak-шаг стартует «незачтённым» только если это действительно speak.
   bool _isSpeakPassed(LessonStep step) => step.type != LessonStepType.speak;
+
+  bool _isAudioReady(LessonStep step) => step.type != LessonStepType.audio;
 
   /// matching-шаг считается пройденным сразу, если пар нет (пустой matchPairs):
   /// иначе onCompleted никогда не вызовется и «Продолжить» залочится (L2).
@@ -124,6 +128,7 @@ class _LessonScreenState extends State<LessonScreen> {
     // Инициализируем гейты для стартового шага: если урок начинается с speak
     // или пустого matching, кнопка «Продолжить» не должна быть залочена.
     _speakPassed = _isSpeakPassed(_step);
+    _audioReady = _isAudioReady(_step);
     _matchingComplete = _isMatchingComplete(_step);
     _orderPicks = const [];
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -193,6 +198,7 @@ class _LessonScreenState extends State<LessonScreen> {
           _lastAnswerCorrect = false;
           _showHint = false;
           _speakPassed = _isSpeakPassed(_step);
+          _audioReady = _isAudioReady(_step);
           _matchingComplete = _isMatchingComplete(_step);
           _orderPicks = const [];
           _catMood = CatMood.support;
@@ -210,6 +216,7 @@ class _LessonScreenState extends State<LessonScreen> {
       _lastAnswerCorrect = false;
       _showHint = false;
       _speakPassed = _isSpeakPassed(_step);
+      _audioReady = _isAudioReady(_step);
       _matchingComplete = _isMatchingComplete(_step);
       _orderPicks = const [];
       _catMood = _stepIndex == 0 ? CatMood.greet : CatMood.support;
@@ -272,6 +279,8 @@ class _LessonScreenState extends State<LessonScreen> {
             children: [
               _TopBar(
                   progress: _progress,
+                  currentStep: _stepIndex + 1,
+                  totalSteps: _activeSteps.length,
                   hearts: hearts,
                   isPremium: isPremium,
                   onClose: () => _showExitDialog(context)),
@@ -287,7 +296,37 @@ class _LessonScreenState extends State<LessonScreen> {
                             key: ValueKey(_catMood), mood: _catMood, size: 132),
                       ),
                       const SizedBox(height: 12),
-                      _buildStepContent(),
+                      _StepGuide(
+                        step: _step,
+                        currentStep: _stepIndex + 1,
+                        totalSteps: _activeSteps.length,
+                        reviewingMistakes: _reviewingMistakes,
+                      ),
+                      const SizedBox(height: 16),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 320),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        transitionBuilder: (child, animation) {
+                          final offset = Tween<Offset>(
+                            begin: const Offset(0.08, 0),
+                            end: Offset.zero,
+                          ).animate(animation);
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: offset,
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: KeyedSubtree(
+                          key: ValueKey(
+                            '${widget.lesson.id}_${_stepIndex}_$_reviewingMistakes',
+                          ),
+                          child: _buildStepContent(),
+                        ),
+                      ),
                       const SizedBox(height: 20),
                     ],
                   ),
@@ -298,10 +337,12 @@ class _LessonScreenState extends State<LessonScreen> {
                 answered: _answered,
                 selectedAnswer: _selectedAnswer,
                 speakPassed: _speakPassed,
+                audioReady: _audioReady,
                 matchingComplete: _matchingComplete,
                 orderComplete: _orderComplete,
                 reviewingMistakes: _reviewingMistakes,
                 isCorrect: _answered && _lastAnswerCorrect,
+                feedbackText: _feedbackText(state),
                 showHint: _showHint,
                 onCheck: _onCheck,
                 onContinue: _nextStep,
@@ -314,10 +355,47 @@ class _LessonScreenState extends State<LessonScreen> {
     );
   }
 
+  String? _feedbackText(AppState state) {
+    if (!_answered) return null;
+    final explanation = _step.explanation?.trim();
+    if (explanation != null && explanation.isNotEmpty) return explanation;
+
+    if (!_lastAnswerCorrect &&
+        (_step.type == LessonStepType.question ||
+            _step.type == LessonStepType.listenChoice)) {
+      final answers = _step.answers ?? const <String>[];
+      final correct = _step.correctAnswerIndex;
+      if (correct != null && correct >= 0 && correct < answers.length) {
+        return state.tr(
+          ru: 'Верный ответ: ${answers[correct]}',
+          kk: 'Дұрыс жауап: ${answers[correct]}',
+          en: 'Correct answer: ${answers[correct]}',
+        );
+      }
+    }
+    return _lastAnswerCorrect
+        ? state.tr(
+            ru: 'Отлично. Этот шаг можно считать закреплённым.',
+            kk: 'Керемет. Бұл қадам бекітілді.',
+            en: 'Great. This step is now reinforced.',
+          )
+        : state.tr(
+            ru: 'Посмотри на правильный вариант и запомни отличие.',
+            kk: 'Дұрыс нұсқаны қарап, айырмашылығын есте сақта.',
+            en: 'Review the correct option and remember the difference.',
+          );
+  }
+
   Widget _buildStepContent() {
     switch (_step.type) {
       case LessonStepType.audio:
-        return _AudioStep(step: _step);
+        return _AudioStep(
+          step: _step,
+          simulatePlayback: widget.speechSimulator != null,
+          onListened: () {
+            if (!_audioReady) setState(() => _audioReady = true);
+          },
+        );
       case LessonStepType.text:
         return _TextStep(step: _step);
       case LessonStepType.question:
@@ -340,6 +418,7 @@ class _LessonScreenState extends State<LessonScreen> {
           key: ValueKey(
               'listen_${widget.lesson.id}_${_stepIndex}_$_reviewingMistakes'),
           step: _step,
+          simulatePlayback: widget.speechSimulator != null,
           selectedAnswer: _selectedAnswer,
           answered: _answered,
           onSelect: _answered

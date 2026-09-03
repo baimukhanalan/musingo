@@ -94,11 +94,22 @@ Future<void> _pumpLesson(
 Future<void> _completeStep(WidgetTester tester, LessonStep step) async {
   switch (step.type) {
     case LessonStepType.audio:
+      await _tap(tester, const ValueKey('lesson_audio_play'));
+      await _tap(tester, const ValueKey('lesson_primary_action'));
+      return;
     case LessonStepType.text:
       await _tap(tester, const ValueKey('lesson_primary_action'));
       return;
     case LessonStepType.question:
+      await _tap(
+        tester,
+        ValueKey('lesson_answer_${step.correctAnswerIndex}'),
+      );
+      await _tap(tester, const ValueKey('lesson_primary_action'));
+      await _tap(tester, const ValueKey('lesson_primary_action'));
+      return;
     case LessonStepType.listenChoice:
+      await _tap(tester, const ValueKey('lesson_listen_play'));
       await _tap(
         tester,
         ValueKey('lesson_answer_${step.correctAnswerIndex}'),
@@ -159,6 +170,10 @@ Future<void> _tap(WidgetTester tester, Key key) async {
   await tester.ensureVisible(finder);
   await tester.pump();
   await tester.tap(finder);
+  // Первый кадр создаёт контроллеры перехода, второй доводит анимацию до
+  // стабильного состояния. Иначе AnimatedSwitcher ещё держит старый шаг и
+  // finder видит два одинаковых ключа из исходящего и входящего экранов.
+  await tester.pump();
   await tester.pump(const Duration(milliseconds: 450));
 }
 

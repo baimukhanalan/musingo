@@ -2,6 +2,7 @@ part of '../lesson_screen.dart';
 
 class _ListenChoiceStep extends StatefulWidget {
   final LessonStep step;
+  final bool simulatePlayback;
   final int? selectedAnswer;
   final bool answered;
   final void Function(int)? onSelect;
@@ -9,6 +10,7 @@ class _ListenChoiceStep extends StatefulWidget {
   const _ListenChoiceStep({
     super.key,
     required this.step,
+    required this.simulatePlayback,
     required this.selectedAnswer,
     required this.answered,
     this.onSelect,
@@ -39,13 +41,20 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
 
   @override
   void dispose() {
-    _tts.stop();
+    if (!widget.simulatePlayback) _tts.stop();
     _audioPlayer.dispose();
     super.dispose();
   }
 
   Future<void> _play() async {
     HapticsService.tap();
+    if (widget.simulatePlayback) {
+      setState(() {
+        _playing = false;
+        _plays++;
+      });
+      return;
+    }
     if (_playing) {
       await _tts.stop();
       await _audioPlayer.stop();
@@ -140,6 +149,7 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
           button: true,
           label: state.tr(ru: 'Прослушать', kk: 'Тыңдау', en: 'Play the audio'),
           child: GestureDetector(
+            key: const ValueKey('lesson_listen_play'),
             onTap: _play,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
@@ -177,6 +187,38 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
             style: const TextStyle(
                 fontFamily: 'Nunito', fontSize: 13, color: AppColors.textGrey)),
         const SizedBox(height: 18),
+        if (_plays == 0)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: AppColors.goldLight.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.lock_clock_rounded,
+                    size: 18, color: AppColors.gold),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    state.tr(
+                      ru: 'Варианты откроются после прослушивания.',
+                      kk: 'Жауаптар тыңдағаннан кейін ашылады.',
+                      en: 'The choices unlock after you listen.',
+                    ),
+                    style: const TextStyle(
+                      fontFamily: 'Nunito',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ...List.generate(displayOrder.length, (displayPos) {
           final i = displayOrder[displayPos];
           return _AnswerOptionCard(
@@ -186,7 +228,7 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
             selected: widget.selectedAnswer == i,
             answered: widget.answered,
             isCorrectOption: i == step.correctAnswerIndex,
-            onTap: () => widget.onSelect?.call(i),
+            onTap: _plays == 0 ? null : () => widget.onSelect?.call(i),
           );
         }),
       ],
