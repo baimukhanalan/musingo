@@ -3,89 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+export '../models/daily_ayah.dart';
+
+import '../models/daily_ayah.dart';
 import '../services/app_state.dart';
 import '../services/backend_service.dart';
 import '../services/haptics_service.dart';
-import '../services/lesson_data.dart';
 import '../services/quran_audio_player.dart';
 import '../utils/colors.dart';
-
-/// Один проверенный аят для карточки «Аят дня». Собирается ТОЛЬКО из уже
-/// существующих уроков LessonData — без новой генерации религиозного текста.
-class AyahOfDay {
-  final int globalAyahNumber;
-  final String arabic;
-  final String transliteration;
-  final String translation;
-
-  const AyahOfDay({
-    required this.globalAyahNumber,
-    required this.arabic,
-    required this.transliteration,
-    required this.translation,
-  });
-}
-
-/// Пул аятов и детерминированный выбор одного на календарный день.
-class DailyAyahData {
-  /// Собирает уникальные аяты из курса «Коран»: берём шаги, у которых есть
-  /// арабский текст, транслитерация, перевод и глобальный номер аята. Номер
-  /// нужен, чтобы кнопка прослушивания работала через тот же CDN, что и уроки.
-  /// Дедуп по номеру аята, сортировка — для стабильного порядка на всех днях.
-  static List<AyahOfDay> buildPool() {
-    final byNumber = <int, AyahOfDay>{};
-    for (final lesson in LessonData.quranCourse.lessons) {
-      for (final step in lesson.steps) {
-        final number = step.quranGlobalAyahNumber;
-        final arabic = step.arabicText?.trim();
-        final translit = step.transliteration?.trim();
-        final russian = step.russianText?.trim();
-        if (number == null ||
-            arabic == null ||
-            arabic.isEmpty ||
-            translit == null ||
-            translit.isEmpty ||
-            russian == null ||
-            russian.isEmpty) {
-          continue;
-        }
-        byNumber.putIfAbsent(
-          number,
-          () => AyahOfDay(
-            globalAyahNumber: number,
-            arabic: arabic,
-            transliteration: translit,
-            translation: russian,
-          ),
-        );
-      }
-    }
-    return byNumber.values.toList(growable: false)
-      ..sort((a, b) => a.globalAyahNumber.compareTo(b.globalAyahNumber));
-  }
-
-  /// Абсолютный номер локальной календарной даты. UTC-конструктор здесь нужен
-  /// только для чистой арифметики: переходы часовых поясов и летнего времени
-  /// не могут сделать календарный день короче или длиннее 24 часов.
-  static int calendarDayIndex(DateTime date) {
-    return DateTime.utc(date.year, date.month, date.day)
-            .millisecondsSinceEpoch ~/
-        Duration.millisecondsPerDay;
-  }
-
-  /// Детерминированный аят на конкретный календарный день:
-  /// индекс = абсолютный календарный день % число аятов в пуле.
-  static AyahOfDay? ofDay(DateTime date, {List<AyahOfDay>? pool}) {
-    final ayahs = pool ?? buildPool();
-    if (ayahs.isEmpty) return null;
-    return ayahs[calendarDayIndex(date) % ayahs.length];
-  }
-
-  static Duration untilNextLocalDay(DateTime date) {
-    final tomorrow = DateTime(date.year, date.month, date.day + 1);
-    return tomorrow.difference(date);
-  }
-}
 
 /// Карточка «Аят дня» для главного экрана. Показывает один и тот же аят в
 /// течение календарного дня, с прослушиванием через существующий

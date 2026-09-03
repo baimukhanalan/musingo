@@ -41,6 +41,7 @@ class NotificationPlatform {
       defaultTargetPlatform == TargetPlatform.iOS;
 
   bool get supportsBackgroundScheduling => _supported;
+  bool get supportsNativeSurfaces => _supported;
 
   void setOnOpenRoute(void Function(String route) callback) {
     onOpenRoute = callback;
@@ -164,6 +165,10 @@ class NotificationPlatform {
     String name = '',
     int streak = 0,
     String authToken = '',
+    List<ReminderMessage> ayahMessages = const [],
+    int ayahHour = 8,
+    int ayahMinute = 15,
+    bool showOnLockScreen = false,
   }) async {
     await initialize();
     if (!_supported || messages.isEmpty) return;
@@ -175,9 +180,9 @@ class NotificationPlatform {
       await _plugin.zonedSchedule(
         4100 + index,
         message.title,
-        message.body,
+        _visibleBody(message.body, showOnLockScreen),
         _nextWeekday(index + 1, hour, minute),
-        _detailsFor(message.body),
+        _detailsFor(message.body, showOnLockScreen: showOnLockScreen),
         payload: '/home',
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
@@ -197,9 +202,9 @@ class NotificationPlatform {
         await _plugin.zonedSchedule(
           4200 + index,
           streakMessage.title,
-          streakMessage.body,
+          _visibleBody(streakMessage.body, showOnLockScreen),
           _nextWeekday(index + 1, eveningHour, eveningMinute),
-          _detailsFor(streakMessage.body),
+          _detailsFor(streakMessage.body, showOnLockScreen: showOnLockScreen),
           payload: '/home',
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
           uiLocalNotificationDateInterpretation:
@@ -207,6 +212,37 @@ class NotificationPlatform {
           matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
         );
       }
+    }
+
+    // Аят дня планируется отдельной серией одноразовых уведомлений. 28 дней
+    // сохраняют ежедневную ротацию и укладываются вместе с уроками в лимит iOS
+    // на 64 ожидающих локальных уведомления.
+    final now = tz.TZDateTime.now(tz.local);
+    var firstAyahDate = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      ayahHour,
+      ayahMinute,
+    );
+    if (!firstAyahDate.isAfter(now)) {
+      firstAyahDate = firstAyahDate.add(const Duration(days: 1));
+    }
+    for (var index = 0; index < ayahMessages.length && index < 28; index++) {
+      final message = ayahMessages[index];
+      final scheduled = firstAyahDate.add(Duration(days: index));
+      await _plugin.zonedSchedule(
+        4300 + index,
+        message.title,
+        _visibleBody(message.body, showOnLockScreen),
+        scheduled,
+        _detailsFor(message.body, showOnLockScreen: showOnLockScreen),
+        payload: '/home',
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
     }
   }
 
@@ -238,7 +274,15 @@ class NotificationPlatform {
   /// Rich-детали уведомления: разворачиваемый body (BigTextStyle), иконка-кот
   /// (largeIcon) и интерактивные кнопки. body передаём явно, чтобы развёрнутый
   /// вид показывал полный текст сообщения.
-  NotificationDetails _detailsFor(String body) => NotificationDetails(
+  String _visibleBody(String body, bool showOnLockScreen) => showOnLockScreen
+      ? body
+      : 'Открой Muslingo, чтобы увидеть персональное напоминание.';
+
+  NotificationDetails _detailsFor(
+    String body, {
+    bool showOnLockScreen = true,
+  }) =>
+      NotificationDetails(
         android: AndroidNotificationDetails(
           _channelId,
           _channelName,
@@ -246,7 +290,12 @@ class NotificationPlatform {
           importance: Importance.high,
           priority: Priority.high,
           category: AndroidNotificationCategory.reminder,
-          styleInformation: BigTextStyleInformation(body),
+          styleInformation: BigTextStyleInformation(
+            _visibleBody(body, showOnLockScreen),
+          ),
+          visibility: showOnLockScreen
+              ? NotificationVisibility.public
+              : NotificationVisibility.private,
           largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
           actions: _androidActions,
         ),

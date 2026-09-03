@@ -3,6 +3,7 @@ import '../models/reminder_message.dart';
 
 class NotificationPlatform {
   bool get supportsBackgroundScheduling => false;
+  bool get supportsNativeSurfaces => false;
 
   Future<void> initialize() async {}
 
@@ -22,6 +23,10 @@ class NotificationPlatform {
     String name = '',
     int streak = 0,
     String authToken = '',
+    List<ReminderMessage> ayahMessages = const [],
+    int ayahHour = 8,
+    int ayahMinute = 15,
+    bool showOnLockScreen = false,
   }) async {}
 
   Future<void> cancelAll({String authToken = ''}) async {}

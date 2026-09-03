@@ -71,6 +71,7 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
     // передний план пересчитываем накопившуюся по времени регенерацию.
     if (state == AppLifecycleState.resumed) {
       _appState.refreshHearts();
+      _appState.refreshHomeWidget();
     }
   }
 

@@ -10,10 +10,12 @@ import '../models/reminder_message.dart';
 import '../models/learning_profile.dart';
 import '../models/knowledge_state.dart';
 import '../models/hafiz_progress.dart';
+import '../models/daily_ayah.dart';
 import '../utils/app_locale.dart';
 import 'backend_service.dart';
 import 'lesson_data.dart';
 import 'notification_service.dart';
+import 'home_widget_service.dart';
 
 enum NativeLanguage {
   russian('ru', 'Русский'),
@@ -40,6 +42,11 @@ class AppState extends ChangeNotifier {
   static const _notificationsEnabledKey = 'notifications_enabled';
   static const _reminderHourKey = 'reminder_hour';
   static const _reminderMinuteKey = 'reminder_minute';
+  static const _dailyAyahNotificationsKey = 'daily_ayah_notifications_enabled';
+  static const _dailyAyahHourKey = 'daily_ayah_hour';
+  static const _dailyAyahMinuteKey = 'daily_ayah_minute';
+  static const _lockScreenPreviewKey = 'lock_screen_preview_enabled';
+  static const _homeWidgetEnabledKey = 'home_widget_enabled';
   static const _learningGoalKey = 'learning_goal';
   static const _placementLevelKey = 'placement_level';
   static const _learningRecommendationKey = 'learning_recommendation';
@@ -66,9 +73,15 @@ class AppState extends ChangeNotifier {
   AppLocale _locale = AppLocale.ru;
   NativeLanguage? _nativeLanguage;
   final NotificationService _notificationService = NotificationService();
+  final HomeWidgetService _homeWidgetService = HomeWidgetService();
   bool _notificationsEnabled = false;
   int _reminderHour = 19;
   int _reminderMinute = 30;
+  bool _dailyAyahNotificationsEnabled = false;
+  int _dailyAyahHour = 8;
+  int _dailyAyahMinute = 15;
+  bool _lockScreenPreviewEnabled = false;
+  bool _homeWidgetEnabled = false;
   NotificationPermissionState _notificationPermission =
       NotificationPermissionState.prompt;
   LearningGoal? _learningGoal;
@@ -105,10 +118,18 @@ class AppState extends ChangeNotifier {
   bool get notificationsEnabled => _notificationsEnabled;
   int get reminderHour => _reminderHour;
   int get reminderMinute => _reminderMinute;
+  bool get dailyAyahNotificationsEnabled => _dailyAyahNotificationsEnabled;
+  int get dailyAyahHour => _dailyAyahHour;
+  int get dailyAyahMinute => _dailyAyahMinute;
+  bool get lockScreenPreviewEnabled => _lockScreenPreviewEnabled;
+  bool get homeWidgetEnabled => _homeWidgetEnabled;
+  bool get homeWidgetSupported => _homeWidgetService.isSupported;
   NotificationPermissionState get notificationPermission =>
       _notificationPermission;
   bool get notificationsRunInBackground =>
       _notificationService.supportsBackgroundScheduling;
+  bool get nativeNotificationSurfacesSupported =>
+      _notificationService.supportsNativeSurfaces;
 
   void setNotificationOpenHandler(void Function(String route) callback) {
     _notificationService.setOnOpenRoute(callback);
@@ -389,6 +410,13 @@ class AppState extends ChangeNotifier {
           preferences.getBool(_notificationsEnabledKey) ?? false;
       _reminderHour = preferences.getInt(_reminderHourKey) ?? 19;
       _reminderMinute = preferences.getInt(_reminderMinuteKey) ?? 30;
+      _dailyAyahNotificationsEnabled =
+          preferences.getBool(_dailyAyahNotificationsKey) ?? false;
+      _dailyAyahHour = preferences.getInt(_dailyAyahHourKey) ?? 8;
+      _dailyAyahMinute = preferences.getInt(_dailyAyahMinuteKey) ?? 15;
+      _lockScreenPreviewEnabled =
+          preferences.getBool(_lockScreenPreviewKey) ?? false;
+      _homeWidgetEnabled = preferences.getBool(_homeWidgetEnabledKey) ?? false;
       _learningGoal = LearningGoalDetails.fromStorage(
         preferences.getString(_learningGoalKey),
       );
@@ -417,6 +445,13 @@ class AppState extends ChangeNotifier {
       } catch (_) {
         _notificationPermission = NotificationPermissionState.unsupported;
         _notificationsEnabled = false;
+      }
+      if (_homeWidgetEnabled) {
+        try {
+          await _homeWidgetService.update(localeCode: _locale.code);
+        } catch (_) {
+          // Виджет — дополнительная поверхность и не должен блокировать запуск.
+        }
       }
     } catch (error) {
       _error = error.toString();
@@ -878,6 +913,9 @@ class AppState extends ChangeNotifier {
     _locale = value;
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(_localeKey, value.code);
+    if (_homeWidgetEnabled) {
+      await _homeWidgetService.update(localeCode: value.code);
+    }
     notifyListeners();
   }
 
@@ -1023,6 +1061,72 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<bool> setDailyAyahNotificationsEnabled(bool enabled) async {
+    if (enabled && !_notificationsEnabled) {
+      final permissionGranted = await setNotificationsEnabled(true);
+      if (!permissionGranted) return false;
+    }
+    _dailyAyahNotificationsEnabled = enabled;
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_dailyAyahNotificationsKey, enabled);
+    if (_notificationsEnabled) await _scheduleLearningReminders();
+    notifyListeners();
+    return true;
+  }
+
+  Future<void> setDailyAyahTime(int hour, int minute) async {
+    _dailyAyahHour = hour.clamp(0, 23).toInt();
+    _dailyAyahMinute = minute.clamp(0, 59).toInt();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setInt(_dailyAyahHourKey, _dailyAyahHour);
+    await preferences.setInt(_dailyAyahMinuteKey, _dailyAyahMinute);
+    if (_notificationsEnabled && _dailyAyahNotificationsEnabled) {
+      await _scheduleLearningReminders();
+    }
+    notifyListeners();
+  }
+
+  Future<void> setLockScreenPreviewEnabled(bool enabled) async {
+    _lockScreenPreviewEnabled = enabled;
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_lockScreenPreviewKey, enabled);
+    if (_notificationsEnabled) await _scheduleLearningReminders();
+    notifyListeners();
+  }
+
+  Future<bool> setHomeWidgetEnabled(bool enabled) async {
+    if (!_homeWidgetService.isSupported) return false;
+    try {
+      if (enabled) {
+        await _homeWidgetService.update(localeCode: _locale.code);
+      } else {
+        await _homeWidgetService.clear();
+      }
+      _homeWidgetEnabled = enabled;
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setBool(_homeWidgetEnabledKey, enabled);
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> requestHomeWidget() async {
+    final enabled = await setHomeWidgetEnabled(true);
+    if (!enabled) return false;
+    return _homeWidgetService.requestPin();
+  }
+
+  Future<void> refreshHomeWidget() async {
+    if (!_homeWidgetEnabled) return;
+    try {
+      await _homeWidgetService.update(localeCode: _locale.code);
+    } catch (_) {
+      // Системный виджет не должен мешать возвращению в приложение.
+    }
+  }
+
   Future<bool> sendTestNotification() async {
     if (!_notificationsEnabled) {
       final enabled = await setNotificationsEnabled(true);
@@ -1036,6 +1140,17 @@ class AppState extends ChangeNotifier {
     final streak = _user?.streak ?? 0;
     final due = dueReviewCount + hafizDueCount;
     final goal = _learningGoal?.storageValue ?? '';
+    final now = DateTime.now();
+    final todayAtAyahTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      _dailyAyahHour,
+      _dailyAyahMinute,
+    );
+    final ayahStart = todayAtAyahTime.isAfter(now)
+        ? todayAtAyahTime
+        : todayAtAyahTime.add(const Duration(days: 1));
     return _notificationService.scheduleDaily(
       hour: _reminderHour,
       minute: _reminderMinute,
@@ -1051,6 +1166,16 @@ class AppState extends ChangeNotifier {
       name: name,
       streak: streak,
       authToken: _backend?.authToken ?? '',
+      ayahMessages: _dailyAyahNotificationsEnabled
+          ? DailyAyahData.notificationMessages(
+              start: ayahStart,
+              count: 28,
+              locale: _locale,
+            )
+          : const [],
+      ayahHour: _dailyAyahHour,
+      ayahMinute: _dailyAyahMinute,
+      showOnLockScreen: _lockScreenPreviewEnabled,
     );
   }
 

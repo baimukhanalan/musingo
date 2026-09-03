@@ -130,6 +130,75 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     activeThumbColor: AppColors.coral,
                   ),
                 ),
+                if (state.nativeNotificationSurfacesSupported)
+                  _SettingsRow(
+                    icon: Icons.auto_awesome_rounded,
+                    label: state.tr(
+                        ru: 'Аят дня', kk: 'Күн аяты', en: 'Ayah of the day'),
+                    subtitle: state.dailyAyahNotificationsEnabled
+                        ? state.tr(
+                            ru:
+                                'Каждое утро в ${_formatTime(state.dailyAyahHour, state.dailyAyahMinute)}',
+                            kk:
+                                'Күн сайын таңертең ${_formatTime(state.dailyAyahHour, state.dailyAyahMinute)}',
+                            en:
+                                'Every morning at ${_formatTime(state.dailyAyahHour, state.dailyAyahMinute)}')
+                        : state.tr(
+                            ru: 'Отдельное уведомление с аятом и переводом',
+                            kk: 'Аят пен аудармасы бар бөлек хабарлама',
+                            en: 'A separate notification with an ayah'),
+                    color: AppColors.pistachio,
+                    trailing: Switch(
+                      value: state.dailyAyahNotificationsEnabled,
+                      onChanged: (enabled) =>
+                          _toggleDailyAyahNotifications(context, enabled),
+                      activeThumbColor: AppColors.pistachio,
+                    ),
+                  ),
+                if (state.nativeNotificationSurfacesSupported &&
+                    state.dailyAyahNotificationsEnabled)
+                  _SettingsRow(
+                    icon: Icons.wb_sunny_outlined,
+                    label: state.tr(
+                        ru: 'Время аята дня',
+                        kk: 'Күн аятының уақыты',
+                        en: 'Ayah notification time'),
+                    subtitle: state.tr(
+                        ru: 'По местному времени устройства',
+                        kk: 'Құрылғының жергілікті уақытымен',
+                        en: 'Uses the device local time'),
+                    color: AppColors.gold,
+                    trailing: Text(
+                      _formatTime(state.dailyAyahHour, state.dailyAyahMinute),
+                      style: const TextStyle(
+                        fontFamily: 'Nunito',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                    onTap: () => _pickDailyAyahTime(context),
+                  ),
+                if (state.nativeNotificationSurfacesSupported)
+                  _SettingsRow(
+                    icon: Icons.lock_outline_rounded,
+                    label: state.tr(
+                        ru: 'Текст на экране блокировки',
+                        kk: 'Құлып экранындағы мәтін',
+                        en: 'Lock screen preview'),
+                    subtitle: state.tr(
+                        ru: 'Показывать аят и детали напоминаний',
+                        kk: 'Аят пен еске салу мәліметтерін көрсету',
+                        en: 'Show the ayah and reminder details'),
+                    color: AppColors.navy,
+                    trailing: Switch(
+                      value: state.lockScreenPreviewEnabled,
+                      onChanged: state.notificationsEnabled
+                          ? state.setLockScreenPreviewEnabled
+                          : null,
+                      activeThumbColor: AppColors.navy,
+                    ),
+                  ),
                 _SettingsRow(
                   icon: Icons.schedule_rounded,
                   label: state.tr(
@@ -167,6 +236,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ]),
               const SizedBox(height: 22),
+              if (state.homeWidgetSupported) ...[
+                SectionLabel(
+                    text: state.tr(
+                        ru: 'Виджет', kk: 'Виджет', en: 'Home widget')),
+                const SizedBox(height: 10),
+                _SettingsCard(children: [
+                  _SettingsRow(
+                    icon: Icons.widgets_outlined,
+                    label: state.tr(
+                        ru: 'Аят дня на главном экране',
+                        kk: 'Басты экрандағы күн аяты',
+                        en: 'Ayah on the home screen'),
+                    subtitle: state.homeWidgetEnabled
+                        ? state.tr(
+                            ru: 'Меняется автоматически каждый день',
+                            kk: 'Күн сайын автоматты түрде өзгереді',
+                            en: 'Updates automatically every day')
+                        : state.tr(
+                            ru: 'Хранит данные только на устройстве',
+                            kk: 'Деректер тек құрылғыда сақталады',
+                            en: 'Keeps its data only on this device'),
+                    color: AppColors.sky,
+                    trailing: Switch(
+                      value: state.homeWidgetEnabled,
+                      onChanged: (enabled) =>
+                          _toggleHomeWidget(context, enabled),
+                      activeThumbColor: AppColors.sky,
+                    ),
+                  ),
+                  _SettingsRow(
+                    icon: Icons.add_to_home_screen_rounded,
+                    label: state.tr(
+                        ru: 'Добавить виджет',
+                        kk: 'Виджетті қосу',
+                        en: 'Add widget'),
+                    subtitle: state.tr(
+                        ru: 'Закрепить через системное меню телефона',
+                        kk: 'Телефонның жүйелік мәзірі арқылы бекіту',
+                        en: 'Pin it from your phone widget menu'),
+                    color: AppColors.pistachio,
+                    onTap: () => _addHomeWidget(context),
+                  ),
+                ]),
+                const SizedBox(height: 22),
+              ],
               SectionLabel(
                   text: state.tr(ru: 'Аккаунт', kk: 'Аккаунт', en: 'Account')),
               const SizedBox(height: 10),
@@ -250,6 +364,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _toggleDailyAyahNotifications(
+    BuildContext context,
+    bool enabled,
+  ) async {
+    final state = context.read<AppState>();
+    final success = await state.setDailyAyahNotificationsEnabled(enabled);
+    if (!context.mounted || success || !enabled) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(state.tr(
+          ru: 'Разреши уведомления, чтобы получать аят дня.',
+          kk: 'Күн аятын алу үшін хабарламаларға рұқсат бер.',
+          en: 'Allow notifications to receive the ayah of the day.',
+        )),
+        backgroundColor: AppColors.error,
+      ),
+    );
+  }
+
   Future<void> _pickReminderTime(BuildContext context) async {
     final state = context.read<AppState>();
     final selected = await showTimePicker(
@@ -269,6 +402,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await context
         .read<AppState>()
         .setReminderTime(selected.hour, selected.minute);
+  }
+
+  Future<void> _pickDailyAyahTime(BuildContext context) async {
+    final state = context.read<AppState>();
+    final selected = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: state.dailyAyahHour,
+        minute: state.dailyAyahMinute,
+      ),
+      helpText: state.tr(
+          ru: 'Когда показать аят дня?',
+          kk: 'Күн аятын қашан көрсету керек?',
+          en: 'When should the daily ayah appear?'),
+      cancelText: state.tr(ru: 'Отмена', kk: 'Болдырмау', en: 'Cancel'),
+      confirmText: state.tr(ru: 'Сохранить', kk: 'Сақтау', en: 'Save'),
+    );
+    if (selected == null || !context.mounted) return;
+    await context
+        .read<AppState>()
+        .setDailyAyahTime(selected.hour, selected.minute);
+  }
+
+  Future<void> _toggleHomeWidget(
+    BuildContext context,
+    bool enabled,
+  ) async {
+    final state = context.read<AppState>();
+    final success = await state.setHomeWidgetEnabled(enabled);
+    if (!context.mounted || success) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(state.tr(
+          ru: 'Не удалось обновить системный виджет.',
+          kk: 'Жүйелік виджетті жаңарту мүмкін болмады.',
+          en: 'Could not update the system widget.',
+        )),
+        backgroundColor: AppColors.error,
+      ),
+    );
+  }
+
+  Future<void> _addHomeWidget(BuildContext context) async {
+    final state = context.read<AppState>();
+    final pinned = await state.requestHomeWidget();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(pinned
+            ? state.tr(
+                ru: 'Открыт системный запрос на добавление виджета.',
+                kk: 'Виджетті қосуға арналған жүйелік сұрау ашылды.',
+                en: 'The system request to add the widget is open.')
+            : state.tr(
+                ru: 'Данные готовы. Зажми пустое место на главном экране, открой «Виджеты» и выбери Muslingo.',
+                kk: 'Деректер дайын. Басты экрандағы бос орынды басып тұрып, «Виджеттер» бөлімінен Muslingo таңда.',
+                en: 'The widget is ready. Touch and hold the home screen, open Widgets, and choose Muslingo.')),
+        backgroundColor: pinned ? AppColors.success : AppColors.navy,
+      ),
+    );
   }
 
   Future<void> _sendTestNotification(BuildContext context) async {

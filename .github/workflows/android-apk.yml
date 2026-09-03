@@ -57,8 +57,10 @@ jobs:
           echo "built=true" >> "$GITHUB_OUTPUT"
 
       - name: Install dependencies
-        if: steps.signing.outputs.built == 'true'
         run: flutter pub get
+
+      - name: Verify Android widget build
+        run: flutter build apk --debug
 
       - name: Build signed release APK
         if: steps.signing.outputs.built == 'true'

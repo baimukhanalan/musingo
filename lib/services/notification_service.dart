@@ -11,6 +11,7 @@ class NotificationService {
 
   bool get supportsBackgroundScheduling =>
       _platform.supportsBackgroundScheduling;
+  bool get supportsNativeSurfaces => _platform.supportsNativeSurfaces;
 
   Future<void> initialize() => _platform.initialize();
 
@@ -31,6 +32,10 @@ class NotificationService {
     String name = '',
     int streak = 0,
     String authToken = '',
+    List<ReminderMessage> ayahMessages = const [],
+    int ayahHour = 8,
+    int ayahMinute = 15,
+    bool showOnLockScreen = false,
   }) =>
       _platform.scheduleDaily(
         hour: hour,
@@ -41,6 +46,10 @@ class NotificationService {
         name: name,
         streak: streak,
         authToken: authToken,
+        ayahMessages: ayahMessages,
+        ayahHour: ayahHour,
+        ayahMinute: ayahMinute,
+        showOnLockScreen: showOnLockScreen,
       );
 
   Future<void> cancelAll({String authToken = ''}) =>

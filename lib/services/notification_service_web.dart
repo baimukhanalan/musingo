@@ -25,6 +25,7 @@ external JSPromise<JSBoolean> _pushShowTest(JSString title, JSString body);
 
 class NotificationPlatform {
   bool get supportsBackgroundScheduling => _pushSupported().toDart;
+  bool get supportsNativeSurfaces => false;
 
   Future<void> initialize() async {}
 
@@ -59,6 +60,10 @@ class NotificationPlatform {
     String name = '',
     int streak = 0,
     String authToken = '',
+    List<ReminderMessage> ayahMessages = const [],
+    int ayahHour = 8,
+    int ayahMinute = 15,
+    bool showOnLockScreen = false,
   }) async {
     // На web реальные локальные уведомления не планируем — контент собирает
     // серверный web-push. Сигнатура совпадает с остальными платформами;

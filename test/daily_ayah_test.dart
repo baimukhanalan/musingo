@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:muslingo/services/app_state.dart';
+import 'package:muslingo/utils/app_locale.dart';
 import 'package:muslingo/widgets/daily_ayah.dart';
 
 void main() {
@@ -74,6 +75,20 @@ void main() {
         DailyAyahData.untilNextLocalDay(DateTime(2026, 8, 25, 23, 59, 30)),
         const Duration(seconds: 30),
       );
+    });
+
+    test('builds 28 dated lock-screen messages with changing ayahs', () {
+      final messages = DailyAyahData.notificationMessages(
+        start: DateTime(2026, 9, 5, 8, 15),
+        count: 28,
+        locale: AppLocale.ru,
+      );
+
+      expect(messages, hasLength(28));
+      expect(messages.every((message) => message.title.startsWith('Аят дня')),
+          isTrue);
+      expect(messages.every((message) => message.body.contains('\n')), isTrue);
+      expect(messages[0].body, isNot(messages[1].body));
     });
   });
 
