@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 import 'services/app_state.dart';
 import 'utils/theme.dart';
 import 'utils/colors.dart';
-import 'utils/flags.dart';
 import 'screens/carousel_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_tab_screen.dart';
@@ -24,21 +23,7 @@ import 'screens/onboarding_screen.dart';
 import 'screens/coach_screen.dart';
 import 'screens/rules_screen.dart';
 import 'screens/academy_screen.dart';
-import 'screens/tajwid_review_screen.dart';
 import 'models/lesson.dart';
-
-@visibleForTesting
-Widget buildTajwidReviewRoutePage() {
-  if (kDraftContentEnabled) return const TajwidReviewScreen();
-  return const _RouteFallbackScreen(
-    titleRu: 'Материал недоступен',
-    titleKk: 'Материал қолжетімсіз',
-    titleEn: 'Content unavailable',
-    messageRu: 'Этот черновик не включён в production.',
-    messageKk: 'Бұл жоба production нұсқасына қосылмаған.',
-    messageEn: 'This draft is not enabled in production.',
-  );
-}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -221,11 +206,6 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
         break;
       case '/academy':
         page = const AcademyScreen();
-        break;
-      // Черновик таджвида для ревью специалистом. Достижим только при сборке с
-      // MUSLINGO_DRAFT_CONTENT=true (вход показан в профиле под тем же флагом).
-      case '/review/tajwid':
-        page = buildTajwidReviewRoutePage();
         break;
       case '/help':
         page = const HelpScreen();

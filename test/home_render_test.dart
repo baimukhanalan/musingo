@@ -139,6 +139,14 @@ void main() {
     expect(find.text('Выбери родной язык'), findsNothing);
     expect(tester.takeException(), isNull);
 
+    await tester.tap(find.byKey(const ValueKey('course-mode-tajwid')));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byKey(const ValueKey('course-path-arabic')), findsNothing);
+    expect(find.byKey(const ValueKey('course-path-tajwid')), findsOneWidget);
+    expect(find.text('36 уроков'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
     // Академия стоит сразу после фиксированной панели, а не после 68 узлов.
     await tester.drag(outerScroll, const Offset(0, -440));
     await tester.pump(const Duration(milliseconds: 150));

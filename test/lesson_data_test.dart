@@ -4,6 +4,7 @@ import 'package:muslingo/services/lesson_data.dart';
 import 'package:muslingo/services/lessons/arabic_lessons.dart';
 import 'package:muslingo/services/lessons/quran_lessons.dart';
 import 'package:muslingo/services/lessons/rules_lessons.dart';
+import 'package:muslingo/services/tajwid_data.dart';
 
 void main() {
   const juzTabarakIds = <String>[
@@ -39,12 +40,13 @@ void main() {
     'a22',
   ];
 
-  test('curriculum contains exactly 100 ordered lessons', () {
+  test('curriculum contains exactly 136 ordered lessons', () {
     final courses = LessonData.getCourses();
-    expect(courses.expand((course) => course.lessons), hasLength(100));
+    expect(courses.expand((course) => course.lessons), hasLength(136));
     expect(LessonData.quranCourse.lessons, hasLength(68));
     expect(LessonData.arabicCourse.lessons, hasLength(22));
     expect(LessonData.rulesCourse.lessons, hasLength(10));
+    expect(LessonData.tajwidCourse.lessons, hasLength(36));
 
     final quran = LessonData.quranCourse.lessons;
     expect(quran.skip(48).take(11).map((lesson) => lesson.id), juzTabarakIds);
@@ -320,13 +322,14 @@ void main() {
     }
   });
 
-  test('course registry ids stay exactly quran/arabic/rules', () {
-    // Реестр курсов не должен меняться: серверные маршруты и прогресс
-    // опираются на эти три id. Обогащение уроков не должно их трогать.
+  test('course registry contains all production course ids', () {
     final courseIds = LessonData.getCourses().map((c) => c.id).toList();
 
-    expect(courseIds, equals(<String>['quran', 'arabic', 'rules']));
-    expect(courseIds.toSet(), equals(<String>{'quran', 'arabic', 'rules'}));
+    expect(courseIds, equals(<String>['quran', 'arabic', 'tajwid', 'rules']));
+    expect(
+      courseIds.toSet(),
+      equals(<String>{'quran', 'arabic', 'tajwid', 'rules'}),
+    );
   });
 
   test('every lesson in every course is enriched to at least five steps', () {
@@ -343,13 +346,13 @@ void main() {
     }
   });
 
-  test('all 100 lessons end their question sequence with a logic challenge',
+  test('all 136 lessons end their question sequence with a logic challenge',
       () {
     final lessons = LessonData.getCourses()
         .expand((course) => course.lessons)
         .toList(growable: false);
 
-    expect(lessons, hasLength(100));
+    expect(lessons, hasLength(136));
     for (final lesson in lessons) {
       final questions = lesson.steps
           .where((step) => step.type == LessonStepType.question)
@@ -372,7 +375,12 @@ void main() {
 
   test('challenge enrichment preserves every lesson step type and count', () {
     final rawLessons = <String, Lesson>{
-      for (final lesson in [...quranLessons, ...arabicLessons, ...rulesLessons])
+      for (final lesson in [
+        ...quranLessons,
+        ...arabicLessons,
+        ...tajwidLessons,
+        ...rulesLessons,
+      ])
         lesson.id: lesson,
     };
     final strengthened = LessonData.getCourses()

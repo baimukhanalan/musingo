@@ -38,7 +38,9 @@ const quranIds = [
 const rulesIds = [
   'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10',
 ];
-const allIds = [...arabicIds, ...quranIds, ...rulesIds];
+const tajwidIds = Array.from({ length: 36 }, (_, index) =>
+  `tj${String(index + 1).padStart(2, '0')}`);
+const allIds = [...arabicIds, ...quranIds, ...rulesIds, ...tajwidIds];
 
 // Review lessons carry no ayat reward and are intentionally excluded from
 // ayatRewards (credited as 0).
@@ -47,7 +49,7 @@ const ayatQuranIds = quranIds.filter((id) => !reviewQuranIds.includes(id));
 
 // --- lessons Set covers every client lesson id ---------------------------
 
-test('lessons Set contains every id from the three .dart lesson files', () => {
+test('lessons Set contains every id from the four lesson sources', () => {
   for (const id of allIds) {
     assert.ok(lessons.has(id), `lessons Set is missing "${id}"`);
   }
@@ -74,7 +76,7 @@ test('ayatRewards excludes review lessons and non-quran lessons', () => {
   for (const id of reviewQuranIds) {
     assert.ok(!(id in ayatRewards), `review lesson "${id}" must not be in ayatRewards`);
   }
-  for (const id of [...arabicIds, ...rulesIds]) {
+  for (const id of [...arabicIds, ...rulesIds, ...tajwidIds]) {
     assert.ok(!(id in ayatRewards), `non-quran lesson "${id}" must not be in ayatRewards`);
   }
 });
@@ -130,6 +132,10 @@ test('lessonXp mirrors the client xpReward values', () => {
   assert.equal(lessonXp.q_asr_1, 25);
   assert.equal(lessonXp.q_ala_1, 25);
   assert.equal(lessonXp.r8, 25);
+  assert.equal(lessonXp.tj01, 30);
+  assert.equal(lessonXp.tj16, 40);
+  assert.equal(lessonXp.tj24, 40);
+  assert.equal(lessonXp.tj36, 40);
 });
 
 // --- errors clamp (C1-hardening) -----------------------------------------

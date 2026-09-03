@@ -24,7 +24,7 @@ part 'home/learning_path_panel.dart';
 part 'home/home_sheets.dart';
 part 'home/lesson_path.dart';
 
-enum _LearningMode { basics, quran, arabic }
+enum _LearningMode { basics, quran, arabic, tajwid }
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -66,6 +66,15 @@ class _HomeScreenState extends State<HomeScreen> {
     Icons.school_rounded,
   ];
 
+  static const _tajwidIcons = [
+    Icons.hearing_rounded,
+    Icons.record_voice_over_rounded,
+    Icons.graphic_eq_rounded,
+    Icons.air_rounded,
+    Icons.multiline_chart_rounded,
+    Icons.pause_circle_rounded,
+  ];
+
   ScrollController _pathControllerFor(String courseId) =>
       _pathControllers.putIfAbsent(courseId, ScrollController.new);
 
@@ -105,15 +114,18 @@ class _HomeScreenState extends State<HomeScreen> {
     final quranCourse = state.getCourse(CourseType.quran);
     final arabicCourse = state.getCourse(CourseType.arabic);
     final rulesCourse = state.getCourse(CourseType.rules);
+    final tajwidCourse = state.getCourse(CourseType.tajwid);
     final activeCourse = switch (_mode) {
       _LearningMode.basics => rulesCourse,
       _LearningMode.quran => quranCourse,
       _LearningMode.arabic => arabicCourse,
+      _LearningMode.tajwid => tajwidCourse,
     };
     final activeIcons = switch (_mode) {
       _LearningMode.basics => _rulesIcons,
       _LearningMode.quran => _quranIcons,
       _LearningMode.arabic => _arabicIcons,
+      _LearningMode.tajwid => _tajwidIcons,
     };
     // recommendedLesson делает where().toList()..sort() и проходы по курсам —
     // считаем его один раз за build и переиспользуем во всех местах ниже,

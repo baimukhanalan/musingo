@@ -23,12 +23,13 @@ void main() {
         dueReviewCount: due,
         weakKnowledge: weak,
         totalLessons: 12,
-        totalCatalogLessons: 100,
+        totalCatalogLessons: 136,
         todayProgress: 1,
         dailyGoal: 3,
         quranCompleted: 7,
         arabicCompleted: 3,
         basicsCompleted: 2,
+        tajwidCompleted: 1,
         memoryAccuracy: 0.82,
         hafizDueCount: hafizDue,
         memorizedVerseCount: memorized,
@@ -111,6 +112,17 @@ void main() {
 
     expect(response.text, contains('короткую проверку'));
     expect(response.lessonId, 'q1');
+    expect(response.actionType, CoachActionType.startLesson);
+  });
+
+  test('Tajwid question opens pronunciation practice', () {
+    final response = service.answer(
+      'Какое правило таджвида и мадда мне повторить?',
+      context(),
+    );
+
+    expect(response.text, contains('Сначала обязательно прослушай'));
+    expect(response.text, contains('не заменяет учителя таджвида'));
     expect(response.actionType, CoachActionType.startLesson);
   });
 

@@ -59,6 +59,20 @@ void main() {
     expect(restored.learningRecommendation, 'Начни с букв.');
   });
 
+  test('pronunciation goal starts the Tajwid learning path', () async {
+    final state = AppState();
+    await _waitUntilInitialized(state);
+
+    await state.completePlacement(
+      goal: LearningGoal.pronunciation,
+      level: 2,
+      recommendation: 'Начни с махраджей.',
+    );
+
+    expect(state.recommendedLesson?.course, CourseType.tajwid);
+    expect(state.recommendedLesson?.id, 'tj01');
+  });
+
   test('strong Arabic placement starts after already demonstrated lessons',
       () async {
     final state = AppState();

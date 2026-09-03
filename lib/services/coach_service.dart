@@ -7,6 +7,7 @@ class CoachService {
     'Что повторить сегодня?',
     'Какой урок мне подходит?',
     'Какие у меня слабые места?',
+    'Какое правило таджвида повторить?',
     'Дай мне небольшой тест',
     'Какую суру учить следующей?',
     'Помоги запомнить суру',
@@ -128,6 +129,7 @@ class CoachService {
       'quranCompleted': context.quranCompleted,
       'arabicCompleted': context.arabicCompleted,
       'basicsCompleted': context.basicsCompleted,
+      'tajwidCompleted': context.tajwidCompleted,
       'accuracy': (context.memoryAccuracy * 100).round(),
       'completedLessonIds': completedLessonIds,
       'completedLessonTitles': context.completedLessonTitles,
@@ -199,6 +201,11 @@ class CoachService {
     if (_containsAny(normalized, [
       'произнош',
       'махрадж',
+      'таджвид',
+      'мадд',
+      'гунн',
+      'калькал',
+      'ихфа',
       'звук',
       'говорю',
       'голос',
@@ -385,7 +392,8 @@ class CoachService {
         text: 'Твой уровень маршрута: ${context.placementLevel}. Пройдено '
             '${context.totalLessons} уроков: Коран — ${context.quranCompleted}, '
             'арабский — ${context.arabicCompleted}, основы — '
-            '${context.basicsCompleted}. Точность Memory Engine — $accuracy%, '
+            '${context.basicsCompleted}, таджвид — ${context.tajwidCompleted}. '
+            'Точность Memory Engine — $accuracy%, '
             'сегодня выполнено ${context.todayProgress} из '
             '${context.dailyGoal}. Следующий шаг — '
             '«${context.recommendedLessonTitle ?? 'ежедневный урок'}».',

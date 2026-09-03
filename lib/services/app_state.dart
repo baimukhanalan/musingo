@@ -196,6 +196,7 @@ class AppState extends ChangeNotifier {
     final preferredType = switch (_learningGoal) {
       LearningGoal.arabicReading => CourseType.arabic,
       LearningGoal.islamBasics => CourseType.rules,
+      LearningGoal.pronunciation => CourseType.tajwid,
       _ => CourseType.quran,
     };
     final preferred = getCourse(preferredType)?.lessons;
@@ -1579,7 +1580,8 @@ class AppState extends ChangeNotifier {
         return KnowledgeKind.matching;
       case LessonStepType.question:
       case LessonStepType.listenChoice:
-        return lesson.course == CourseType.rules
+        return lesson.course == CourseType.rules ||
+                lesson.course == CourseType.tajwid
             ? KnowledgeKind.rule
             : KnowledgeKind.meaning;
       // Сборка фразы из слов — это память на порядок слов аята: тот же тип
@@ -1589,7 +1591,10 @@ class AppState extends ChangeNotifier {
       case LessonStepType.audio:
       case LessonStepType.text:
         if (lesson.course == CourseType.quran) return KnowledgeKind.ayah;
-        if (lesson.course == CourseType.rules) return KnowledgeKind.rule;
+        if (lesson.course == CourseType.rules ||
+            lesson.course == CourseType.tajwid) {
+          return KnowledgeKind.rule;
+        }
         final text = step.arabicText ?? '';
         return text.runes.length <= 2
             ? KnowledgeKind.letter

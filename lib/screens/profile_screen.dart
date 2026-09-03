@@ -6,7 +6,6 @@ import '../models/lesson.dart';
 import '../models/user.dart';
 import '../services/app_state.dart';
 import '../utils/colors.dart';
-import '../utils/flags.dart';
 import '../widgets/cat_character.dart';
 import '../widgets/language_pills.dart';
 import '../widgets/premium_background.dart';
@@ -174,19 +173,6 @@ class ProfileScreen extends StatelessWidget {
                       color: AppColors.textGrey,
                       onTap: () => _openPrivacyPolicy(context),
                     ),
-                    // Виден только в сборке для ревью (MUSLINGO_DRAFT_CONTENT);
-                    // в проде флаг выключен и пункта нет.
-                    if (kDraftContentEnabled)
-                      _MenuItem(
-                        icon: Icons.rate_review_rounded,
-                        label: state.tr(
-                            ru: 'Таджвид — на проверке (черновик)',
-                            kk: 'Тәжуид — тексерілуде (жоба)',
-                            en: 'Tajwid — under review (draft)'),
-                        color: AppColors.gold,
-                        onTap: () =>
-                            Navigator.pushNamed(context, '/review/tajwid'),
-                      ),
                   ],
                 ),
                 const SizedBox(height: 12),

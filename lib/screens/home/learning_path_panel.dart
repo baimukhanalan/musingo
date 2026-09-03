@@ -65,6 +65,17 @@ class _LearningPathPanel extends StatelessWidget {
               kk: 'Әріптен Құран сөз тіркестеріне дейін',
               en: 'From letters to Quranic phrases'),
         ),
+      _LearningMode.tajwid => (
+          state.tr(ru: 'Таджвид', kk: 'Тәжуид', en: 'Tajwid'),
+          state.tr(
+              ru: 'Правила чтения',
+              kk: 'Оқу ережелері',
+              en: 'Rules of recitation'),
+          state.tr(
+              ru: 'Махрадж, гунна, мадд и вакф',
+              kk: 'Махраж, ғұнна, мадд және уақф',
+              en: 'Makharij, ghunnah, madd and waqf'),
+        ),
     };
 
     return Container(
@@ -279,28 +290,45 @@ class _ModeSwitch extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _ModeSegment(
-            key: const ValueKey('course-mode-basics'),
-            selected: mode == _LearningMode.basics,
-            label: state.tr(ru: 'Основы', kk: 'Негіздер', en: 'Basics'),
-            icon: Icons.account_balance_rounded,
-            onTap: () => onChanged(_LearningMode.basics),
+          Row(
+            children: [
+              _ModeSegment(
+                key: const ValueKey('course-mode-basics'),
+                selected: mode == _LearningMode.basics,
+                label: state.tr(ru: 'Основы', kk: 'Негіздер', en: 'Basics'),
+                icon: Icons.account_balance_rounded,
+                onTap: () => onChanged(_LearningMode.basics),
+              ),
+              _ModeSegment(
+                key: const ValueKey('course-mode-quran'),
+                selected: mode == _LearningMode.quran,
+                label: state.tr(ru: 'Коран', kk: 'Құран', en: 'Quran'),
+                icon: Icons.menu_book_rounded,
+                onTap: () => onChanged(_LearningMode.quran),
+              ),
+            ],
           ),
-          _ModeSegment(
-            key: const ValueKey('course-mode-quran'),
-            selected: mode == _LearningMode.quran,
-            label: state.tr(ru: 'Коран', kk: 'Құран', en: 'Quran'),
-            icon: Icons.menu_book_rounded,
-            onTap: () => onChanged(_LearningMode.quran),
-          ),
-          _ModeSegment(
-            key: const ValueKey('course-mode-arabic'),
-            selected: mode == _LearningMode.arabic,
-            label: state.tr(ru: 'Арабский', kk: 'Араб тілі', en: 'Arabic'),
-            icon: Icons.translate_rounded,
-            onTap: () => onChanged(_LearningMode.arabic),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              _ModeSegment(
+                key: const ValueKey('course-mode-arabic'),
+                selected: mode == _LearningMode.arabic,
+                label: state.tr(ru: 'Арабский', kk: 'Араб тілі', en: 'Arabic'),
+                icon: Icons.translate_rounded,
+                onTap: () => onChanged(_LearningMode.arabic),
+              ),
+              _ModeSegment(
+                key: const ValueKey('course-mode-tajwid'),
+                selected: mode == _LearningMode.tajwid,
+                label: state.tr(ru: 'Таджвид', kk: 'Тәжуид', en: 'Tajwid'),
+                icon: Icons.graphic_eq_rounded,
+                onTap: () => onChanged(_LearningMode.tajwid),
+              ),
+            ],
           ),
         ],
       ),

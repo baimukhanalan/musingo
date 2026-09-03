@@ -121,6 +121,8 @@ class LessonCard extends StatelessWidget {
         return Icons.account_balance_rounded;
       case CourseType.arabic:
         return Icons.translate_rounded;
+      case CourseType.tajwid:
+        return Icons.graphic_eq_rounded;
     }
   }
 }

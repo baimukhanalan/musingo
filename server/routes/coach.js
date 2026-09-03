@@ -89,6 +89,7 @@ export function buildCoachContext(bodyContext = {}, progressDocument = null) {
     quranCompleted: clampInt(ctx.quranCompleted, 0, 10_000),
     arabicCompleted: clampInt(ctx.arabicCompleted, 0, 10_000),
     basicsCompleted: clampInt(ctx.basicsCompleted, 0, 10_000),
+    tajwidCompleted: clampInt(ctx.tajwidCompleted, 0, 10_000),
     completedLessonIds: clampStringList(ctx.completedLessonIds, { maxItems: MAX_LIST, maxLen: 100 }),
     completedLessonTitles: clampStringList(ctx.completedLessonTitles, {
       maxItems: 20,

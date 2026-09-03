@@ -76,6 +76,7 @@ class CoachContext {
   final int quranCompleted;
   final int arabicCompleted;
   final int basicsCompleted;
+  final int tajwidCompleted;
   final double memoryAccuracy;
   final List<String> completedLessonTitles;
 
@@ -98,6 +99,7 @@ class CoachContext {
     this.quranCompleted = 0,
     this.arabicCompleted = 0,
     this.basicsCompleted = 0,
+    this.tajwidCompleted = 0,
     this.memoryAccuracy = 0,
     this.completedLessonTitles = const [],
   });

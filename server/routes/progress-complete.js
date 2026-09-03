@@ -4,7 +4,7 @@ import { ApiError, integer, method, readJson, text, withApi } from '../lib/http.
 import { isRewardReplay, leaderboardContribution, nextDailyProgress, profile } from '../lib/progress.js';
 
 // Full lesson registry mirrored from the client (lib/services/lessons/
-// {arabic,quran,rules}_lessons.dart). Every lesson id the app can complete MUST
+// {arabic,quran,rules,tajwid}_lessons.dart). Every lesson id the app can complete MUST
 // be present, or POST /api/progress/complete rejects it with 400 unknown_lesson
 // and a signed-in user's progress for that lesson is silently dropped.
 export const lessons = new Set([
@@ -35,6 +35,11 @@ export const lessons = new Set([
   'q_tahrim_1',
   // rules_lessons.dart (r1–r10)
   'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10',
+  // tajwid_lessons.dart (tj01–tj36)
+  'tj01', 'tj02', 'tj03', 'tj04', 'tj05', 'tj06', 'tj07', 'tj08', 'tj09',
+  'tj10', 'tj11', 'tj12', 'tj13', 'tj14', 'tj15', 'tj16', 'tj17', 'tj18',
+  'tj19', 'tj20', 'tj21', 'tj22', 'tj23', 'tj24', 'tj25', 'tj26', 'tj27',
+  'tj28', 'tj29', 'tj30', 'tj31', 'tj32', 'tj33', 'tj34', 'tj35', 'tj36',
 ]);
 
 // learnedAyats credited on first completion = number of DISTINCT
@@ -89,6 +94,12 @@ export const lessonXp = {
   q_jumuah_1: 25, q_munafiqun_1: 25, q_taghabun_1: 25, q_talaq_1: 25,
   q_tahrim_1: 25,
   r1: 25, r2: 25, r3: 25, r4: 25, r5: 25, r6: 25, r7: 25, r8: 25, r9: 25, r10: 25,
+  tj01: 30, tj02: 30, tj03: 30, tj04: 30, tj05: 30, tj06: 30,
+  tj07: 30, tj08: 30, tj09: 30, tj10: 30, tj11: 30, tj12: 30,
+  tj13: 30, tj14: 30, tj15: 30, tj16: 40, tj17: 30, tj18: 30,
+  tj19: 30, tj20: 30, tj21: 30, tj22: 30, tj23: 30, tj24: 40,
+  tj25: 30, tj26: 30, tj27: 30, tj28: 30, tj29: 30, tj30: 30,
+  tj31: 30, tj32: 30, tj33: 30, tj34: 30, tj35: 30, tj36: 40,
 };
 
 // C1-hardening: clamp the reported mistake count into [0, 5] instead of

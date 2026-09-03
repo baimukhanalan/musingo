@@ -17,7 +17,7 @@ enum LessonStepType {
   listenChoice
 }
 
-enum CourseType { quran, rules, arabic }
+enum CourseType { quran, rules, arabic, tajwid }
 
 enum SpeechMode { none, quran, arabic, phrase }
 

@@ -60,6 +60,7 @@ test('buildCoachContext validates and clamps client body', () => {
     placementLevel: 99,
     dailyGoal: 0,
     hafizDueCount: 3,
+    tajwidCompleted: 7,
     completedLessonIds: ['a', 42, 'b', ''],
     weakAreas: ['таджвид', 123],
     recommendedLessonId: 'lesson-7',
@@ -72,6 +73,7 @@ test('buildCoachContext validates and clamps client body', () => {
   assert.equal(context.placementLevel, 8);
   assert.equal(context.dailyGoal, 1);
   assert.equal(context.hafizDueCount, 3);
+  assert.equal(context.tajwidCompleted, 7);
   assert.deepEqual(context.completedLessonIds, ['a', 'b']); // non-strings dropped
   assert.deepEqual(context.weakAreas, ['таджвид']);
   assert.equal(context.recommendedLessonId, 'lesson-7');

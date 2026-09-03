@@ -89,6 +89,7 @@ class _CoachScreenState extends State<CoachScreen> {
     final quran = state.getCourse(CourseType.quran);
     final arabic = state.getCourse(CourseType.arabic);
     final basics = state.getCourse(CourseType.rules);
+    final tajwid = state.getCourse(CourseType.tajwid);
     final allLessons =
         state.courses.expand((course) => course.lessons).toList();
     final completedTitles = allLessons
@@ -121,6 +122,7 @@ class _CoachScreenState extends State<CoachScreen> {
       quranCompleted: quran?.completedLessons ?? 0,
       arabicCompleted: arabic?.completedLessons ?? 0,
       basicsCompleted: basics?.completedLessons ?? 0,
+      tajwidCompleted: tajwid?.completedLessons ?? 0,
       memoryAccuracy: memoryAccuracy,
       completedLessonTitles: completedTitles,
     );

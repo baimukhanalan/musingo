@@ -3,6 +3,7 @@ import 'lesson_challenge_engine.dart';
 import 'lessons/quran_lessons.dart';
 import 'lessons/arabic_lessons.dart';
 import 'lessons/rules_lessons.dart';
+import 'tajwid_data.dart';
 
 class LessonData {
   static final List<Lesson> _quranLessons =
@@ -11,8 +12,11 @@ class LessonData {
       LessonChallengeEngine.strengthen(arabicLessons);
   static final List<Lesson> _rulesLessons =
       LessonChallengeEngine.strengthen(rulesLessons);
+  static final List<Lesson> _tajwidLessons =
+      LessonChallengeEngine.strengthen(tajwidLessons);
 
-  static List<Course> getCourses() => [quranCourse, arabicCourse, rulesCourse];
+  static List<Course> getCourses() =>
+      [quranCourse, arabicCourse, tajwidCourse, rulesCourse];
 
   static Course get quranCourse => Course(
         id: 'quran',
@@ -36,5 +40,13 @@ class LessonData {
         description: 'Краткое введение в основы ислама с источниками',
         type: CourseType.rules,
         lessons: _rulesLessons,
+      );
+
+  static Course get tajwidCourse => Course(
+        id: 'tajwid',
+        title: 'Таджвид',
+        description: 'Махрадж, качества букв и правила чтения Корана',
+        type: CourseType.tajwid,
+        lessons: _tajwidLessons,
       );
 }
