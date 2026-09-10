@@ -100,12 +100,19 @@ class _FriendsHeader extends StatelessWidget {
           color: AppColors.navyDark,
         ),
         Expanded(
-          child: Text(state.tr(ru: 'Друзья', kk: 'Достар', en: 'Friends'),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              state.tr(ru: 'Друзья', kk: 'Достар', en: 'Friends'),
+              maxLines: 1,
               style: const TextStyle(
                   fontFamily: 'Nunito',
                   fontSize: 30,
                   fontWeight: FontWeight.w900,
-                  color: AppColors.navyDark)),
+                  color: AppColors.navyDark),
+            ),
+          ),
         ),
         const SizedBox(width: 12),
         const LanguagePills(),

@@ -112,13 +112,22 @@ class _Header extends StatelessWidget {
                 const Icon(Icons.arrow_back_rounded, color: AppColors.navyDark),
           ),
           Expanded(
-            child: Text(
-              state.tr(ru: 'Достижения', kk: 'Жетістіктер', en: 'Achievements'),
-              style: const TextStyle(
-                fontFamily: 'Nunito',
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                color: AppColors.navyDark,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                state.tr(
+                  ru: 'Достижения',
+                  kk: 'Жетістіктер',
+                  en: 'Achievements',
+                ),
+                maxLines: 1,
+                style: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.navyDark,
+                ),
               ),
             ),
           ),
