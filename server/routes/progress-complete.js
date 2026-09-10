@@ -41,6 +41,11 @@ export const lessons = new Set([
   'tj19', 'tj20', 'tj21', 'tj22', 'tj23', 'tj24', 'tj25', 'tj26', 'tj27',
   'tj28', 'tj29', 'tj30', 'tj31', 'tj32', 'tj33', 'tj34', 'tj35', 'tj36',
 ]);
+const masterySourceIds = [...lessons]
+  .filter((id) => id.startsWith('q'))
+  .slice(0, 32);
+for (let order = 23; order <= 100; order += 1) lessons.add(`a${order}`);
+for (let order = 69; order <= 100; order += 1) lessons.add(`q_mastery_${order}`);
 
 // learnedAyats credited on first completion = number of DISTINCT
 // quranGlobalAyahNumber values across a quran lesson's steps (counted from
@@ -66,6 +71,10 @@ export const ayatRewards = {
   q_jumuah_1: 2, q_munafiqun_1: 2, q_taghabun_1: 2, q_talaq_1: 2,
   q_tahrim_1: 2,
 };
+for (let index = 0; index < masterySourceIds.length; index += 1) {
+  const reward = ayatRewards[masterySourceIds[index]] ?? 0;
+  if (reward > 0) ayatRewards[`q_mastery_${69 + index}`] = reward;
+}
 
 // M2: first-completion xp must equal the lesson's own xpReward (lib/services/
 // lessons/*.dart) so a signed-in user earns exactly what a guest sees. Field
@@ -101,6 +110,12 @@ export const lessonXp = {
   tj25: 30, tj26: 30, tj27: 30, tj28: 30, tj29: 30, tj30: 30,
   tj31: 30, tj32: 30, tj33: 30, tj34: 30, tj35: 30, tj36: 40,
 };
+for (let order = 23; order <= 100; order += 1) {
+  lessonXp[`a${order}`] = order % 3 === 1 ? 35 : 30;
+}
+for (let order = 69; order <= 100; order += 1) {
+  lessonXp[`q_mastery_${order}`] = 40;
+}
 
 // C1-hardening: clamp the reported mistake count into [0, 5] instead of
 // rejecting >5 with a 400. A stale or third-party client that reports more
@@ -135,7 +150,24 @@ export default withApi(async (request, response) => {
     lessonId,
   });
   const rewardToken = String(attempt.jti);
-  const today = validLocalDay(body.localDate);
+  const attemptRows = await sql`
+    SELECT completed_steps, started_at, consumed_at
+    FROM muslingo_lesson_attempts
+    WHERE jti = ${rewardToken}
+      AND user_id = ${user.id}::uuid
+      AND lesson_id = ${lessonId}
+      AND expires_at > now()
+    LIMIT 1
+  `;
+  const attemptState = attemptRows[0];
+  if (!attemptState || attemptState.consumed_at ||
+      Number(attemptState.completed_steps ?? 0) < 3 ||
+      Date.now() - new Date(attemptState.started_at).getTime() < 10_000) {
+    throw new ApiError(400, 'incomplete_lesson_attempt', 'Lesson attempt is incomplete.');
+  }
+  // Competitive rewards use the server's UTC day. A client-local date remains
+  // unsuitable for a cap because alternating valid dates resets the budget.
+  const today = new Date().toISOString().slice(0, 10);
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const rows = await sql`SELECT document, version FROM muslingo_progress WHERE user_id = ${user.id}::uuid`;
@@ -215,6 +247,11 @@ export default withApi(async (request, response) => {
       RETURNING document
     `;
     if (updated.length > 0) {
+      await sql`
+        UPDATE muslingo_lesson_attempts
+        SET consumed_at = now()
+        WHERE jti = ${rewardToken} AND consumed_at IS NULL
+      `;
       return response.status(200).json({
         xpEarned,
         streakBonus,

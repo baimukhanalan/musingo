@@ -56,9 +56,7 @@ export default withApi(async (request, response) => {
   const p256dh = text(keys.p256dh, { min: 20, max: 512, field: 'p256dh' });
   const authSecret = text(keys.auth, { min: 8, max: 256, field: 'auth' });
   const installationId = text(body.installationId, { min: 8, max: 128, field: 'installation' });
-  if (!user) {
-    await consumePushAttempt(pushKey(clientIp(request), installationId));
-  }
+  await consumePushAttempt(pushKey(clientIp(request), user?.id));
   const timezone = text(body.timezone ?? 'UTC', { min: 1, max: 80, field: 'timezone' });
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: timezone }).format(new Date());
@@ -69,17 +67,41 @@ export default withApi(async (request, response) => {
   const hour = integer(body.hour ?? 19, { min: 0, max: 23 });
   const minute = integer(body.minute ?? 30, { min: 0, max: 59 });
   const dueCount = integer(body.dueCount ?? 0, { min: 0, max: 10_000 });
+  const privatePreview = body.privatePreview !== false;
   const learningGoal = body.learningGoal ? text(body.learningGoal, { min: 1, max: 40, field: 'goal' }) : null;
   const endpointHash = createHash('sha256').update(endpoint).digest('hex');
+
+  const quotaRows = await sql`
+    SELECT
+      count(*) FILTER (
+        WHERE installation_id = ${installationId}
+          AND enabled = true
+          AND endpoint_hash <> ${endpointHash}
+      )::int AS installation_count,
+      count(*) FILTER (
+        WHERE user_id = ${user?.id ?? null}::uuid
+          AND enabled = true
+          AND endpoint_hash <> ${endpointHash}
+      )::int AS user_count
+    FROM muslingo_push_subscriptions
+  `;
+  const quota = quotaRows[0] ?? {};
+  if (Number(quota.installation_count ?? 0) >= 3) {
+    throw new ApiError(429, 'subscription_quota', 'This installation has too many active subscriptions.');
+  }
+  if (user && Number(quota.user_count ?? 0) >= 10) {
+    throw new ApiError(429, 'subscription_quota', 'This account has too many active subscriptions.');
+  }
 
   const upserted = await sql`
     INSERT INTO muslingo_push_subscriptions (
       endpoint_hash, endpoint, p256dh, auth_secret, installation_id, user_id,
-      timezone, reminder_hour, reminder_minute, enabled, learning_goal, due_count, updated_at
+      timezone, reminder_hour, reminder_minute, enabled, learning_goal,
+      due_count, private_preview, updated_at
     ) VALUES (
       ${endpointHash}, ${endpoint}, ${p256dh}, ${authSecret}, ${installationId},
       ${user?.id ?? null}::uuid, ${timezone}, ${hour}, ${minute}, true,
-      ${learningGoal}, ${dueCount}, now()
+      ${learningGoal}, ${dueCount}, ${privatePreview}, now()
     )
     ON CONFLICT (endpoint_hash) DO UPDATE SET
       p256dh = excluded.p256dh,
@@ -92,6 +114,7 @@ export default withApi(async (request, response) => {
       enabled = true,
       learning_goal = excluded.learning_goal,
       due_count = excluded.due_count,
+      private_preview = excluded.private_preview,
       updated_at = now()
     WHERE muslingo_push_subscriptions.user_id IS NULL
        OR muslingo_push_subscriptions.user_id = excluded.user_id

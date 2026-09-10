@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
-import { hashPassword, issueToken } from '../lib/auth.js';
+import { hashPassword } from '../lib/auth.js';
 import { sql, ensureSchema } from '../lib/db.js';
 import { ApiError, clientIp, method, readJson, text, withApi } from '../lib/http.js';
 import { consumeRegisterAttempt, registerKey } from '../lib/login-rate-limit.js';
-import { defaultProgress, profile } from '../lib/progress.js';
+import { defaultProgress } from '../lib/progress.js';
 
 export default withApi(async (request, response) => {
   method(request, ['POST']);
@@ -27,27 +27,20 @@ export default withApi(async (request, response) => {
   const id = randomUUID();
   const credentials = await hashPassword(password);
   const initial = defaultProgress({ id, email, display_name: name });
-  // A duplicate email surfaces as Postgres 23505 -> 409 already_exists (mapped
-  // in withApi). That does confirm existence, which the client relies on to show
-  // a "sign in instead" hint; hashPassword already ran above so timing does not
-  // additionally leak. Fully removing this oracle needs an email-verification
-  // flow (out of scope — it would change the client contract).
-  const rows = await sql`
+  await sql`
     WITH new_user AS (
       INSERT INTO muslingo_users (id, email, display_name, password_salt, password_hash)
       VALUES (${id}::uuid, ${email}, ${name}, ${credentials.salt}, ${credentials.hash})
-      RETURNING id, email, display_name
+      ON CONFLICT (email) DO NOTHING
+      RETURNING id
     ), new_progress AS (
       INSERT INTO muslingo_progress (user_id, document)
       SELECT id, ${JSON.stringify(initial)}::jsonb FROM new_user
-      RETURNING user_id, document
+      RETURNING user_id
     )
-    SELECT new_user.id, new_user.email, new_user.display_name, new_progress.document
-    FROM new_user JOIN new_progress ON new_progress.user_id = new_user.id
+    SELECT count(*)::int AS created FROM new_progress
   `;
-  const user = rows[0];
-  return response.status(201).json({
-    token: await issueToken(user.id),
-    profile: profile(user.document, user),
-  });
+  // Identical status and body for new and existing addresses. The app follows
+  // with the ordinary login endpoint, whose failure is already generic.
+  return response.status(202).json({ accepted: true });
 });

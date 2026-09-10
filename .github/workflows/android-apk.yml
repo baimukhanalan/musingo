@@ -59,6 +59,15 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Run API tests
+        run: pnpm install --frozen-lockfile && pnpm test:api
+
+      - name: Run Flutter analyzer
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        run: flutter test
+
       - name: Verify Android widget build
         run: flutter build apk --debug
 

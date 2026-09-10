@@ -15,6 +15,7 @@ external JSPromise<JSBoolean> _pushSubscribe(
   JSNumber dueCount,
   JSString learningGoal,
   JSString authToken,
+  JSBoolean privatePreview,
 );
 
 @JS('muslingoPush.unsubscribe')
@@ -75,6 +76,7 @@ class NotificationPlatform {
       dueCount.toJS,
       learningGoal.toJS,
       authToken.toJS,
+      (!showOnLockScreen).toJS,
     ).toDart)
         .toDart;
     if (!subscribed) {

@@ -16,8 +16,10 @@ import '../widgets/language_pills.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
 import '../widgets/premium_card.dart';
+import '../widgets/pressable_scale.dart';
 import '../widgets/progress_ring.dart';
 import '../widgets/section_label.dart';
+import '../widgets/semantic_switcher_layout.dart';
 
 part 'home/home_header.dart';
 part 'home/daily_cards.dart';

@@ -31,8 +31,7 @@ class KnowledgeState {
     required this.nextReviewAt,
   });
 
-  bool isDue([DateTime? now]) =>
-      !nextReviewAt.isAfter(now ?? DateTime.now());
+  bool isDue([DateTime? now]) => !nextReviewAt.isAfter(now ?? DateTime.now());
 
   bool get isWeak => strength < 0.6 || lapses > repetitions;
 

@@ -66,16 +66,18 @@ export async function verifyToken(token) {
 }
 
 export async function issueLessonAttempt(userId, lessonId) {
-  return new SignJWT({ lessonId: String(lessonId) })
+  const jti = randomUUID();
+  const token = await new SignJWT({ lessonId: String(lessonId) })
     .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
     .setSubject(String(userId))
     .setIssuedAt()
     .setNotBefore('0s')
     .setIssuer(issuer)
     .setAudience(lessonAudience)
-    .setJti(randomUUID())
+    .setJti(jti)
     .setExpirationTime('2h')
     .sign(secretKey());
+  return { token, jti };
 }
 
 export async function verifyLessonAttempt(token, { userId, lessonId, minAgeSeconds = 1 }) {

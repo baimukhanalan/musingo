@@ -11,6 +11,7 @@ import leaderboard from '../server/routes/leaderboard.js';
 import progressAttempt from '../server/routes/progress-attempt.js';
 import progressComplete from '../server/routes/progress-complete.js';
 import progressRestoreHeart from '../server/routes/progress-restore-heart.js';
+import progressStep from '../server/routes/progress-step.js';
 import progressSync from '../server/routes/progress-sync.js';
 import pushPublicKey from '../server/routes/push-public-key.js';
 import pushSubscribe from '../server/routes/push-subscribe.js';
@@ -32,6 +33,7 @@ const routes = new Map([
   ['progress/attempt', progressAttempt],
   ['progress/complete', progressComplete],
   ['progress/restore-heart', progressRestoreHeart],
+  ['progress/step', progressStep],
   ['progress/sync', progressSync],
   ['push/public-key', pushPublicKey],
   ['push/subscribe', pushSubscribe],

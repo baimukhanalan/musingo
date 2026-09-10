@@ -37,10 +37,22 @@ class _CatCharacterState extends State<CatCharacter>
     _bobController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1800),
-    )..repeat(reverse: true);
+    );
     _bobAnim = Tween<double>(begin: -4, end: 4).animate(
       CurvedAnimation(parent: _bobController, curve: Curves.easeInOut),
     );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.of(context).disableAnimations) {
+      _bobController
+        ..stop()
+        ..value = 0.5;
+    } else if (!_bobController.isAnimating) {
+      _bobController.repeat(reverse: true);
+    }
   }
 
   @override
@@ -75,6 +87,8 @@ class _CatCharacterState extends State<CatCharacter>
         ),
       ),
     );
+
+    if (MediaQuery.of(context).disableAnimations) return cat;
 
     switch (widget.mood) {
       case CatMood.success:

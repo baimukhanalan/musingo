@@ -211,8 +211,8 @@ class _RulesTopBar extends StatelessWidget {
           IconButton(
             onPressed: onBack,
             tooltip: state.tr(ru: 'Назад', kk: 'Артқа', en: 'Back'),
-            icon: const Icon(Icons.arrow_back_rounded,
-                color: AppColors.navyDark),
+            icon:
+                const Icon(Icons.arrow_back_rounded, color: AppColors.navyDark),
           ),
           Expanded(
             child: Text(
@@ -505,8 +505,7 @@ class _TrailingStatus extends StatelessWidget {
       );
     }
 
-    final Color bg =
-        isLocked ? AppColors.backgroundGrey : AppColors.skyLight;
+    final Color bg = isLocked ? AppColors.backgroundGrey : AppColors.skyLight;
     return Container(
       width: 30,
       height: 30,

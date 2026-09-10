@@ -141,6 +141,7 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
             textAlign: TextAlign.center,
             style: const TextStyle(
                 fontFamily: 'Nunito',
+                fontFamilyFallback: _lessonFontFallback,
                 fontSize: 21,
                 fontWeight: FontWeight.w900,
                 color: AppColors.navyDark)),
@@ -148,28 +149,31 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
         Semantics(
           button: true,
           label: state.tr(ru: 'Прослушать', kk: 'Тыңдау', en: 'Play the audio'),
-          child: GestureDetector(
-            key: const ValueKey('lesson_listen_play'),
-            onTap: _play,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                color: _playing ? AppColors.pistachio : AppColors.sky,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.navyDark.withValues(alpha: 0.18),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
+          child: PressableScale(
+            pressedScale: 0.94,
+            child: GestureDetector(
+              key: const ValueKey('lesson_listen_play'),
+              onTap: _play,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  color: _playing ? AppColors.pistachio : AppColors.sky,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.navyDark.withValues(alpha: 0.18),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                    _playing ? Icons.stop_rounded : Icons.volume_up_rounded,
+                    size: 44,
+                    color: AppColors.white),
               ),
-              child: Icon(
-                  _playing ? Icons.stop_rounded : Icons.volume_up_rounded,
-                  size: 44,
-                  color: AppColors.white),
             ),
           ),
         ),
@@ -185,7 +189,10 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
                     kk: 'Қалағаныңша тыңдай аласың',
                     en: 'Listen as many times as you need'),
             style: const TextStyle(
-                fontFamily: 'Nunito', fontSize: 13, color: AppColors.textGrey)),
+                fontFamily: 'Nunito',
+                fontFamilyFallback: _lessonFontFallback,
+                fontSize: 13,
+                color: AppColors.textGrey)),
         const SizedBox(height: 18),
         if (_plays == 0)
           Container(
@@ -210,6 +217,7 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
                     ),
                     style: const TextStyle(
                       fontFamily: 'Nunito',
+                      fontFamilyFallback: _lessonFontFallback,
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
                       color: AppColors.textDark,

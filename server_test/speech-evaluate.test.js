@@ -91,6 +91,7 @@ test('speech body transcribes uploaded audio before scoring it', async () => {
     passScore: 70,
     audioMimeType: 'audio/webm',
     audioBase64: Buffer.from('recorded voice').toString('base64'),
+    audioProcessorConsent: true,
   }, {
     transcribe: async ({ audio, mimeType }) => {
       assert.equal(audio.toString(), 'recorded voice');
@@ -103,6 +104,17 @@ test('speech body transcribes uploaded audio before scoring it', async () => {
   assert.equal(result.payload.score, 100);
   assert.equal(result.payload.engine, 'serverAudioTranscription');
   assert.equal(result.payload.fallbackUsed, false);
+});
+
+test('speech body refuses uploaded audio without explicit processor consent', async () => {
+  const result = await evaluateSpeechBody({
+    transcript: '',
+    target: 'بِسْمِ اللَّهِ',
+    audioMimeType: 'audio/webm',
+    audioBase64: Buffer.from('recorded voice').toString('base64'),
+  }, { transcribe: async () => 'бسم الله' });
+  assert.equal(result.status, 400);
+  assert.equal(result.payload.error, 'audio_consent_required');
 });
 
 test('Groq transcription sends audio as multipart form data', async () => {

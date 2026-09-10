@@ -8,6 +8,7 @@ import '../widgets/cat_character.dart';
 import '../widgets/language_pills.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
+import '../widgets/semantic_switcher_layout.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -393,6 +394,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         Expanded(
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 240),
+            layoutBuilder: semanticSwitcherLayout,
             child: _choosingGoal
                 ? _GoalStep(
                     key: const ValueKey('goal'),

@@ -12,6 +12,7 @@ import {
 // ограничивают стоимость до ~160k операций — дешёвая защита от «сжигания CPU».
 export const SPEECH_MAX_INPUT = 400;
 export const SPEECH_MAX_AUDIO_BYTES = 650_000;
+export const SPEECH_GLOBAL_MAX_ATTEMPTS = 500;
 const allowedAudioTypes = new Set([
   'audio/webm',
   'audio/webm;codecs=opus',
@@ -91,6 +92,15 @@ export async function evaluateSpeechBody(body, { transcribe = transcribeSpeech }
       };
     }
     if (recording) {
+      if (body.audioProcessorConsent !== true) {
+        return {
+          status: 400,
+          payload: {
+            error: 'audio_consent_required',
+            message: 'Explicit consent is required before audio processing.',
+          },
+        };
+      }
       transcript = clampInput(await transcribe({ ...recording, prompt: target }));
       transcribedAudio = true;
     }
@@ -195,6 +205,10 @@ export default withApi(async (request, response) => {
       });
     }
     const user = await optionalUser(request);
+    await consumeSpeechAttempt('speech:global', {
+      authenticated: false,
+      limit: SPEECH_GLOBAL_MAX_ATTEMPTS,
+    });
     await consumeSpeechAttempt(speechKey(clientIp(request), user?.id), {
       authenticated: Boolean(user),
     });

@@ -230,7 +230,7 @@
           'PushManager' in window &&
           'Notification' in window,
 
-        subscribe: async (hour, minute, dueCount, learningGoal, authToken) => {
+        subscribe: async (hour, minute, dueCount, learningGoal, authToken, privatePreview) => {
           try {
             if (!window.muslingoPush.isSupported() || Notification.permission !== 'granted') {
               return false;
@@ -263,6 +263,7 @@
                 minute,
                 dueCount,
                 learningGoal: learningGoal || null,
+                privatePreview: privatePreview !== false,
               }),
             });
             return response.ok;

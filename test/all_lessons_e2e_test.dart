@@ -167,9 +167,21 @@ int _firstUnusedTokenIndex(List<String> bank, String token, Set<int> used) {
 Future<void> _tap(WidgetTester tester, Key key) async {
   final finder = find.byKey(key);
   expect(finder, findsOneWidget, reason: 'Не найден элемент $key');
-  await tester.ensureVisible(finder);
+  await Scrollable.ensureVisible(
+    finder.evaluate().single,
+    alignment: 0.5,
+    duration: Duration.zero,
+  );
   await tester.pump();
-  await tester.tap(finder);
+  for (var attempt = 0;
+      attempt < 8 && finder.hitTestable().evaluate().isEmpty;
+      attempt++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+  final hitTarget = finder.hitTestable();
+  expect(hitTarget, findsOneWidget,
+      reason: 'Элемент $key перекрыт интерфейсом');
+  await tester.tap(hitTarget);
   // Первый кадр создаёт контроллеры перехода, второй доводит анимацию до
   // стабильного состояния. Иначе AnimatedSwitcher ещё держит старый шаг и
   // finder видит два одинаковых ключа из исходящего и входящего экранов.

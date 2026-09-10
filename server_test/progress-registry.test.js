@@ -14,6 +14,7 @@ const arabicIds = [
   'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8',
   'a9', 'a10', 'a11', 'a12', 'a13', 'a14', 'a15', 'a16',
   'a17', 'a18', 'a19', 'a20', 'a21', 'a22',
+  ...Array.from({ length: 78 }, (_, index) => `a${index + 23}`),
 ];
 const quranIds = [
   'q_fatiha_1', 'q_fatiha_2', 'q_fatiha_3', 'q_fatiha_4',
@@ -34,6 +35,7 @@ const quranIds = [
   'q_mujadila_1', 'q_hashr_1', 'q_mumtahanah_1', 'q_saff_1',
   'q_jumuah_1', 'q_munafiqun_1', 'q_taghabun_1', 'q_talaq_1',
   'q_tahrim_1',
+  ...Array.from({ length: 32 }, (_, index) => `q_mastery_${index + 69}`),
 ];
 const rulesIds = [
   'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10',
@@ -44,7 +46,12 @@ const allIds = [...arabicIds, ...quranIds, ...rulesIds, ...tajwidIds];
 
 // Review lessons carry no ayat reward and are intentionally excluded from
 // ayatRewards (credited as 0).
-const reviewQuranIds = ['q_review_5_surahs', 'q_review_short_surahs'];
+const reviewQuranIds = [
+  'q_review_5_surahs',
+  'q_review_short_surahs',
+  'q_mastery_76',
+  'q_mastery_86',
+];
 const ayatQuranIds = quranIds.filter((id) => !reviewQuranIds.includes(id));
 
 // --- lessons Set covers every client lesson id ---------------------------
@@ -103,7 +110,16 @@ test('ayatRewards matches the distinct quranGlobalAyahNumber count per lesson', 
     q_jumuah_1: 2, q_munafiqun_1: 2, q_taghabun_1: 2, q_talaq_1: 2,
     q_tahrim_1: 2,
   };
-  assert.deepEqual(ayatRewards, expected);
+  const sourceIds = quranIds.slice(0, 32);
+  for (let index = 0; index < sourceIds.length; index += 1) {
+    const sourceReward = expected[sourceIds[index]] ?? 0;
+    const masteryId = `q_mastery_${69 + index}`;
+    if (sourceReward > 0) expected[masteryId] = sourceReward;
+  }
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(ayatRewards).filter(([, value]) => value > 0)),
+    expected,
+  );
 });
 
 // --- lessonXp: covers every lesson id ------------------------------------

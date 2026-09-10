@@ -46,6 +46,7 @@ class _SpeakStepState extends State<_SpeakStep> {
   String? _speechError;
   double _score = 0;
   bool _fallbackUsed = false;
+  bool _audioProcessorConsent = false;
   Uint8List? _recordedAudio;
   // Счётчик неудачных попыток произношения. После 2 неудач показываем кнопку
   // «Пропустить» (H1-б), чтобы непроходимое произношение не блокировало урок.
@@ -55,11 +56,11 @@ class _SpeakStepState extends State<_SpeakStep> {
   bool _speechUnavailable = false;
   // Пользователь воспользовался «Пропустить» — шаг уже открыт для прохода.
   bool _skipped = false;
+  bool _speechEvaluationConfigured = false;
 
   @override
   void initState() {
     super.initState();
-    _speechEvaluation = SpeechEvaluationService();
     _audioPlayer = QuranAudioPlayer();
     _tts = FlutterTts();
     _tts.setCompletionHandler(() {
@@ -68,6 +69,16 @@ class _SpeakStepState extends State<_SpeakStep> {
     _tts.setErrorHandler((_) {
       if (mounted) setState(() => _samplePlaying = false);
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_speechEvaluationConfigured) return;
+    _speechEvaluation = SpeechEvaluationService(
+      authToken: context.read<AppState>().backendAuthToken,
+    );
+    _speechEvaluationConfigured = true;
   }
 
   Future<void> _toggleListening() async {
@@ -199,6 +210,58 @@ class _SpeakStepState extends State<_SpeakStep> {
         });
         widget.onUnavailable();
         return;
+      }
+      if (!_audioProcessorConsent) {
+        final accepted = await showDialog<bool>(
+              context: context,
+              builder: (dialogContext) => AlertDialog(
+                title: Text(state.tr(
+                  ru: 'Проверка аудио',
+                  kk: 'Аудионы тексеру',
+                  en: 'Audio review',
+                )),
+                content: Text(state.tr(
+                  ru: 'Если системное распознавание недоступно, запись будет отправлена через сервер Muslingo в OpenAI, а при сбое — в Groq. Аудио используется только для распознавания и не сохраняется Muslingo.',
+                  kk: 'Жүйелік тану қолжетімсіз болса, жазба Muslingo сервері арқылы OpenAI-ға, ал ақау кезінде Groq-қа жіберіледі. Аудио тек тану үшін қолданылады және Muslingo-да сақталмайды.',
+                  en: 'If on-device recognition is unavailable, the recording is sent through Muslingo to OpenAI and, on failure, to Groq. It is used only for transcription and is not stored by Muslingo.',
+                )),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext, false),
+                    child: Text(state.tr(
+                      ru: 'Не отправлять',
+                      kk: 'Жібермеу',
+                      en: 'Do not send',
+                    )),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(dialogContext, true),
+                    child: Text(state.tr(
+                      ru: 'Разрешить один раз',
+                      kk: 'Бір рет рұқсат беру',
+                      en: 'Allow once',
+                    )),
+                  ),
+                ],
+              ),
+            ) ??
+            false;
+        if (!mounted) return;
+        if (!accepted) {
+          setState(() {
+            _initializing = false;
+            _recording = false;
+            _speechUnavailable = true;
+            _speechError = state.tr(
+              ru: 'Аудио не отправлено. Шаг можно продолжить без проверки.',
+              kk: 'Аудио жіберілмеді. Қадамды тексерусіз жалғастыруға болады.',
+              en: 'Audio was not sent. You can continue without evaluation.',
+            );
+          });
+          widget.onUnavailable();
+          return;
+        }
+        _audioProcessorConsent = true;
       }
       await _speechEvaluation.record();
       if (!mounted) return;
@@ -343,6 +406,7 @@ class _SpeakStepState extends State<_SpeakStep> {
         step: widget.step,
         transcript: _recognizedWords,
         audioBytes: _recordedAudio,
+        audioProcessorConsent: _audioProcessorConsent,
       );
       if (!mounted) return;
       _applySpeechResult(result);
@@ -456,6 +520,7 @@ class _SpeakStepState extends State<_SpeakStep> {
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                         fontFamily: 'Nunito',
+                        fontFamilyFallback: _lessonFontFallback,
                         fontSize: 14,
                         color: AppColors.textGrey,
                         fontStyle: FontStyle.italic)),
@@ -526,6 +591,7 @@ class _SpeakStepState extends State<_SpeakStep> {
                                   en: 'First listen to the sample')),
                       style: TextStyle(
                         fontFamily: 'Nunito',
+                        fontFamilyFallback: _lessonFontFallback,
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
                         color: _samplePlayed
@@ -551,46 +617,51 @@ class _SpeakStepState extends State<_SpeakStep> {
                   ru: 'Начать распознавание речи',
                   kk: 'Сөзді тануды бастау',
                   en: 'Start speech recognition'),
-          child: GestureDetector(
-            key: const ValueKey('lesson_speech_record'),
-            onTap: _initializing || _evaluating ? null : _toggleListening,
-            child: Container(
-              width: 84,
-              height: 84,
-              decoration: BoxDecoration(
-                color: _recording
-                    ? AppColors.error
-                    : (_passed
-                        ? AppColors.pistachio
-                        : (_samplePlayed
-                            ? AppColors.pistachioLight
-                            : AppColors.border)),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                      color:
-                          (_recording ? AppColors.error : AppColors.pistachio)
-                              .withValues(alpha: 0.32),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8))
-                ],
-              ),
-              child: Icon(
-                _initializing
-                    ? Icons.hourglass_top_rounded
-                    : _evaluating
-                        ? Icons.hourglass_bottom_rounded
-                        : _recording
-                            ? Icons.stop_rounded
-                            : (_passed
-                                ? Icons.check_rounded
-                                : Icons.mic_rounded),
-                color: _recording || _passed
-                    ? Colors.white
-                    : (_samplePlayed
-                        ? AppColors.pistachio
-                        : AppColors.textGrey),
-                size: 42,
+          child: PressableScale(
+            enabled: !_initializing && !_evaluating,
+            pressedScale: 0.92,
+            child: GestureDetector(
+              key: const ValueKey('lesson_speech_record'),
+              onTap: _initializing || _evaluating ? null : _toggleListening,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 84,
+                height: 84,
+                decoration: BoxDecoration(
+                  color: _recording
+                      ? AppColors.error
+                      : (_passed
+                          ? AppColors.pistachio
+                          : (_samplePlayed
+                              ? AppColors.pistachioLight
+                              : AppColors.border)),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                        color:
+                            (_recording ? AppColors.error : AppColors.pistachio)
+                                .withValues(alpha: 0.32),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8))
+                  ],
+                ),
+                child: Icon(
+                  _initializing
+                      ? Icons.hourglass_top_rounded
+                      : _evaluating
+                          ? Icons.hourglass_bottom_rounded
+                          : _recording
+                              ? Icons.stop_rounded
+                              : (_passed
+                                  ? Icons.check_rounded
+                                  : Icons.mic_rounded),
+                  color: _recording || _passed
+                      ? Colors.white
+                      : (_samplePlayed
+                          ? AppColors.pistachio
+                          : AppColors.textGrey),
+                  size: 42,
+                ),
               ),
             ),
           ),
@@ -636,6 +707,7 @@ class _SpeakStepState extends State<_SpeakStep> {
                                       en: 'Listen to the sample before recording')))),
           style: TextStyle(
             fontFamily: 'Nunito',
+            fontFamilyFallback: _lessonFontFallback,
             fontSize: 14,
             fontWeight: FontWeight.w700,
             color: _recording
@@ -654,6 +726,7 @@ class _SpeakStepState extends State<_SpeakStep> {
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontFamily: 'Nunito',
+              fontFamilyFallback: _lessonFontFallback,
               fontSize: 15,
               fontWeight: FontWeight.w700,
               color: AppColors.textDark,
@@ -677,6 +750,7 @@ class _SpeakStepState extends State<_SpeakStep> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Nunito',
+                fontFamilyFallback: _lessonFontFallback,
                 fontSize: 14,
                 fontWeight: FontWeight.w900,
                 color: _passed ? AppColors.pistachioDark : AppColors.error,
@@ -738,6 +812,7 @@ class _SpeakStepState extends State<_SpeakStep> {
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontFamily: 'Nunito',
+              fontFamilyFallback: _lessonFontFallback,
               fontSize: 13,
               color: AppColors.error,
             ),

@@ -2,24 +2,25 @@ import { requireUser } from '../lib/auth.js';
 import { sql } from '../lib/db.js';
 import { ApiError, method, readJson, withApi } from '../lib/http.js';
 import { mergeLearningState, profile } from '../lib/progress.js';
-import { lessonXp, lessons } from './progress-complete.js';
 
 export function sanitizeGuestImport(incoming) {
   const source = incoming && typeof incoming === 'object' ? incoming : {};
-  const completedLessons = [...new Set(
-    (Array.isArray(source.completedLessons) ? source.completedLessons : [])
-      .filter((id) => typeof id === 'string' && lessons.has(id)),
-  )];
-  const xp = completedLessons.reduce((sum, id) => sum + (lessonXp[id] ?? 0), 0);
+  // Guest state is useful for personalization, but it is not authoritative
+  // proof of completion. Never import rewards, unlocks, streaks or league data
+  // from a client-controlled document.
   return {
     ...source,
-    completedLessons,
-    xp,
-    level: Math.floor(xp / 500) + 1,
+    completedLessons: [],
+    xp: 0,
+    level: 1,
     streak: 0,
-    totalLessons: completedLessons.length,
-    totalMinutes: completedLessons.length * 5,
-    lessonAttempts: completedLessons.length,
+    totalLessons: 0,
+    totalMinutes: 0,
+    lessonAttempts: 0,
+    learnedAyats: 0,
+    learnedDuas: 0,
+    leaderboardXpToday: 0,
+    leaderboardXpDay: '',
     rewardHistory: [],
   };
 }

@@ -6,7 +6,7 @@ process.env.JWT_SECRET ??= 'unit-test-secret-unit-test-secret-0123456789';
 
 const { sanitizeGuestImport } = await import('../server/routes/progress-sync.js');
 
-test('guest import rejects unknown lessons and derives public progress', () => {
+test('guest import keeps personalization but never imports rewards or unlocks', () => {
   const value = sanitizeGuestImport({
     completedLessons: ['a1', 'a1', 'not-a-real-lesson', 'q_fatiha_1'],
     xp: 999999,
@@ -17,11 +17,11 @@ test('guest import rejects unknown lessons and derives public progress', () => {
     rewardHistory: ['forged'],
   });
 
-  assert.deepEqual(value.completedLessons, ['a1', 'q_fatiha_1']);
-  assert.equal(value.xp, 45);
+  assert.deepEqual(value.completedLessons, []);
+  assert.equal(value.xp, 0);
   assert.equal(value.level, 1);
   assert.equal(value.streak, 0);
-  assert.equal(value.totalLessons, 2);
-  assert.equal(value.totalMinutes, 10);
+  assert.equal(value.totalLessons, 0);
+  assert.equal(value.totalMinutes, 0);
   assert.deepEqual(value.rewardHistory, []);
 });

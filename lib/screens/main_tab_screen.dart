@@ -65,7 +65,15 @@ class _MainTabScreenState extends State<MainTabScreen> {
         index: _current,
         children: [
           for (var i = 0; i < screens.length; i++)
-            TickerMode(enabled: i == _current, child: screens[i]),
+            TickerMode(
+              enabled: i == _current,
+              child: AnimatedScale(
+                scale: i == _current ? 1 : 0.992,
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                child: screens[i],
+              ),
+            ),
         ],
       ),
       bottomNavigationBar: Container(
@@ -171,11 +179,30 @@ class _NavItem extends StatelessWidget {
                     duration: const Duration(milliseconds: 160),
                     switchInCurve: Curves.easeOut,
                     switchOutCurve: Curves.easeIn,
-                    child: Icon(
-                      isActive ? activeIcon : icon,
+                    transitionBuilder: (child, animation) => ScaleTransition(
+                      scale: Tween<double>(begin: 0.72, end: 1).animate(
+                        CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOutBack,
+                        ),
+                      ),
+                      child: FadeTransition(opacity: animation, child: child),
+                    ),
+                    child: DecoratedBox(
                       key: ValueKey(isActive),
-                      color: isActive ? AppColors.textDark : AppColors.textGrey,
-                      size: 27,
+                      decoration: BoxDecoration(
+                        color:
+                            isActive ? AppColors.skyLight : Colors.transparent,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(7),
+                        child: Icon(
+                          isActive ? activeIcon : icon,
+                          color: isActive ? AppColors.navy : AppColors.textGrey,
+                          size: 25,
+                        ),
+                      ),
                     ),
                   ),
                 ),

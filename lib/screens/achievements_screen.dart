@@ -113,8 +113,7 @@ class _Header extends StatelessWidget {
           ),
           Expanded(
             child: Text(
-              state.tr(
-                  ru: 'Достижения', kk: 'Жетістіктер', en: 'Achievements'),
+              state.tr(ru: 'Достижения', kk: 'Жетістіктер', en: 'Achievements'),
               style: const TextStyle(
                 fontFamily: 'Nunito',
                 fontSize: 28,
@@ -390,7 +389,8 @@ class _AchievementBadgeCard extends StatelessWidget {
         color: AppColors.white,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: unlocked ? AppColors.gold.withValues(alpha: 0.5)
+          color: unlocked
+              ? AppColors.gold.withValues(alpha: 0.5)
               : AppColors.border,
           width: unlocked ? 1.5 : 1,
         ),
@@ -505,9 +505,7 @@ class _StatusChip extends StatelessWidget {
     final state = context.watch<AppState>();
     final bool unlocked = achievement.isUnlocked;
 
-    final Color bg = unlocked
-        ? AppColors.goldLight
-        : AppColors.backgroundGrey;
+    final Color bg = unlocked ? AppColors.goldLight : AppColors.backgroundGrey;
     final Color fg = unlocked ? const Color(0xFF8A6410) : AppColors.textLight;
     final IconData icon =
         unlocked ? Icons.check_circle_rounded : Icons.lock_outline_rounded;
@@ -552,12 +550,8 @@ class _StatusChip extends StatelessWidget {
 
 String _toArabicDigits(int n) {
   const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-  return n
-      .toString()
-      .split('')
-      .map((ch) {
-        final code = ch.codeUnitAt(0) - 48;
-        return (code >= 0 && code <= 9) ? digits[code] : ch;
-      })
-      .join();
+  return n.toString().split('').map((ch) {
+    final code = ch.codeUnitAt(0) - 48;
+    return (code >= 0 && code <= 9) ? digits[code] : ch;
+  }).join();
 }

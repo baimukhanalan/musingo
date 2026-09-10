@@ -26,6 +26,7 @@ class _QuestionStep extends StatelessWidget {
             textAlign: TextAlign.center,
             style: const TextStyle(
                 fontFamily: 'Nunito',
+                fontFamilyFallback: _lessonFontFallback,
                 fontSize: 21,
                 fontWeight: FontWeight.w900,
                 color: AppColors.navyDark)),
@@ -93,6 +94,7 @@ class _QuestionStep extends StatelessWidget {
               child: Text(_hintText(state),
                   style: const TextStyle(
                       fontFamily: 'Nunito',
+                      fontFamilyFallback: _lessonFontFallback,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textDark))),
@@ -177,61 +179,67 @@ class _AnswerOptionCard extends StatelessWidget {
     final bool highlighted = selected || (answered && isCorrectOption);
     final bool hasArabic = containsArabicText(text);
 
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: border, width: 2),
-          boxShadow: highlighted
-              ? null
-              : [
-                  BoxShadow(
-                    color: AppColors.navyDark.withValues(alpha: 0.05),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: border.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-                border: Border.all(color: border, width: 1.5),
+    return PressableScale(
+      enabled: onTap != null,
+      pressedScale: 0.985,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: border, width: 2),
+            boxShadow: highlighted
+                ? null
+                : [
+                    BoxShadow(
+                      color: AppColors.navyDark.withValues(alpha: 0.05),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: border.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: border, width: 1.5),
+                ),
+                child: Center(
+                    child: Text(letter,
+                        style: TextStyle(
+                            fontFamily: 'Nunito',
+                            fontFamilyFallback: _lessonFontFallback,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: border))),
               ),
-              child: Center(
-                  child: Text(letter,
-                      style: TextStyle(
-                          fontFamily: 'Nunito',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: border))),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(text,
-                  textDirection: hasArabic ? TextDirection.rtl : null,
-                  style: TextStyle(
-                      fontFamily: hasArabic ? 'Amiri' : 'Nunito',
-                      fontSize: hasArabic ? 22 : 17,
-                      fontWeight: FontWeight.w700,
-                      color: textColor)),
-            ),
-            if (answered && isCorrectOption)
-              const Icon(Icons.check_circle_rounded,
-                  color: AppColors.success, size: 24),
-            if (answered && selected && !isCorrectOption)
-              const Icon(Icons.cancel_rounded,
-                  color: AppColors.error, size: 24),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(text,
+                    textDirection: hasArabic ? TextDirection.rtl : null,
+                    style: TextStyle(
+                        fontFamily: hasArabic ? 'Amiri' : 'Nunito',
+                        fontFamilyFallback: _lessonFontFallback,
+                        fontSize: hasArabic ? 22 : 17,
+                        fontWeight: FontWeight.w700,
+                        color: textColor)),
+              ),
+              if (answered && isCorrectOption)
+                const Icon(Icons.check_circle_rounded,
+                    color: AppColors.success, size: 24),
+              if (answered && selected && !isCorrectOption)
+                const Icon(Icons.cancel_rounded,
+                    color: AppColors.error, size: 24),
+            ],
+          ),
         ),
       ),
     );

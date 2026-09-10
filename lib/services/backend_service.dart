@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -8,6 +9,7 @@ import '../models/coach.dart';
 import '../models/friend.dart';
 import '../models/leaderboard.dart';
 import '../models/user.dart';
+import '../utils/runtime_environment.dart';
 
 class BackendProfile {
   final UserModel user;
@@ -49,16 +51,57 @@ class BackendService {
 
   final http.Client _client;
   final SharedPreferences _preferences;
+  final FlutterSecureStorage _secureStorage;
+  final bool _secureStorageAvailable;
   String? _token;
 
-  BackendService._(this._client, this._preferences, this._token);
+  BackendService._(
+    this._client,
+    this._preferences,
+    this._secureStorage,
+    this._secureStorageAvailable,
+    this._token,
+  );
+
+  static bool get _usesSecureStorage =>
+      !kIsWeb &&
+      !isFlutterTest &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
 
   static Future<BackendService> create({http.Client? client}) async {
     final preferences = await SharedPreferences.getInstance();
+    const secureStorage = FlutterSecureStorage(
+      aOptions: AndroidOptions(encryptedSharedPreferences: true),
+      iOptions: IOSOptions(
+        accessibility: KeychainAccessibility.first_unlock_this_device,
+      ),
+    );
+    String? token;
+    var secureStorageAvailable = false;
+    if (_usesSecureStorage) {
+      try {
+        token = await secureStorage.read(key: _authStorageKey);
+        secureStorageAvailable = true;
+        final legacyToken = preferences.getString(_authStorageKey);
+        if ((token == null || token.isEmpty) &&
+            legacyToken?.isNotEmpty == true) {
+          token = legacyToken;
+          await secureStorage.write(key: _authStorageKey, value: legacyToken);
+        }
+        await preferences.remove(_authStorageKey);
+      } catch (_) {
+        token = preferences.getString(_authStorageKey);
+      }
+    } else {
+      token = preferences.getString(_authStorageKey);
+    }
     return BackendService._(
       client ?? http.Client(),
       preferences,
-      preferences.getString(_authStorageKey),
+      secureStorage,
+      secureStorageAvailable,
+      token,
     );
   }
 
@@ -108,16 +151,13 @@ class BackendService {
     required String email,
     required String password,
   }) async {
-    final response = await _request(
+    await _request(
       'POST',
       '/api/auth/register',
       authenticated: false,
       body: {'name': name, 'email': email, 'password': password},
     );
-    await _storeToken(response['token'] as String?);
-    return _profileFromProgress(
-      Map<String, dynamic>.from(response['profile'] as Map),
-    );
+    return login(email: email, password: password);
   }
 
   Future<BackendProfile> login({
@@ -146,13 +186,13 @@ class BackendService {
       }
     }
     _token = null;
-    await _preferences.remove(_authStorageKey);
+    await _clearStoredToken();
   }
 
   Future<void> deleteAccount() async {
     await _request('DELETE', '/api/account', allowEmpty: true);
     _token = null;
-    await _preferences.remove(_authStorageKey);
+    await _clearStoredToken();
   }
 
   Future<BackendProfile> syncLearningData(
@@ -218,6 +258,22 @@ class BackendService {
       ),
       xpEarned: (response['xpEarned'] as num?)?.toInt() ?? 0,
       streakBonus: (response['streakBonus'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  Future<void> recordLessonStep(
+    String lessonId,
+    int stepIndex,
+    String attemptToken,
+  ) async {
+    await _request(
+      'POST',
+      '/api/progress/step',
+      body: {
+        'lessonId': lessonId,
+        'stepIndex': stepIndex,
+        'attemptToken': attemptToken,
+      },
     );
   }
 
@@ -467,7 +523,19 @@ class BackendService {
           500, 'invalid_response', 'Authentication token is missing.');
     }
     _token = token;
-    await _preferences.setString(_authStorageKey, token);
+    if (_usesSecureStorage && _secureStorageAvailable) {
+      await _secureStorage.write(key: _authStorageKey, value: token);
+      await _preferences.remove(_authStorageKey);
+    } else {
+      await _preferences.setString(_authStorageKey, token);
+    }
+  }
+
+  Future<void> _clearStoredToken() async {
+    await _preferences.remove(_authStorageKey);
+    if (_usesSecureStorage && _secureStorageAvailable) {
+      await _secureStorage.delete(key: _authStorageKey);
+    }
   }
 
   BackendProfile _profileFromProgress(Map<String, dynamic> progress) {

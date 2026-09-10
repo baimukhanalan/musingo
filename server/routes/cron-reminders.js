@@ -68,6 +68,14 @@ function localParts(date, timezone) {
 }
 
 function messageFor(row, localDate) {
+  if (row.private_preview !== false) {
+    return {
+      title: 'Muslingo',
+      body: 'Твой учебный план готов. Открой приложение, чтобы продолжить.',
+      url: '/#/home',
+      tag: 'muslingo-daily-learning',
+    };
+  }
   // seed детерминированный: сумма кодов символов installation_id и локальной даты.
   // Один и тот же человек в один день получает стабильный текст, но день ото дня
   // видит разные варианты. Копирайт вынесен в чистые функции reminder-copy.js.
@@ -99,6 +107,7 @@ export function chunk(items, size) {
 // >2000 активных подписок никогда не оценивался на своё окно и тихо переставал
 // получать напоминания. Теперь идём курсором по всему enabled-множеству.
 export const PAGE_SIZE = 1000;
+export const MAX_DELIVERIES_PER_RUN = 5000;
 
 // Чистый предфильтр по снимку строки. Попадает ли подписка в текущее окно
 // напоминания (час совпал, минута — в той же 15-минутной корзине) и не
@@ -143,7 +152,11 @@ export async function collectCandidates(fetchPage, now, pageSize = PAGE_SIZE) {
     const page = await fetchPage(cursor, size);
     if (!page || page.length === 0) break;
     checked += page.length;
-    for (const candidate of selectCandidates(page, now)) candidates.push(candidate);
+    for (const candidate of selectCandidates(page, now)) {
+      if (candidates.length >= MAX_DELIVERIES_PER_RUN) break;
+      candidates.push(candidate);
+    }
+    if (candidates.length >= MAX_DELIVERIES_PER_RUN) break;
     if (page.length < size) break;
     cursor = page[page.length - 1].endpoint_hash;
   }
@@ -213,7 +226,8 @@ export default withApi(async (request, response) => {
   const { checked, candidates } = await collectCandidates(
     (cursor, size) => sql`
       SELECT endpoint_hash, endpoint, p256dh, auth_secret, installation_id,
-             timezone, reminder_hour, reminder_minute, due_count, learning_goal, last_sent_date
+             timezone, reminder_hour, reminder_minute, due_count, learning_goal,
+             private_preview, last_sent_date
       FROM muslingo_push_subscriptions
       WHERE enabled = true
         AND updated_at > now() - interval '120 days'

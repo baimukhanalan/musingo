@@ -109,6 +109,7 @@ class AppState extends ChangeNotifier {
   bool get isPremium => _user?.isPremium ?? false;
   bool get isGuest => _user?.id == 'guest';
   bool get isBackendUser => _backend?.isAuthenticated == true && !isGuest;
+  String? get backendAuthToken => isBackendUser ? _backend?.authToken : null;
   bool get soundEnabled => _soundEnabled;
 
   /// Текущий язык интерфейса. Экраны читают его через
@@ -386,9 +387,9 @@ class AppState extends ChangeNotifier {
       }
       return diff == 0;
     }
-    // Легаси: пароль лежал открытым текстом. Сверяем и вызывающий код
-    // тут же перезапишет запись хешем.
-    return stored == password;
+    // Plaintext legacy credentials are intentionally invalidated. Accepting
+    // them even once keeps recoverable passwords in device backups.
+    return false;
   }
 
   bool _localPasswordNeedsUpgrade(String stored) {
@@ -402,6 +403,7 @@ class AppState extends ChangeNotifier {
     try {
       _courses = LessonData.getCourses();
       final preferences = await SharedPreferences.getInstance();
+      await _removeLegacyPlaintextAccounts(preferences);
       _soundEnabled = preferences.getBool('sound_enabled') ?? true;
       _locale = AppLocale.fromCode(preferences.getString(_localeKey));
       _nativeLanguage =
@@ -455,10 +457,29 @@ class AppState extends ChangeNotifier {
       }
     } catch (error) {
       _error = error.toString();
+      if (kDebugMode) debugPrint('AppState initialization failed: $error');
     } finally {
       _isInitialized = true;
       notifyListeners();
     }
+  }
+
+  Future<void> _removeLegacyPlaintextAccounts(
+    SharedPreferences preferences,
+  ) async {
+    final accounts = _decodeLocalAccounts(
+      preferences.getString(_localAccountsKey),
+    );
+    final unsafeEmails = accounts.entries
+        .where((entry) =>
+            entry.value is Map && (entry.value as Map).containsKey('password'))
+        .map((entry) => entry.key)
+        .toList(growable: false);
+    if (unsafeEmails.isEmpty) return;
+    for (final email in unsafeEmails) {
+      accounts.remove(email);
+    }
+    await preferences.setString(_localAccountsKey, jsonEncode(accounts));
   }
 
   Future<void> _loadUser() async {
@@ -711,17 +732,14 @@ class AppState extends ChangeNotifier {
             'Аккаунт не найден. Зарегистрируйся на этом устройстве или подключи сервер.';
         return false;
       }
-      final stored =
-          (account['passwordHash'] ?? account['password']) as String?;
+      final stored = account['passwordHash'] as String?;
       if (stored == null || !_verifyLocalPassword(password, stored)) {
         _error = 'Неверный email или пароль.';
         return false;
       }
-      // Migrate plaintext and old low-iteration hashes after a valid login.
-      if (account['passwordHash'] == null ||
-          _localPasswordNeedsUpgrade(stored)) {
+      // Upgrade only older hashes. Plaintext records are removed at startup.
+      if (_localPasswordNeedsUpgrade(stored)) {
         final migrated = Map<String, dynamic>.from(account as Map)
-          ..remove('password')
           ..['passwordHash'] = _hashLocalPassword(password);
         accounts[normalizedEmail] = migrated;
         await preferences.setString(_localAccountsKey, jsonEncode(accounts));
@@ -1396,6 +1414,15 @@ class AppState extends ChangeNotifier {
     } catch (_) {
       _lessonAttempts.remove(lessonId);
     }
+  }
+
+  Future<void> recordLessonStep(String lessonId, int stepIndex) async {
+    if (!isBackendUser) return;
+    final attempt = _lessonAttempts.putIfAbsent(
+      lessonId,
+      () => _backend!.startLessonAttempt(lessonId),
+    );
+    await _backend!.recordLessonStep(lessonId, stepIndex, await attempt);
   }
 
   void addXp(int amount) {

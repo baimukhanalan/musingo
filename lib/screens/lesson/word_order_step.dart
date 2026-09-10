@@ -37,6 +37,7 @@ class _WordOrderStep extends StatelessWidget {
             textAlign: TextAlign.center,
             style: const TextStyle(
                 fontFamily: 'Nunito',
+                fontFamilyFallback: _lessonFontFallback,
                 fontSize: 21,
                 fontWeight: FontWeight.w900,
                 color: AppColors.navyDark)),
@@ -46,6 +47,7 @@ class _WordOrderStep extends StatelessWidget {
               textAlign: TextAlign.center,
               style: const TextStyle(
                   fontFamily: 'Nunito',
+                  fontFamilyFallback: _lessonFontFallback,
                   fontSize: 14,
                   height: 1.35,
                   color: AppColors.textGrey)),
@@ -65,6 +67,7 @@ class _WordOrderStep extends StatelessWidget {
                         en: 'Tap the words below'),
                     style: const TextStyle(
                         fontFamily: 'Nunito',
+                        fontFamilyFallback: _lessonFontFallback,
                         fontSize: 14,
                         color: AppColors.textLight))
                 : Wrap(
@@ -118,6 +121,7 @@ class _WordOrderStep extends StatelessWidget {
                   fontFamily: containsArabicText(step.orderedAnswer)
                       ? 'Amiri'
                       : 'Nunito',
+                  fontFamilyFallback: _lessonFontFallback,
                   fontSize: containsArabicText(step.orderedAnswer) ? 22 : 15,
                   height: 1.6,
                   fontWeight: FontWeight.w700,
@@ -172,32 +176,37 @@ class _WordChip extends StatelessWidget {
         textColor = AppColors.error;
     }
 
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: border, width: 1.5),
-          boxShadow: tone == _WordChipTone.bank
-              ? [
-                  BoxShadow(
-                    color: AppColors.navyDark.withValues(alpha: 0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ]
-              : null,
+    return PressableScale(
+      enabled: onTap != null,
+      pressedScale: 0.96,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: border, width: 1.5),
+            boxShadow: tone == _WordChipTone.bank
+                ? [
+                    BoxShadow(
+                      color: AppColors.navyDark.withValues(alpha: 0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(text,
+              textDirection: hasArabic ? TextDirection.rtl : null,
+              style: TextStyle(
+                  fontFamily: hasArabic ? 'Amiri' : 'Nunito',
+                  fontFamilyFallback: _lessonFontFallback,
+                  fontSize: hasArabic ? 22 : 15,
+                  fontWeight: FontWeight.w800,
+                  color: textColor)),
         ),
-        child: Text(text,
-            textDirection: hasArabic ? TextDirection.rtl : null,
-            style: TextStyle(
-                fontFamily: hasArabic ? 'Amiri' : 'Nunito',
-                fontSize: hasArabic ? 22 : 15,
-                fontWeight: FontWeight.w800,
-                color: textColor)),
       ),
     );
   }

@@ -173,38 +173,44 @@ class _MatchCard extends StatelessWidget {
         ? AppColors.success.withValues(alpha: 0.1)
         : (selected ? AppColors.pistachioLight : AppColors.white);
 
-    return GestureDetector(
-      onTap: matched ? null : onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        width: double.infinity,
-        constraints: const BoxConstraints(minHeight: 62),
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: border, width: selected || matched ? 2 : 1),
-          boxShadow: (selected || matched)
-              ? null
-              : [
-                  BoxShadow(
-                    color: AppColors.navyDark.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-        ),
-        child: Center(
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            textDirection: hasArabic ? TextDirection.rtl : null,
-            style: TextStyle(
-              fontFamily: hasArabic ? 'Amiri' : 'Nunito',
-              fontSize: hasArabic ? 22 : 14,
-              fontWeight: FontWeight.w800,
-              color: matched ? AppColors.pistachioDark : AppColors.textDark,
+    return PressableScale(
+      enabled: !matched,
+      child: GestureDetector(
+        onTap: matched ? null : onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          width: double.infinity,
+          constraints: const BoxConstraints(minHeight: 62),
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(16),
+            border:
+                Border.all(color: border, width: selected || matched ? 2 : 1),
+            boxShadow: (selected || matched)
+                ? null
+                : [
+                    BoxShadow(
+                      color: AppColors.navyDark.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+          ),
+          child: Center(
+            child: Text(
+              text,
+              textAlign: TextAlign.center,
+              textDirection: hasArabic ? TextDirection.rtl : null,
+              style: TextStyle(
+                fontFamily: hasArabic ? 'Amiri' : 'Nunito',
+                fontFamilyFallback:
+                    hasArabic ? _lessonFontFallback : const <String>[],
+                fontSize: hasArabic ? 22 : 14,
+                fontWeight: FontWeight.w800,
+                color: matched ? AppColors.pistachioDark : AppColors.textDark,
+              ),
             ),
           ),
         ),

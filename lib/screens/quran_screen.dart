@@ -799,7 +799,7 @@ class _ChapterTile extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          chapter.latinName,
+                          quranDisplayName(chapter, state.locale.code),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(

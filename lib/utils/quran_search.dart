@@ -117,6 +117,13 @@ const quranRussianNames = <String>[
   'Ан-Нас',
 ];
 
+String quranDisplayName(QuranChapterSummary chapter, String localeCode) {
+  if (localeCode == 'ru' && chapter.number <= quranRussianNames.length) {
+    return quranRussianNames[chapter.number - 1];
+  }
+  return chapter.latinName;
+}
+
 bool quranChapterMatches(QuranChapterSummary chapter, String query) {
   final trimmed = query.trim();
   if (trimmed.isEmpty) return true;

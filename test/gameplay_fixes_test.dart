@@ -76,7 +76,8 @@ void main() {
       expect(result.hearts, 2);
     });
 
-    test('гость с потерянными жизнями восстанавливает их со временем', () async {
+    test('гость с потерянными жизнями восстанавливает их со временем',
+        () async {
       final state = await _guestState();
       // Тратим все пять жизней — запускается таймер.
       state.loseHeart();
@@ -88,7 +89,8 @@ void main() {
       expect(state.user!.heartsUpdatedAt, isNotNull);
       // Двигаем якорь на 2 часа назад и просим пересчитать.
       final prefs = await SharedPreferences.getInstance();
-      final stored = jsonDecode(prefs.getString('user')!) as Map<String, dynamic>;
+      final stored =
+          jsonDecode(prefs.getString('user')!) as Map<String, dynamic>;
       stored['heartsUpdatedAt'] =
           DateTime.now().subtract(const Duration(hours: 2)).toIso8601String();
       await prefs.setString('user', jsonEncode(stored));
@@ -115,7 +117,8 @@ void main() {
 
       // Меньше 24 часов, но другой календарный день → стрик растёт.
       expect(todayMorning.difference(yesterdayEvening).inHours, lessThan(24));
-      final result = await state.completeLesson(l2, 0, completedAt: todayMorning);
+      final result =
+          await state.completeLesson(l2, 0, completedAt: todayMorning);
       expect(result['newStreak'], 2);
     });
 
@@ -155,8 +158,7 @@ void main() {
       expect(await state.loginWithPassword('a@b.dev', 'Secret123!'), isTrue);
     });
 
-    test('легаси-аккаунт с открытым паролем мигрирует на хеш при входе',
-        () async {
+    test('легаси-аккаунт с открытым паролем удаляется при запуске', () async {
       // Готовим хранилище со старым форматом (пароль открытым текстом).
       final legacyUser = {
         'id': 'local_legacy',
@@ -172,11 +174,11 @@ void main() {
       final state = AppState();
       await _waitUntilInitialized(state);
 
-      expect(await state.loginWithPassword('old@b.dev', 'PlainPass1'), isTrue);
+      expect(await state.loginWithPassword('old@b.dev', 'PlainPass1'), isFalse);
 
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString('local_email_accounts')!;
-      expect(raw, contains('pbkdf2\$'));
+      expect(raw, isNot(contains('old@b.dev')));
       expect(raw, isNot(contains('PlainPass1')));
     });
   });

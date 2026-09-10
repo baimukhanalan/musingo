@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/colors.dart';
+import 'pressable_scale.dart';
 
 enum PremiumButtonVariant { primary, gold, navy }
 
@@ -100,7 +101,7 @@ class PremiumButton extends StatelessWidget {
     if (expand) {
       button = SizedBox(width: double.infinity, child: button);
     }
-    return button;
+    return PressableScale(enabled: enabled, child: button);
   }
 
   _ButtonPalette _paletteFor(PremiumButtonVariant variant, bool enabled) {

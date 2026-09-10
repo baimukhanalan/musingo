@@ -113,8 +113,8 @@ test('garbage and empty tokens are rejected, not crashed on', async () => {
 });
 
 test('lesson attempt is bound to the user and lesson', async () => {
-  const token = await issueLessonAttempt(UUID, 'q_fatiha_1');
-  const payload = await verifyLessonAttempt(token, {
+  const attempt = await issueLessonAttempt(UUID, 'q_fatiha_1');
+  const payload = await verifyLessonAttempt(attempt.token, {
     userId: UUID,
     lessonId: 'q_fatiha_1',
     minAgeSeconds: 0,
@@ -123,7 +123,7 @@ test('lesson attempt is bound to the user and lesson', async () => {
   assert.equal(payload.lessonId, 'q_fatiha_1');
   assert.equal(typeof payload.jti, 'string');
 
-  const error = await caught(verifyLessonAttempt(token, {
+  const error = await caught(verifyLessonAttempt(attempt.token, {
     userId: UUID,
     lessonId: 'q_ikhlas_1',
     minAgeSeconds: 0,

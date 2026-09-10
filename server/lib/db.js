@@ -109,6 +109,17 @@ function createSchema() {
     )`);
     await ignoreDuplicate(sql`CREATE INDEX IF NOT EXISTS muslingo_revoked_sessions_expiry
       ON muslingo_revoked_sessions (expires_at)`);
+    await ignoreDuplicate(sql`CREATE TABLE IF NOT EXISTS muslingo_lesson_attempts (
+      jti text PRIMARY KEY,
+      user_id uuid NOT NULL REFERENCES muslingo_users(id) ON DELETE CASCADE,
+      lesson_id text NOT NULL,
+      completed_steps integer NOT NULL DEFAULT 0 CHECK (completed_steps >= 0),
+      started_at timestamptz NOT NULL DEFAULT now(),
+      consumed_at timestamptz,
+      expires_at timestamptz NOT NULL
+    )`);
+    await ignoreDuplicate(sql`CREATE INDEX IF NOT EXISTS muslingo_lesson_attempts_user
+      ON muslingo_lesson_attempts (user_id, consumed_at, expires_at)`);
     await ignoreDuplicate(sql`CREATE TABLE IF NOT EXISTS muslingo_push_subscriptions (
       endpoint_hash text PRIMARY KEY,
       endpoint text NOT NULL,
@@ -122,6 +133,7 @@ function createSchema() {
       enabled boolean NOT NULL DEFAULT true,
       learning_goal text,
       due_count integer NOT NULL DEFAULT 0 CHECK (due_count >= 0),
+      private_preview boolean NOT NULL DEFAULT true,
       last_sent_date date,
       created_at timestamptz NOT NULL DEFAULT now(),
       updated_at timestamptz NOT NULL DEFAULT now()
@@ -177,6 +189,8 @@ function createSchema() {
       ADD COLUMN IF NOT EXISTS due_count integer NOT NULL DEFAULT 0`);
     await ignoreDuplicate(sql`ALTER TABLE muslingo_push_subscriptions
       ADD COLUMN IF NOT EXISTS last_sent_date date`);
+    await ignoreDuplicate(sql`ALTER TABLE muslingo_push_subscriptions
+      ADD COLUMN IF NOT EXISTS private_preview boolean NOT NULL DEFAULT true`);
     await ignoreDuplicate(sql`ALTER TABLE muslingo_push_subscriptions
       ADD COLUMN IF NOT EXISTS user_id uuid`);
 

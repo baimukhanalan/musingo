@@ -237,22 +237,32 @@ class QuranRepository {
       return _decodeChapter(summary, cached, canonicalArabic);
     }
 
-    final verses = (root['verses'] as List)
-        .cast<Map<String, dynamic>>()
-        .map(
-          (verse) => QuranVerse(
-            globalNumber: verse['globalNumber'] as int,
-            numberInChapter: verse['numberInChapter'] as int,
-            arabicText: verse['arabicText'] as String,
-            translation: verse['translation'] as String,
-            transliteration: verse['transliteration'] as String,
-            audioUrl: verse['audioUrl'] as String,
-            audioFallbackUrl: verse['audioFallbackUrl'] as String?,
-            juz: verse['juz'] as int,
-            page: verse['page'] as int,
-          ),
-        )
-        .toList(growable: false);
+    final canonicalVerses = canonicalArabic[summary.number];
+    final cachedVerses = (root['verses'] as List).cast<Map<String, dynamic>>();
+    if (canonicalVerses == null ||
+        cachedVerses.length != summary.ayahCount ||
+        canonicalVerses.length != summary.ayahCount) {
+      throw const QuranRepositoryException('Офлайн-кэш суры повреждён.');
+    }
+    final verses = List.generate(cachedVerses.length, (index) {
+      final verse = cachedVerses[index];
+      final numberInChapter = verse['numberInChapter'] as int;
+      final globalNumber = verse['globalNumber'] as int;
+      if (numberInChapter != index + 1 || globalNumber < 1) {
+        throw const QuranRepositoryException('Офлайн-кэш суры повреждён.');
+      }
+      return QuranVerse(
+        globalNumber: globalNumber,
+        numberInChapter: numberInChapter,
+        arabicText: canonicalVerses[index],
+        translation: verse['translation'] as String,
+        transliteration: verse['transliteration'] as String,
+        audioUrl: _proxiedAudioUrl(globalNumber),
+        audioFallbackUrl: null,
+        juz: verse['juz'] as int,
+        page: verse['page'] as int,
+      );
+    }, growable: false);
 
     if (verses.length != summary.ayahCount) {
       throw const QuranRepositoryException('Офлайн-кэш суры повреждён.');
@@ -261,8 +271,7 @@ class QuranRepository {
     return QuranChapter(
       summary: summary,
       verses: verses,
-      fullAudioUrl: root['fullAudioUrl'] as String? ??
-          _fullChapterAudioUrl(summary.number),
+      fullAudioUrl: _fullChapterAudioUrl(summary.number),
     );
   }
 

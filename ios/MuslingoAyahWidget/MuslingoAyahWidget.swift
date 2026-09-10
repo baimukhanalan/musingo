@@ -105,7 +105,7 @@ private struct AyahWidgetView: View {
         .foregroundColor(Color(red: 0.33, green: 0.43, blue: 0.50))
         .lineLimit(3)
     }
-    .widgetURL(URL(string: "muslingo://home"))
+    .widgetURL(URL(string: "https://muslingo-mobile.vercel.app/#/home"))
     .muslingoWidgetBackground()
   }
 }

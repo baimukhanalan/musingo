@@ -4,6 +4,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../models/notification_permission_state.dart';
 import '../models/reminder_message.dart';
+import '../utils/runtime_environment.dart';
 
 /// ID действий-кнопок уведомления. `open_lesson` открывает приложение на
 /// нужном экране, `later` просто закрывает уведомление.
@@ -37,8 +38,9 @@ class NotificationPlatform {
   bool _initialized = false;
 
   bool get _supported =>
-      defaultTargetPlatform == TargetPlatform.android ||
-      defaultTargetPlatform == TargetPlatform.iOS;
+      !isFlutterTest &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
 
   bool get supportsBackgroundScheduling => _supported;
   bool get supportsNativeSurfaces => _supported;
@@ -179,7 +181,7 @@ class NotificationPlatform {
       final message = messages[index % messages.length];
       await _plugin.zonedSchedule(
         4100 + index,
-        message.title,
+        _visibleTitle(message.title, showOnLockScreen),
         _visibleBody(message.body, showOnLockScreen),
         _nextWeekday(index + 1, hour, minute),
         _detailsFor(message.body, showOnLockScreen: showOnLockScreen),
@@ -201,7 +203,7 @@ class NotificationPlatform {
       for (var index = 0; index < 7; index++) {
         await _plugin.zonedSchedule(
           4200 + index,
-          streakMessage.title,
+          _visibleTitle(streakMessage.title, showOnLockScreen),
           _visibleBody(streakMessage.body, showOnLockScreen),
           _nextWeekday(index + 1, eveningHour, eveningMinute),
           _detailsFor(streakMessage.body, showOnLockScreen: showOnLockScreen),
@@ -234,7 +236,7 @@ class NotificationPlatform {
       final scheduled = firstAyahDate.add(Duration(days: index));
       await _plugin.zonedSchedule(
         4300 + index,
-        message.title,
+        _visibleTitle(message.title, showOnLockScreen),
         _visibleBody(message.body, showOnLockScreen),
         scheduled,
         _detailsFor(message.body, showOnLockScreen: showOnLockScreen),
@@ -277,6 +279,9 @@ class NotificationPlatform {
   String _visibleBody(String body, bool showOnLockScreen) => showOnLockScreen
       ? body
       : 'Открой Muslingo, чтобы увидеть персональное напоминание.';
+
+  String _visibleTitle(String title, bool showOnLockScreen) =>
+      showOnLockScreen ? title : 'Muslingo';
 
   NotificationDetails _detailsFor(
     String body, {

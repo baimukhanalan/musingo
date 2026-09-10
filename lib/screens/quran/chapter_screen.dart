@@ -298,7 +298,7 @@ class _QuranChapterScreenState extends State<QuranChapterScreen> {
         foregroundColor: AppColors.textDark,
         elevation: 0,
         title: Text(
-          '${widget.chapter.number}. ${widget.chapter.latinName}',
+          '${widget.chapter.number}. ${quranDisplayName(widget.chapter, appState.locale.code)}',
           style: const TextStyle(
             fontFamily: 'Nunito',
             fontWeight: FontWeight.w900,

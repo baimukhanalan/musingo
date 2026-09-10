@@ -393,23 +393,19 @@ class _StreakBonusList extends StatelessWidget {
                           : AppColors.backgroundGrey,
                     ),
                     child: Icon(
-                      unlocked
-                          ? Icons.check_rounded
-                          : b['icon'] as IconData,
+                      unlocked ? Icons.check_rounded : b['icon'] as IconData,
                       color: unlocked ? AppColors.gold : AppColors.textLight,
                       size: 22,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    state.tr(
-                        ru: '$days дн.', kk: '$days күн', en: '$days d.'),
+                    state.tr(ru: '$days дн.', kk: '$days күн', en: '$days d.'),
                     style: TextStyle(
                       fontFamily: 'Nunito',
                       fontSize: 14,
                       fontWeight: FontWeight.w900,
-                      color:
-                          unlocked ? AppColors.textDark : AppColors.textGrey,
+                      color: unlocked ? AppColors.textDark : AppColors.textGrey,
                     ),
                   ),
                   const SizedBox(height: 2),

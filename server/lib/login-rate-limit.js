@@ -42,9 +42,10 @@ export function registerKey(ip) {
   return `register:${createHash('sha256').update(String(ip ?? '')).digest('hex')}`;
 }
 
-export function pushKey(ip, installationId) {
+export function pushKey(ip, userId = '') {
+  const scope = userId ? `user:${userId}` : 'anonymous';
   return `push:${createHash('sha256')
-    .update(`${String(ip ?? '')}|${String(installationId ?? '')}`)
+    .update(`${String(ip ?? '')}|${scope}`)
     .digest('hex')}`;
 }
 
@@ -119,9 +120,13 @@ export async function consumeCoachAttempt(key, { authenticated = false } = {}) {
   });
 }
 
-export async function consumeSpeechAttempt(key, { authenticated = false } = {}) {
+export async function consumeSpeechAttempt(
+  key,
+  { authenticated = false, limit } = {},
+) {
   return consumeAttempt(key, {
-    limit: authenticated ? SPEECH_USER_MAX_ATTEMPTS : SPEECH_ANONYMOUS_MAX_ATTEMPTS,
+    limit: limit ??
+      (authenticated ? SPEECH_USER_MAX_ATTEMPTS : SPEECH_ANONYMOUS_MAX_ATTEMPTS),
     windowMinutes: SPEECH_WINDOW_MINUTES,
     message: 'Too many speech transcription requests. Try again later.',
   });

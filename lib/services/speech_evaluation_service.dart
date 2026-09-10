@@ -15,6 +15,7 @@ class SpeechEvaluationService {
   final http.Client _client;
   final String apiBaseUrl;
   final SpeechRecorder _recorder;
+  final String? _authToken;
   final bool _hasExplicitApiBaseUrl;
   bool? _audioTranscriptionAvailable;
 
@@ -22,8 +23,10 @@ class SpeechEvaluationService {
     http.Client? client,
     String? apiBaseUrl,
     SpeechRecorder? recorder,
+    String? authToken,
   })  : _client = client ?? http.Client(),
         _recorder = recorder ?? SpeechRecorder(),
+        _authToken = authToken,
         _hasExplicitApiBaseUrl = apiBaseUrl != null && apiBaseUrl.isNotEmpty,
         apiBaseUrl = apiBaseUrl ??
             (_configuredSpeechApiUrl.isEmpty
@@ -71,6 +74,7 @@ class SpeechEvaluationService {
     required String transcript,
     Uint8List? audioBytes,
     String? lessonId,
+    bool audioProcessorConsent = false,
   }) async {
     final target = step.effectiveSpeechTarget;
     final phoneticTarget = step.transliteration?.trim() ?? '';
@@ -92,9 +96,11 @@ class SpeechEvaluationService {
       final response = await _client
           .post(
             Uri.parse('$apiBaseUrl/api/speech/evaluate'),
-            headers: const {
+            headers: {
               'Accept': 'application/json',
               'Content-Type': 'application/json',
+              if (_authToken?.isNotEmpty == true)
+                'Authorization': 'Bearer $_authToken',
             },
             body: jsonEncode({
               'target': target,
@@ -107,6 +113,8 @@ class SpeechEvaluationService {
               if (encodedAudio != null) 'audioBase64': encodedAudio,
               if (encodedAudio != null)
                 'audioMimeType': _recorder.mimeType ?? 'audio/webm',
+              if (encodedAudio != null)
+                'audioProcessorConsent': audioProcessorConsent,
             }),
           )
           .timeout(const Duration(seconds: 8));

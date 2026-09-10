@@ -174,52 +174,57 @@ class _PathNode extends StatelessWidget {
         ? const Color(0xFF93A8B5)
         : (completed ? const Color(0xFFC88A25) : AppColors.navy);
 
-    final node = Semantics(
-      button: true,
-      label:
-          '${lesson.title}. ${locked ? state.tr(ru: 'Закрыто', kk: 'Жабық', en: 'Locked') : state.tr(ru: 'Открыть урок', kk: 'Сабақты ашу', en: 'Open lesson')}',
-      child: GestureDetector(
-        onTap: onTap,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 74,
-              height: 70,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-                border:
-                    Border.all(color: color.withValues(alpha: 0.85), width: 3),
-                boxShadow: [
-                  BoxShadow(color: shadow, offset: const Offset(0, 7))
-                ],
+    final node = PressableScale(
+      enabled: onTap != null,
+      pressedScale: 0.94,
+      child: Semantics(
+        button: true,
+        label:
+            '${lesson.title}. ${locked ? state.tr(ru: 'Закрыто', kk: 'Жабық', en: 'Locked') : state.tr(ru: 'Открыть урок', kk: 'Сабақты ашу', en: 'Open lesson')}',
+        child: GestureDetector(
+          onTap: onTap,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 74,
+                height: 70,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: color.withValues(alpha: 0.85), width: 3),
+                  boxShadow: [
+                    BoxShadow(color: shadow, offset: const Offset(0, 7))
+                  ],
+                ),
+                child: Icon(
+                    locked
+                        ? Icons.lock_rounded
+                        : (completed ? Icons.check_rounded : icon),
+                    color: Colors.white,
+                    size: 34),
               ),
-              child: Icon(
-                  locked
-                      ? Icons.lock_rounded
-                      : (completed ? Icons.check_rounded : icon),
-                  color: Colors.white,
-                  size: 34),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              constraints: const BoxConstraints(maxWidth: 150),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border)),
-              child: Text(lesson.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontFamily: 'Nunito',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textDark)),
-            ),
-          ],
+              const SizedBox(height: 12),
+              Container(
+                constraints: const BoxConstraints(maxWidth: 150),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border)),
+                child: Text(lesson.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontFamily: 'Nunito',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textDark)),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -228,6 +233,7 @@ class _PathNode extends StatelessWidget {
         lesson.status != LessonStatus.inProgress) {
       return node;
     }
+    if (MediaQuery.of(context).disableAnimations) return node;
     return node
         .animate(onPlay: (controller) => controller.repeat(reverse: true))
         .scale(

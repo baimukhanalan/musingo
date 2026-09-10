@@ -1,1 +1,6 @@
-enum AppInstallResult { installed, instructionsRequired, dismissed, unavailable }
+enum AppInstallResult {
+  installed,
+  instructionsRequired,
+  dismissed,
+  unavailable
+}

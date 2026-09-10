@@ -100,9 +100,7 @@ class _LessonReviewScreenState extends State<LessonReviewScreen> {
                       const SizedBox(height: 20),
                       _MascotGlow(
                         mood: perfect ? CatMood.praise : CatMood.success,
-                      )
-                          .animate()
-                          .scale(
+                      ).animate().scale(
                             begin: const Offset(0.5, 0.5),
                             duration: 600.ms,
                             curve: Curves.elasticOut,
@@ -143,15 +141,16 @@ class _LessonReviewScreenState extends State<LessonReviewScreen> {
                                 icon: Icons.battery_charging_full_rounded,
                                 value: '+$energyEarned',
                                 label: state.tr(
-                                    ru: 'Энергия',
-                                    kk: 'Энергия',
-                                    en: 'Energy'),
+                                    ru: 'Энергия', kk: 'Энергия', en: 'Energy'),
                                 accent: AppColors.navy,
                               ),
                             ),
                           ],
                         ),
-                      ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1, end: 0),
+                      )
+                          .animate()
+                          .fadeIn(delay: 400.ms)
+                          .slideY(begin: 0.1, end: 0),
 
                       if (heartsLost > 0) ...[
                         const SizedBox(height: 12),
@@ -173,9 +172,12 @@ class _LessonReviewScreenState extends State<LessonReviewScreen> {
                           color: AppColors.navy,
                           text: weakKnowledgeCount > 0
                               ? state.tr(
-                                  ru: '$weakKnowledgeCount слабых мест вернутся ${_reviewDayLabel(nextReviewAt, state)}',
-                                  kk: '$weakKnowledgeCount әлсіз тұс ${_reviewDayLabel(nextReviewAt, state)} қайта оралады',
-                                  en: '$weakKnowledgeCount weak spots return ${_reviewDayLabel(nextReviewAt, state)}')
+                                  ru:
+                                      '$weakKnowledgeCount слабых мест вернутся ${_reviewDayLabel(nextReviewAt, state)}',
+                                  kk:
+                                      '$weakKnowledgeCount әлсіз тұс ${_reviewDayLabel(nextReviewAt, state)} қайта оралады',
+                                  en:
+                                      '$weakKnowledgeCount weak spots return ${_reviewDayLabel(nextReviewAt, state)}')
                               : state.tr(
                                   ru: 'Повторение назначено ${_reviewDayLabel(nextReviewAt, state)}',
                                   kk: 'Қайталау ${_reviewDayLabel(nextReviewAt, state)} белгіленді',
@@ -433,8 +435,7 @@ class _ChestRewardCard extends StatelessWidget {
                       duration: const Duration(milliseconds: 220),
                       height: 82,
                       decoration: BoxDecoration(
-                        color:
-                            isOpened ? AppColors.goldLight : AppColors.ivory,
+                        color: isOpened ? AppColors.goldLight : AppColors.ivory,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: isOpened
@@ -462,9 +463,7 @@ class _ChestRewardCard extends StatelessWidget {
                             isOpened
                                 ? _label(index, state)
                                 : state.tr(
-                                    ru: 'Открыть',
-                                    kk: 'Ашу',
-                                    en: 'Open'),
+                                    ru: 'Открыть', kk: 'Ашу', en: 'Open'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(

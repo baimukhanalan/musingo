@@ -243,18 +243,14 @@ class _LearningPathPanel extends StatelessWidget {
             child: Stack(
               children: [
                 Positioned.fill(
-                  child: Image.asset(
-                    'assets/images/learning_path_world.webp',
-                    key: const ValueKey('learning-path-world'),
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
-                    color: Colors.white.withValues(alpha: 0.22),
-                    colorBlendMode: BlendMode.srcATop,
+                  child: _LearningPathWorld(
+                    motionEnabled: !MediaQuery.of(context).disableAnimations,
                   ),
                 ),
                 const Positioned.fill(child: _PathAtmosphere()),
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 320),
+                  layoutBuilder: semanticSwitcherLayout,
                   switchInCurve: Curves.easeOutCubic,
                   switchOutCurve: Curves.easeInCubic,
                   transitionBuilder: (child, animation) => FadeTransition(
@@ -291,6 +287,39 @@ class _LearningPathPanel extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _LearningPathWorld extends StatelessWidget {
+  final bool motionEnabled;
+
+  const _LearningPathWorld({required this.motionEnabled});
+
+  @override
+  Widget build(BuildContext context) {
+    final image = Image.asset(
+      'assets/images/learning_path_world.webp',
+      key: const ValueKey('learning-path-world'),
+      fit: BoxFit.cover,
+      alignment: Alignment.topCenter,
+      color: Colors.white.withValues(alpha: 0.22),
+      colorBlendMode: BlendMode.srcATop,
+    );
+    if (!motionEnabled) return image;
+    return image
+        .animate(onPlay: (controller) => controller.repeat(reverse: true))
+        .scale(
+          begin: const Offset(1.0, 1.0),
+          end: const Offset(1.035, 1.035),
+          duration: 7000.ms,
+          curve: Curves.easeInOut,
+        )
+        .moveY(
+          begin: -3,
+          end: 3,
+          duration: 7000.ms,
+          curve: Curves.easeInOut,
+        );
   }
 }
 

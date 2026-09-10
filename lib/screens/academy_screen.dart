@@ -254,7 +254,8 @@ class _ProgramCard extends StatelessWidget {
           // карточку.
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
-            tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            tilePadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
             iconColor: AppColors.navy,
             collapsedIconColor: AppColors.textLight,

@@ -15,12 +15,15 @@ import '../services/haptics_service.dart';
 import '../services/quran_audio_player.dart';
 import '../services/speech_evaluation_service.dart';
 import '../utils/colors.dart';
+import '../utils/theme.dart';
 import '../widgets/cat_character.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
 import '../widgets/premium_card.dart';
+import '../widgets/pressable_scale.dart';
 import '../widgets/section_label.dart';
+import '../widgets/semantic_switcher_layout.dart';
 
 part 'lesson/lesson_top_bar.dart';
 part 'lesson/step_guide.dart';
@@ -31,6 +34,8 @@ part 'lesson/word_order_step.dart';
 part 'lesson/listen_choice_step.dart';
 part 'lesson/speak_step.dart';
 part 'lesson/lesson_bottom_bar.dart';
+
+const _lessonFontFallback = AppTheme.fontFallback;
 
 /// Small-caps метка типа шага для премиум-заголовка (экран 1c). Только визуал —
 /// строится из типа шага, не из демо-данных.
@@ -76,6 +81,7 @@ class LessonScreen extends StatefulWidget {
 }
 
 class _LessonScreenState extends State<LessonScreen> {
+  final ScrollController _contentScrollController = ScrollController();
   int _stepIndex = 0;
   CatMood _catMood = CatMood.greet;
   int? _selectedAnswer;
@@ -96,6 +102,7 @@ class _LessonScreenState extends State<LessonScreen> {
   bool _reviewingMistakes = false;
   final List<LessonStep> _mistakeSteps = [];
   final Set<String> _weakStepIds = {};
+  final Set<int> _reportedStepIndexes = {};
   List<LessonStep> _reviewSteps = [];
 
   List<LessonStep> get _activeSteps =>
@@ -184,7 +191,10 @@ class _LessonScreenState extends State<LessonScreen> {
     });
   }
 
-  void _nextStep() {
+  Future<void> _nextStep() async {
+    if (!_reviewingMistakes && _reportedStepIndexes.add(_stepIndex)) {
+      _recordStepProgress(_stepIndex);
+    }
     if (_stepIndex + 1 >= _activeSteps.length) {
       if (!_reviewingMistakes && _mistakeSteps.isNotEmpty) {
         HapticsService.reward();
@@ -203,6 +213,7 @@ class _LessonScreenState extends State<LessonScreen> {
           _orderPicks = const [];
           _catMood = CatMood.support;
         });
+        _scrollToStepStart();
         return;
       }
       _finishLesson();
@@ -221,6 +232,31 @@ class _LessonScreenState extends State<LessonScreen> {
       _orderPicks = const [];
       _catMood = _stepIndex == 0 ? CatMood.greet : CatMood.support;
     });
+    _scrollToStepStart();
+  }
+
+  void _recordStepProgress(int stepIndex) {
+    final state = context.read<AppState>();
+    unawaited(() async {
+      try {
+        await state.recordLessonStep(widget.lesson.id, stepIndex);
+      } catch (_) {
+        _reportedStepIndexes.remove(stepIndex);
+      }
+    }());
+  }
+
+  void _scrollToStepStart() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_contentScrollController.hasClients) return;
+      _contentScrollController.jumpTo(0);
+    });
+  }
+
+  @override
+  void dispose() {
+    _contentScrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _finishLesson() async {
@@ -270,6 +306,7 @@ class _LessonScreenState extends State<LessonScreen> {
     final state = context.watch<AppState>();
     final hearts = state.user?.hearts ?? 5;
     final isPremium = state.user?.isPremium ?? false;
+    final compactHeight = MediaQuery.sizeOf(context).height < 900;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -286,48 +323,49 @@ class _LessonScreenState extends State<LessonScreen> {
                   onClose: () => _showExitDialog(context)),
               Expanded(
                 child: SingleChildScrollView(
+                  controller: _contentScrollController,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
                     children: [
-                      const SizedBox(height: 8),
+                      SizedBox(height: compactHeight ? 2 : 8),
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 400),
+                        layoutBuilder: semanticSwitcherLayout,
                         child: CatCharacter(
-                            key: ValueKey(_catMood), mood: _catMood, size: 132),
+                          key: ValueKey(_catMood),
+                          mood: _catMood,
+                          size: compactHeight ? 96 : 132,
+                        ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: compactHeight ? 4 : 12),
                       _StepGuide(
                         step: _step,
                         currentStep: _stepIndex + 1,
                         totalSteps: _activeSteps.length,
                         reviewingMistakes: _reviewingMistakes,
                       ),
-                      const SizedBox(height: 16),
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 320),
-                        switchInCurve: Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeInCubic,
-                        transitionBuilder: (child, animation) {
-                          final offset = Tween<Offset>(
-                            begin: const Offset(0.08, 0),
-                            end: Offset.zero,
-                          ).animate(animation);
-                          return FadeTransition(
-                            opacity: animation,
-                            child: SlideTransition(
-                              position: offset,
+                      SizedBox(height: compactHeight ? 10 : 16),
+                      TweenAnimationBuilder<double>(
+                        key: ValueKey(
+                          '${widget.lesson.id}_${_stepIndex}_$_reviewingMistakes',
+                        ),
+                        tween: Tween(begin: 0, end: 1),
+                        duration: MediaQuery.of(context).disableAnimations
+                            ? Duration.zero
+                            : const Duration(milliseconds: 280),
+                        curve: Curves.easeOutCubic,
+                        child: _buildStepContent(),
+                        builder: (context, value, child) {
+                          return Opacity(
+                            opacity: value,
+                            child: Transform.translate(
+                              offset: Offset(18 * (1 - value), 0),
                               child: child,
                             ),
                           );
                         },
-                        child: KeyedSubtree(
-                          key: ValueKey(
-                            '${widget.lesson.id}_${_stepIndex}_$_reviewingMistakes',
-                          ),
-                          child: _buildStepContent(),
-                        ),
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: compactHeight ? 96 : 28),
                     ],
                   ),
                 ),

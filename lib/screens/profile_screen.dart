@@ -197,12 +197,12 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(height: 20),
                 Text(
                   state.tr(
-                    ru: 'Данные хранятся на твоём устройстве и синхронизируются '
-                        'только с твоим аккаунтом. Мы не передаём их третьим лицам.',
-                    kk: 'Деректер сіздің құрылғыңызда сақталады және тек сіздің '
-                        'аккаунтыңызбен синхрондалады. Біз оларды үшінші тұлғаларға бермейміз.',
-                    en: 'Your data is stored on your device and synced only with '
-                        'your account. We do not share it with third parties.',
+                    ru: 'Прогресс синхронизируется с твоим аккаунтом. Внешние сервисы '
+                        'получают только данные, нужные для выбранной функции; подробности есть в политике конфиденциальности.',
+                    kk: 'Прогресс аккаунтыңызбен синхрондалады. Сыртқы сервистер тек '
+                        'таңдалған функцияға қажет деректерді алады; толық ақпарат құпиялық саясатында.',
+                    en: 'Progress is synced with your account. External services receive '
+                        'only data needed for the selected feature; see the privacy policy for details.',
                   ),
                   textAlign: TextAlign.center,
                   style: const TextStyle(

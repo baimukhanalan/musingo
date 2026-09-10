@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/colors.dart';
+import 'pressable_scale.dart';
 
 class CustomButton extends StatelessWidget {
   final String text;
@@ -57,45 +58,51 @@ class CustomButton extends StatelessWidget {
           );
 
     if (isOutlined) {
-      return SizedBox(
+      return PressableScale(
+        enabled: !isLoading && onPressed != null,
+        child: SizedBox(
+          width: double.infinity,
+          height: height ?? 56,
+          child: OutlinedButton(
+            onPressed: isLoading ? null : onPressed,
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: bgColor, width: 2.5),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
+            ),
+            child: child,
+          ),
+        ),
+      );
+    }
+
+    return PressableScale(
+      enabled: !isLoading && onPressed != null,
+      child: Container(
         width: double.infinity,
         height: height ?? 56,
-        child: OutlinedButton(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: onPressed == null
+              ? null
+              : [
+                  BoxShadow(
+                      color: Color.lerp(bgColor, Colors.black, 0.24)!,
+                      offset: const Offset(0, 5))
+                ],
+        ),
+        child: ElevatedButton(
           onPressed: isLoading ? null : onPressed,
-          style: OutlinedButton.styleFrom(
-            side: BorderSide(color: bgColor, width: 2.5),
+          style: ElevatedButton.styleFrom(
+            backgroundColor:
+                onPressed == null ? AppColors.buttonDisabled : bgColor,
+            foregroundColor: fgColor,
+            elevation: 0,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
           child: child,
         ),
-      );
-    }
-
-    return Container(
-      width: double.infinity,
-      height: height ?? 56,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: onPressed == null
-            ? null
-            : [
-                BoxShadow(
-                    color: Color.lerp(bgColor, Colors.black, 0.24)!,
-                    offset: const Offset(0, 5))
-              ],
-      ),
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor:
-              onPressed == null ? AppColors.buttonDisabled : bgColor,
-          foregroundColor: fgColor,
-          elevation: 0,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        ),
-        child: child,
       ),
     );
   }

@@ -25,8 +25,7 @@ class HafizProgress {
 
   String get id => '$surahNumber:$verseNumber';
 
-  bool isDue([DateTime? now]) =>
-      !nextReviewAt.isAfter(now ?? DateTime.now());
+  bool isDue([DateTime? now]) => !nextReviewAt.isAfter(now ?? DateTime.now());
 
   String get masteryLabel {
     if (mastery >= 0.9) return 'Закреплено';

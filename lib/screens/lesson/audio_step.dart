@@ -222,65 +222,68 @@ class _AudioStepState extends State<_AudioStep> {
                   ru: 'Прослушать фразу',
                   kk: 'Тіркесті тыңдау',
                   en: 'Listen to the phrase'),
-          child: Listener(
-            key: const ValueKey('lesson_audio_play'),
-            behavior: HitTestBehavior.opaque,
-            onPointerDown: (_) => _toggleSpeech(),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
-              decoration: BoxDecoration(
-                color: _played
-                    ? AppColors.pistachioLight.withValues(alpha: 0.8)
-                    : AppColors.skyLight.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(99),
-                border: Border.all(
-                    color: _played ? AppColors.pistachio : AppColors.sky,
-                    width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.sky.withValues(alpha: 0.25),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _played
-                        ? (_speaking
-                            ? Icons.stop_rounded
-                            : Icons.replay_rounded)
-                        : Icons.volume_up_rounded,
-                    color: AppColors.navy,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    _speaking
-                        ? state.tr(
-                            ru: 'Слушаю...',
-                            kk: 'Тыңдап тұрмын...',
-                            en: 'Playing...')
-                        : (_played
-                            ? state.tr(
-                                ru: 'Слушать ещё раз',
-                                kk: 'Қайта тыңдау',
-                                en: 'Listen again')
-                            : state.tr(
-                                ru: 'Нажми и слушай',
-                                kk: 'Басып тыңда',
-                                en: 'Tap to listen')),
-                    style: const TextStyle(
-                      fontFamily: 'Nunito',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.navy,
+          child: PressableScale(
+            child: GestureDetector(
+              key: const ValueKey('lesson_audio_play'),
+              behavior: HitTestBehavior.opaque,
+              onTap: _toggleSpeech,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
+                decoration: BoxDecoration(
+                  color: _played
+                      ? AppColors.pistachioLight.withValues(alpha: 0.8)
+                      : AppColors.skyLight.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(99),
+                  border: Border.all(
+                      color: _played ? AppColors.pistachio : AppColors.sky,
+                      width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.sky.withValues(alpha: 0.25),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _played
+                          ? (_speaking
+                              ? Icons.stop_rounded
+                              : Icons.replay_rounded)
+                          : Icons.volume_up_rounded,
+                      color: AppColors.navy,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      _speaking
+                          ? state.tr(
+                              ru: 'Слушаю...',
+                              kk: 'Тыңдап тұрмын...',
+                              en: 'Playing...')
+                          : (_played
+                              ? state.tr(
+                                  ru: 'Слушать ещё раз',
+                                  kk: 'Қайта тыңдау',
+                                  en: 'Listen again')
+                              : state.tr(
+                                  ru: 'Нажми и слушай',
+                                  kk: 'Басып тыңда',
+                                  en: 'Tap to listen')),
+                      style: const TextStyle(
+                        fontFamily: 'Nunito',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.navy,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
