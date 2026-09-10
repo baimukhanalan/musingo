@@ -109,6 +109,10 @@ class AppState extends ChangeNotifier {
   bool get isPremium => _user?.isPremium ?? false;
   bool get isGuest => _user?.id == 'guest';
   bool get isBackendUser => _backend?.isAuthenticated == true && !isGuest;
+  bool get canChangePassword =>
+      isBackendUser ||
+      (BackendService.allowsLocalAccountFallback &&
+          (_user?.id.startsWith('local_') ?? false));
   String? get backendAuthToken => isBackendUser ? _backend?.authToken : null;
   bool get soundEnabled => _soundEnabled;
 
@@ -678,7 +682,19 @@ class AppState extends ChangeNotifier {
       }
       return true;
     } catch (error) {
-      _error = readableBackendError(error);
+      final message = readableBackendError(error);
+      final sessionExpired = error is BackendException &&
+          (error.code == 'expired_session' ||
+              error.code == 'invalid_session' ||
+              error.code == 'authentication_required');
+      if (sessionExpired) {
+        // A cached profile must not keep looking signed in after the server has
+        // rejected its session. Clear the local session so the password screen
+        // can take the user back through authentication instead of trapping
+        // them in a form that can never succeed.
+        await logout();
+      }
+      _error = message;
       return false;
     } finally {
       _isLoading = false;
@@ -944,9 +960,15 @@ class AppState extends ChangeNotifier {
   Future<void> logout() async {
     final currentUser = _user;
     if (_notificationsEnabled) {
-      await _notificationService.cancelAll(
-        authToken: _backend?.authToken ?? '',
-      );
+      try {
+        await _notificationService.cancelAll(
+          authToken: _backend?.authToken ?? '',
+        );
+      } catch (_) {
+        // Signing out must still finish when notification cleanup cannot reach
+        // the server or the session has already expired. Server-side account
+        // deletion separately removes subscriptions owned by that user.
+      }
       _notificationsEnabled = false;
     }
     await _backend?.logout();

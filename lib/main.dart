@@ -139,7 +139,11 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
         page = const OnboardingScreen();
         break;
       case '/login':
-        page = const LoginScreen();
+        page = LoginScreen(
+          startInRegisterMode: _appState.isLoggedIn && !_appState.isBackendUser,
+          initialName: _appState.user?.name ?? '',
+          initialEmail: _appState.user?.email ?? '',
+        );
         break;
       case '/home':
         page = const MainTabScreen();
@@ -198,7 +202,13 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
         page = const SettingsScreen();
         break;
       case '/change-password':
-        page = const ChangePasswordScreen();
+        page = _appState.canChangePassword
+            ? const ChangePasswordScreen()
+            : LoginScreen(
+                startInRegisterMode: true,
+                initialName: _appState.user?.name ?? '',
+                initialEmail: _appState.user?.email ?? '',
+              );
         break;
       case '/install':
         page = const InstallAppScreen();

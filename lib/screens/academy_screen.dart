@@ -293,7 +293,9 @@ class _ProgramCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
                     children: [
                       _MetaChip(
                         icon: Icons.check_circle_rounded,
@@ -302,7 +304,6 @@ class _ProgramCard extends StatelessWidget {
                             kk: '$completed / ${program.lessonCount} сабақ',
                             en: '$completed / ${program.lessonCount} lessons'),
                       ),
-                      const SizedBox(width: 8),
                       _MetaChip(
                         icon: Icons.schedule_rounded,
                         label: state.tr(

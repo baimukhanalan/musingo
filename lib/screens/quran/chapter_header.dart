@@ -100,6 +100,9 @@ class _ChapterAudioBar extends StatelessWidget {
             children: [
               Semantics(
                 button: true,
+                enabled: !isLoading,
+                excludeSemantics: true,
+                onTap: isLoading ? null : onPlay,
                 label: isPlaying
                     ? state.tr(
                         ru: 'Пауза суры',
@@ -183,18 +186,27 @@ class _ChapterAudioBar extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: onOpenText,
-            icon: const Icon(Icons.menu_book_rounded, size: 18),
-            label: Text(state.tr(
-                ru: 'Открыть полный текст',
-                kk: 'Толық мәтінді ашу',
-                en: 'Open full text')),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.navy,
-              side: const BorderSide(color: AppColors.border),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+          Semantics(
+            button: true,
+            excludeSemantics: true,
+            label: state.tr(
+              ru: 'Открыть полный текст суры',
+              kk: 'Сүренің толық мәтінін ашу',
+              en: 'Open the full surah text',
+            ),
+            child: OutlinedButton.icon(
+              onPressed: onOpenText,
+              icon: const Icon(Icons.menu_book_rounded, size: 18),
+              label: Text(state.tr(
+                  ru: 'Открыть полный текст',
+                  kk: 'Толық мәтінді ашу',
+                  en: 'Open full text')),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.navy,
+                side: const BorderSide(color: AppColors.border),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
             ),
           ),

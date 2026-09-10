@@ -68,6 +68,8 @@ class _VerseCard extends StatelessWidget {
               Semantics(
                 button: true,
                 enabled: !isLoading,
+                excludeSemantics: true,
+                onTap: isLoading ? null : onPlay,
                 label: isPlaying
                     ? state.tr(ru: 'Пауза', kk: 'Кідірту', en: 'Pause')
                     : state.tr(
@@ -110,15 +112,25 @@ class _VerseCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          SelectableText(
-            verse.arabicText,
-            textDirection: TextDirection.rtl,
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              fontFamily: 'Amiri',
-              fontSize: 27,
-              height: 1.9,
-              color: AppColors.textDark,
+          Semantics(
+            label: state.tr(
+              ru: 'Аят ${verse.numberInChapter}: ${verse.arabicText}',
+              kk: '${verse.numberInChapter}-аят: ${verse.arabicText}',
+              en: 'Verse ${verse.numberInChapter}: ${verse.arabicText}',
+            ),
+            readOnly: true,
+            child: ExcludeSemantics(
+              child: SelectableText(
+                verse.arabicText,
+                textDirection: TextDirection.rtl,
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  fontFamily: 'Amiri',
+                  fontSize: 27,
+                  height: 1.9,
+                  color: AppColors.textDark,
+                ),
+              ),
             ),
           ),
           const Divider(height: 26),
@@ -157,23 +169,39 @@ class _VerseCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: onHafiz,
-            icon: Icon(
-              mastery == null
-                  ? Icons.psychology_alt_rounded
-                  : Icons.replay_rounded,
-            ),
-            label: Text(
-              mastery == null
-                  ? state.tr(ru: 'Учить наизусть', kk: 'Жаттау', en: 'Memorize')
-                  : '$masteryLabel · ${(mastery! * 100).round()}%',
-            ),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.navy,
-              side: const BorderSide(color: AppColors.sky),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+          Semantics(
+            button: true,
+            excludeSemantics: true,
+            label: mastery == null
+                ? state.tr(
+                    ru: 'Учить аят ${verse.numberInChapter} наизусть',
+                    kk: '${verse.numberInChapter}-аятты жаттау',
+                    en: 'Memorize verse ${verse.numberInChapter}',
+                  )
+                : state.tr(
+                    ru: 'Повторить аят ${verse.numberInChapter}. Освоено ${(mastery! * 100).round()} процентов',
+                    kk: '${verse.numberInChapter}-аятты қайталау. ${(mastery! * 100).round()} пайыз меңгерілді',
+                    en: 'Review verse ${verse.numberInChapter}. ${(mastery! * 100).round()} percent mastered',
+                  ),
+            child: OutlinedButton.icon(
+              onPressed: onHafiz,
+              icon: Icon(
+                mastery == null
+                    ? Icons.psychology_alt_rounded
+                    : Icons.replay_rounded,
+              ),
+              label: Text(
+                mastery == null
+                    ? state.tr(
+                        ru: 'Учить наизусть', kk: 'Жаттау', en: 'Memorize')
+                    : '$masteryLabel · ${(mastery! * 100).round()}%',
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.navy,
+                side: const BorderSide(color: AppColors.sky),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
             ),
           ),

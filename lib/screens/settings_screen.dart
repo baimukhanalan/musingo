@@ -289,7 +289,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   text: state.tr(ru: 'Аккаунт', kk: 'Аккаунт', en: 'Account')),
               const SizedBox(height: 10),
               _SettingsCard(children: [
-                if (!state.isGuest)
+                if (state.canChangePassword)
                   _SettingsRow(
                     icon: Icons.lock_reset_rounded,
                     label: state.tr(
@@ -318,7 +318,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 _SettingsRow(
                   icon: Icons.delete_outline_rounded,
-                  label: state.isGuest
+                  label: !state.isBackendUser
                       ? state.tr(
                           ru: 'Сбросить прогресс',
                           kk: 'Прогресті өшіру',
@@ -519,14 +519,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _confirmDelete(BuildContext context) {
     final state = context.read<AppState>();
-    final isGuest = state.isGuest;
+    final isLocalOnly = !state.isBackendUser;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
         title: Text(
-            isGuest
+            isLocalOnly
                 ? state.tr(
                     ru: 'Сбросить прогресс?',
                     kk: 'Прогресті өшіру керек пе?',
@@ -542,13 +542,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: AppColors.navyDark)),
         content: Text(
             state.tr(
-                ru: isGuest
+                ru: isLocalOnly
                     ? 'Локальный прогресс на этом устройстве будет удалён. Это действие нельзя отменить.'
                     : 'Аккаунт и весь прогресс будут удалены. Это действие нельзя отменить.',
-                kk: isGuest
+                kk: isLocalOnly
                     ? 'Осы құрылғыдағы жергілікті прогресс өшіріледі. Бұл әрекетті кері қайтару мүмкін емес.'
                     : 'Аккаунт пен барлық прогресс өшіріледі. Бұл әрекетті кері қайтару мүмкін емес.',
-                en: isGuest
+                en: isLocalOnly
                     ? 'Local progress on this device will be removed. This action cannot be undone.'
                     : 'The account and all progress will be deleted. This action cannot be undone.'),
             style: const TextStyle(
@@ -585,7 +585,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               }
             },
             child: Text(
-                isGuest
+                isLocalOnly
                     ? state.tr(ru: 'Сбросить', kk: 'Өшіру', en: 'Reset')
                     : state.tr(ru: 'Удалить', kk: 'Жою', en: 'Delete'),
                 style: const TextStyle(

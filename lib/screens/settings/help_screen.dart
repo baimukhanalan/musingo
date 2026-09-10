@@ -173,21 +173,28 @@ class _SupportButton extends StatelessWidget {
                 ),
                 child: Center(
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                    mainAxisSize: MainAxisSize.max,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(Icons.email_outlined,
                           size: 19, color: AppColors.white),
                       const SizedBox(width: 8),
-                      Text(
-                          state.tr(
-                              ru: 'Написать в поддержку',
-                              kk: 'Қолдау қызметіне жазу',
-                              en: 'Contact support'),
-                          style: const TextStyle(
-                              fontFamily: 'Nunito',
-                              fontWeight: FontWeight.w900,
-                              fontSize: 15,
-                              color: AppColors.white)),
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                              state.tr(
+                                  ru: 'Написать в поддержку',
+                                  kk: 'Қолдау қызметіне жазу',
+                                  en: 'Contact support'),
+                              maxLines: 1,
+                              style: const TextStyle(
+                                  fontFamily: 'Nunito',
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 15,
+                                  color: AppColors.white)),
+                        ),
+                      ),
                     ],
                   ),
                 ),

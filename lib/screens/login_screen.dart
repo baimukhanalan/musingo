@@ -7,20 +7,37 @@ import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final bool startInRegisterMode;
+  final String initialName;
+  final String initialEmail;
+
+  const LoginScreen({
+    super.key,
+    this.startInRegisterMode = false,
+    this.initialName = '',
+    this.initialEmail = '',
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  bool _showRegister = false;
+  late bool _showRegister;
   bool _isLoading = false;
 
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _passVisible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _showRegister = widget.startInRegisterMode;
+    _nameCtrl.text = widget.initialName;
+    _emailCtrl.text = widget.initialEmail;
+  }
 
   @override
   void dispose() {

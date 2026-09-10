@@ -113,6 +113,33 @@ void main() {
     await _teardown(tester);
   });
 
+  testWidgets('сохранение локального профиля сразу открывает регистрацию',
+      (WidgetTester tester) async {
+    final state = AppState();
+    await tester.runAsync(() => _waitUntilInitialized(state));
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppState>.value(
+        value: state,
+        child: const MaterialApp(
+          home: LoginScreen(
+            startInRegisterMode: true,
+            initialName: 'Alan',
+            initialEmail: 'alan@example.test',
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Создай аккаунт'), findsOneWidget);
+    expect(find.text('Создать аккаунт'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Alan'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'alan@example.test'), findsOneWidget);
+
+    await _teardown(tester);
+  });
+
   testWidgets('Вход без аккаунта заводит гостевой профиль',
       (WidgetTester tester) async {
     final state = AppState();

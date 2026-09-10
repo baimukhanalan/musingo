@@ -76,7 +76,7 @@ class ProfileScreen extends StatelessWidget {
                 // аккаунт нужен только чтобы синхронизировать облако и не потерять
                 // данные при смене/очистке устройства. Аккаунт не навязываем —
                 // гость продолжает жить на устройстве. Залогиненным не показываем.
-                if (state.isGuest) ...[
+                if (!state.isBackendUser) ...[
                   const SizedBox(height: 16),
                   _GuestSaveProgressCard(
                     onTap: () => Navigator.pushNamed(context, '/login'),
@@ -106,7 +106,7 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(height: 22),
                 _MenuSection(
                   items: [
-                    if (state.isGuest)
+                    if (!state.isBackendUser)
                       _MenuItem(
                         icon: Icons.cloud_upload_rounded,
                         label: state.tr(
@@ -151,7 +151,7 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 _MenuSection(
                   items: [
-                    if (!state.isGuest)
+                    if (state.canChangePassword)
                       _MenuItem(
                         icon: Icons.lock_reset_rounded,
                         label: state.tr(
@@ -188,34 +188,41 @@ class ProfileScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                _MenuSection(
-                  items: [
-                    _MenuItem(
-                      icon: Icons.logout_rounded,
-                      label: state.isGuest
-                          ? state.tr(
-                              ru: 'Начать заново',
-                              kk: 'Қайта бастау',
-                              en: 'Start over')
-                          : state.tr(
-                              ru: 'Выйти из аккаунта',
-                              kk: 'Аккаунттан шығу',
-                              en: 'Log out'),
-                      color: AppColors.error,
-                      onTap: () => _confirmLogout(context, state),
-                    ),
-                  ],
-                ),
+                if (state.isBackendUser || state.isGuest)
+                  _MenuSection(
+                    items: [
+                      _MenuItem(
+                        icon: Icons.logout_rounded,
+                        label: state.isGuest
+                            ? state.tr(
+                                ru: 'Начать заново',
+                                kk: 'Қайта бастау',
+                                en: 'Start over')
+                            : state.tr(
+                                ru: 'Выйти из аккаунта',
+                                kk: 'Аккаунттан шығу',
+                                en: 'Log out'),
+                        color: AppColors.error,
+                        onTap: () => _confirmLogout(context, state),
+                      ),
+                    ],
+                  ),
                 const SizedBox(height: 20),
                 Text(
-                  state.tr(
-                    ru: 'Прогресс синхронизируется с твоим аккаунтом. Внешние сервисы '
-                        'получают только данные, нужные для выбранной функции; подробности есть в политике конфиденциальности.',
-                    kk: 'Прогресс аккаунтыңызбен синхрондалады. Сыртқы сервистер тек '
-                        'таңдалған функцияға қажет деректерді алады; толық ақпарат құпиялық саясатында.',
-                    en: 'Progress is synced with your account. External services receive '
-                        'only data needed for the selected feature; see the privacy policy for details.',
-                  ),
+                  state.isBackendUser
+                      ? state.tr(
+                          ru: 'Прогресс синхронизируется с твоим аккаунтом. Внешние сервисы '
+                              'получают только данные, нужные для выбранной функции; подробности есть в политике конфиденциальности.',
+                          kk: 'Прогресс аккаунтыңызбен синхрондалады. Сыртқы сервистер тек '
+                              'таңдалған функцияға қажет деректерді алады; толық ақпарат құпиялық саясатында.',
+                          en: 'Progress is synced with your account. External services receive '
+                              'only data needed for the selected feature; see the privacy policy for details.',
+                        )
+                      : state.tr(
+                          ru: 'Прогресс пока хранится только на этом устройстве. Создай аккаунт, чтобы сохранить его и продолжать на других устройствах.',
+                          kk: 'Прогресс әзірге тек осы құрылғыда сақталады. Оны сақтау және басқа құрылғыларда жалғастыру үшін аккаунт жасаңыз.',
+                          en: 'Progress is currently stored only on this device. Create an account to keep it and continue on other devices.',
+                        ),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontFamily: 'Nunito',
