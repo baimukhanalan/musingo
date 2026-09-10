@@ -239,24 +239,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
               if (state.homeWidgetSupported) ...[
                 SectionLabel(
                     text: state.tr(
-                        ru: 'Виджет', kk: 'Виджет', en: 'Home widget')),
+                        ru: 'Системный виджет',
+                        kk: 'Жүйелік виджет',
+                        en: 'System widget')),
                 const SizedBox(height: 10),
                 _SettingsCard(children: [
                   _SettingsRow(
                     icon: Icons.widgets_outlined,
                     label: state.tr(
-                        ru: 'Аят дня на главном экране',
-                        kk: 'Басты экрандағы күн аяты',
-                        en: 'Ayah on the home screen'),
+                        ru: 'Аят дня на экранах',
+                        kk: 'Экрандардағы күн аяты',
+                        en: 'Ayah on your screens'),
                     subtitle: state.homeWidgetEnabled
                         ? state.tr(
-                            ru: 'Меняется автоматически каждый день',
-                            kk: 'Күн сайын автоматты түрде өзгереді',
-                            en: 'Updates automatically every day')
+                            ru:
+                                'Меняется ежедневно; виден без открытия приложения',
+                            kk: 'Күн сайын өзгереді; қолданбаны ашпай көрінеді',
+                            en:
+                                'Updates daily and stays visible without opening the app')
                         : state.tr(
-                            ru: 'Хранит данные только на устройстве',
-                            kk: 'Деректер тек құрылғыда сақталады',
-                            en: 'Keeps its data only on this device'),
+                            ru: 'Главный экран и экран блокировки iPhone',
+                            kk: 'iPhone басты экраны мен құлып экраны',
+                            en: 'iPhone Home Screen and Lock Screen'),
                     color: AppColors.sky,
                     trailing: Switch(
                       value: state.homeWidgetEnabled,
@@ -268,13 +272,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _SettingsRow(
                     icon: Icons.add_to_home_screen_rounded,
                     label: state.tr(
-                        ru: 'Добавить виджет',
-                        kk: 'Виджетті қосу',
-                        en: 'Add widget'),
+                        ru: 'Добавить системный виджет',
+                        kk: 'Жүйелік виджетті қосу',
+                        en: 'Add system widget'),
                     subtitle: state.tr(
-                        ru: 'Закрепить через системное меню телефона',
-                        kk: 'Телефонның жүйелік мәзірі арқылы бекіту',
-                        en: 'Pin it from your phone widget menu'),
+                        ru: 'В том числе на экран блокировки',
+                        kk: 'Соның ішінде құлып экранына',
+                        en: 'Including the Lock Screen'),
                     color: AppColors.pistachio,
                     onTap: () => _addHomeWidget(context),
                   ),
@@ -456,9 +460,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 kk: 'Виджетті қосуға арналған жүйелік сұрау ашылды.',
                 en: 'The system request to add the widget is open.')
             : state.tr(
-                ru: 'Данные готовы. Зажми пустое место на главном экране, открой «Виджеты» и выбери Muslingo.',
-                kk: 'Деректер дайын. Басты экрандағы бос орынды басып тұрып, «Виджеттер» бөлімінен Muslingo таңда.',
-                en: 'The widget is ready. Touch and hold the home screen, open Widgets, and choose Muslingo.')),
+                ru: 'Данные готовы. На iPhone настрой экран блокировки и выбери виджет Muslingo. На Android добавь его через системное меню виджетов.',
+                kk: 'Деректер дайын. iPhone құлып экранын баптап, Muslingo виджетін таңда. Android жүйелік виджет мәзірін пайдалан.',
+                en: 'The data is ready. On iPhone customize the Lock Screen and choose Muslingo. On Android use the system widget menu.')),
         backgroundColor: pinned ? AppColors.success : AppColors.navy,
       ),
     );

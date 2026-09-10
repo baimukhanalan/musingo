@@ -2,10 +2,11 @@
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/ayah_widget_description"
     android:initialLayout="@layout/muslingo_ayah_widget"
+    android:initialKeyguardLayout="@layout/muslingo_ayah_widget"
     android:minWidth="250dp"
     android:minHeight="110dp"
     android:previewImage="@mipmap/ic_launcher"
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="1800000"
-    android:widgetCategory="home_screen"
+    android:widgetCategory="home_screen|keyguard"
     android:widgetFeatures="reconfigurable" />

@@ -85,8 +85,49 @@ private struct AyahProvider: TimelineProvider {
 
 private struct AyahWidgetView: View {
   let entry: AyahEntry
+  @Environment(\.widgetFamily) private var family
 
+  @ViewBuilder
   var body: some View {
+    if #available(iOSApplicationExtension 16.0, *), family == .accessoryInline {
+      Label {
+        Text("\(entry.title): \(entry.arabic)")
+      } icon: {
+        Image(systemName: "book.closed.fill")
+      }
+      .widgetAccentable()
+      .widgetURL(URL(string: "https://muslingo-mobile.vercel.app/#/home"))
+    } else if #available(iOSApplicationExtension 16.0, *), family == .accessoryRectangular {
+      VStack(alignment: .leading, spacing: 2) {
+        HStack(spacing: 4) {
+          Image(systemName: "book.closed.fill")
+          Text(entry.number.map { "\(entry.title) · №\($0)" } ?? entry.title)
+            .lineLimit(1)
+        }
+        .font(.caption2.weight(.bold))
+        .widgetAccentable()
+
+        Text(entry.arabic)
+          .font(.system(size: 16, weight: .semibold, design: .serif))
+          .lineLimit(1)
+          .minimumScaleFactor(0.72)
+          .frame(maxWidth: .infinity, alignment: .leading)
+
+        Text(entry.translation)
+          .font(.caption2)
+          .lineLimit(1)
+          .minimumScaleFactor(0.78)
+      }
+      .widgetURL(URL(string: "https://muslingo-mobile.vercel.app/#/home"))
+      .muslingoWidgetBackground()
+    } else {
+      homeScreenContent
+        .widgetURL(URL(string: "https://muslingo-mobile.vercel.app/#/home"))
+        .muslingoWidgetBackground()
+    }
+  }
+
+  private var homeScreenContent: some View {
     VStack(alignment: .leading, spacing: 7) {
       HStack(spacing: 5) {
         Image(systemName: "sun.max.fill")
@@ -105,8 +146,6 @@ private struct AyahWidgetView: View {
         .foregroundColor(Color(red: 0.33, green: 0.43, blue: 0.50))
         .lineLimit(3)
     }
-    .widgetURL(URL(string: "https://muslingo-mobile.vercel.app/#/home"))
-    .muslingoWidgetBackground()
   }
 }
 
@@ -125,12 +164,24 @@ private extension View {
 struct MuslingoAyahWidget: Widget {
   let kind = "MuslingoAyahWidget"
 
+  private var supportedFamilies: [WidgetFamily] {
+    if #available(iOSApplicationExtension 16.0, *) {
+      return [
+        .systemSmall,
+        .systemMedium,
+        .accessoryInline,
+        .accessoryRectangular,
+      ]
+    }
+    return [.systemSmall, .systemMedium]
+  }
+
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: AyahProvider()) { entry in
       AyahWidgetView(entry: entry)
     }
     .configurationDisplayName("Аят дня")
-    .description("Аят и перевод, которые меняются каждый день.")
-    .supportedFamilies([.systemSmall, .systemMedium])
+    .description("Аят и перевод на главном экране и экране блокировки.")
+    .supportedFamilies(supportedFamilies)
   }
 }
