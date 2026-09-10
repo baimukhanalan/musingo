@@ -1,0 +1,62 @@
+priority,track,module,lesson_title,learning_outcome,required_activity,source_class,review_gate,acceptance_criterion
+P0,Quran,Al-Fatiha,Why Al-Fatiha comes first,Explain the surah's role without unsupported claims,Context plus source choice,Quran plus reviewed tafsir,Islamic review,Every claim has verse or reviewed tafsir citation
+P0,Quran,Al-Fatiha,Bismillah word map,Map bism Allah al-Rahman al-Rahim to meaning,Word matching plus listening,Quran text plus licensed translation,Arabic and Islamic review,80 percent delayed word-meaning recall
+P0,Quran,Al-Fatiha,Al-hamdu and Rabb,Distinguish praise and Lord in the opening ayah,Minimal meaning contrast,Quran plus reviewed lexicon,Arabic review,Correctly rejects two plausible distractors
+P0,Quran,Al-Fatiha,Al-alamin,Recognize al-alamin in audio and text,Audio discrimination plus matching,Quran audio plus lexicon,Arabic and audio review,Three unseen trials at 80 percent
+P0,Quran,Al-Fatiha,Al-Rahman and Al-Rahim,Recognize and explain the paired names carefully,Listen compare explain,Quran plus reviewed tafsir,Islamic review,No speculative theological wording
+P0,Quran,Al-Fatiha,Maliki yawm al-din,Connect phrase structure to meaning,Word order plus meaning choice,Quran plus licensed translation,Arabic and Islamic review,Solved without transliteration hint
+P0,Quran,Al-Fatiha,Iyyaka na'budu,Identify object-fronting and core meaning,Chunk listening plus word order,Quran plus grammar reference,Arabic review,Meaning retained after 48 hours
+P0,Quran,Al-Fatiha,Iyyaka nasta'in,Contrast worship and seeking help,Minimal pair meaning task,Quran plus reviewed tafsir,Islamic review,Explains distinction in one sentence
+P0,Quran,Al-Fatiha,Sirat al-mustaqim,Recognize the phrase across script audio and meaning,Tri-modal matching,Quran text audio translation,Arabic and audio review,All three representations matched
+P0,Quran,Al-Fatiha,Final ayah groups,Segment the final ayah into meaningful chunks,Chunking plus listening,Quran plus reviewed tafsir,Islamic review,Chunk boundaries approved by reviewer
+P0,Quran,Al-Fatiha,Waqf in Al-Fatiha,Choose safe stopping points without distorting meaning,Waqf scenarios,Quran plus Tajwid reference,Tajwid review,All stop choices reviewed and explained
+P0,Quran,Al-Fatiha,Close sounds in Al-Fatiha,Hear and attempt ح ع ض ص,Minimal-pair listening plus speech,Reviewed recitation audio,Tajwid and audio review,Human reviewers agree on target clips
+P0,Quran,Al-Fatiha,Ayat 1-3 recall,Recite ayat 1-3 from memory after listening,Hidden text plus recording,Licensed recitation,Tajwid review,Word sequence score separated from Tajwid score
+P0,Quran,Al-Fatiha,Ayat 4-7 recall,Recite ayat 4-7 from memory,Progressive hide plus recording,Licensed recitation,Tajwid review,No text visible on final attempt
+P0,Quran,Al-Fatiha,Meaning sequence,Reconstruct the meaning flow of the surah,Scenario ordering,Reviewed translation and tafsir,Islamic review,Orders all seven ayah meanings
+P0,Quran,Al-Fatiha,Whole-surah follow along,Maintain place while listening to a full recitation,Word highlight follow-along,Timed licensed audio,Audio review,Timing drift stays within approved tolerance
+P0,Quran,Al-Fatiha,Random-start test,Continue from a randomly selected ayah,Random prompt plus speech,Quran corpus and audio,Tajwid review,Passes four of five random starts
+P0,Quran,Al-Fatiha,Confusable endings,Distinguish nearby ayah endings by context,Listening choice plus recall,Quran corpus,Islamic and Arabic review,No answer revealed by option length
+P0,Quran,Al-Fatiha,Teach-back,Explain the surah's sequence in simple language,Open response with rubric,Reviewed lesson sources,Islamic review,Rubric covers meaning without free-form fatwa
+P0,Quran,Al-Fatiha,Delayed mastery,Demonstrate reading meaning and recall after spacing,Mixed cumulative test,All approved module sources,Content and Tajwid review,Pass threshold uses skill-level evidence
+P0,Arabic,Diagnostic,Letter and haraka placement,Place learner by recognition listening and decoding,Adaptive diagnostic,Reviewed Arabic curriculum,Arabic review,Routes to first unmet prerequisite
+P0,Arabic,Writing,Connected letter tracing,Write initial medial final and isolated forms,Tracing and shape recognition,Arabic orthography reference,Arabic review,Stroke and connection rubric defined
+P0,Arabic,Orthography,Hamza forms,Read common hamza positions in Quranic words,Classification plus reading,Quran orthography reference,Arabic review,Handles أ إ ؤ ئ ء in unseen words
+P0,Arabic,Orthography,Ta marbuta,Distinguish ة from ه and ت in context,Minimal visual pair plus reading,Arabic grammar reference,Arabic review,Reads pause and continuation examples
+P0,Arabic,Orthography,Alif maqsura,Recognize ى and distinguish it from ي,Visual discrimination plus reading,Quran orthography reference,Arabic review,No reliance on transliteration
+P0,Arabic,Orthography,Dagger alif,Recognize the Quranic dagger alif and its sound,Marked-text listening,Quran orthography reference,Arabic and Tajwid review,Reads five reviewed examples
+P0,Arabic,Orthography,Quranic marks,Identify essential pause elongation and small-letter signs,Symbol matching plus application,Official mushaf reference,Tajwid review,Scope limited to reviewed signs
+P0,Arabic,Phonology,ح versus ه,Hear and produce the contrast,Minimal-pair listening then speech,Reviewed teacher recordings,Tajwid review,Audio clips differ only in target contrast
+P0,Arabic,Phonology,ع versus ا,Hear and attempt ayn versus open vowel,Minimal-pair listening then speech,Reviewed teacher recordings,Tajwid review,System reports uncertainty honestly
+P0,Arabic,Phonology,ص versus س,Distinguish emphatic and plain s,Minimal-pair listening then speech,Reviewed teacher recordings,Tajwid review,Human agreement baseline recorded
+P0,Arabic,Phonology,ض versus د,Distinguish dad and dal,Minimal-pair listening then speech,Reviewed teacher recordings,Tajwid review,Examples approved for beginner suitability
+P0,Arabic,Phonology,ق versus ك,Distinguish qaf and kaf,Minimal-pair listening then speech,Reviewed teacher recordings,Tajwid review,Unseen listening transfer above threshold
+P0,Arabic,Vocabulary,First 20 Quran words,Recall high-frequency words in real ayah fragments,Retrieval deck plus context,Quran corpus plus lexicon,Arabic and Islamic review,Frequency method and corpus version stored
+P0,Arabic,Grammar,Independent pronouns,Recognize core pronouns in simple Quranic examples,Matching plus substitution,Arabic grammar reference,Arabic review,Transfers to three unseen examples
+P0,Arabic,Grammar,Attached pronouns,Segment common attached pronouns,Word segmentation plus meaning,Quranic morphology source,Arabic review,Correctly segments five forms
+P0,Arabic,Grammar,Prepositions,Recognize common prepositions and governed meanings,Context choice plus matching,Quranic morphology source,Arabic review,Distractors remain grammatically plausible
+P0,Arabic,Grammar,Demonstratives,Distinguish هذا هذه ذلك تلك,Image-free context choice,Arabic grammar reference,Arabic review,Gender and distance both assessed
+P0,Arabic,Morphology,Three-letter roots,Identify a shared root without claiming identical meaning,Root family sorting,Quranic morphology source,Arabic review,Includes warning against root-only interpretation
+P0,Arabic,Grammar,Nominal sentence,Identify subject and predicate in short phrases,Sentence assembly,Arabic grammar reference,Arabic review,Parses unseen vocalized phrase
+P0,Arabic,Grammar,Verbal sentence,Identify verb subject and object in short phrases,Sentence assembly,Arabic grammar reference,Arabic review,Parses unseen vocalized phrase
+P0,Arabic,Comprehension,Parse a short ayah,Combine script vocabulary morphology and meaning,Guided parse then independent parse,Quran plus morphology plus translation,Arabic and Islamic review,Every token mapped with source provenance
+P0,Tajwid,Transfer,Throat letters lab,Transfer throat makharij from isolated letters into words and ayah,Listen compare record,Reviewed teacher recordings,Tajwid review,Recognition production and transfer scored separately
+P0,Tajwid,Transfer,Tongue positions lab,Transfer tongue makharij across close letters,Minimal pairs plus recording,Reviewed teacher recordings,Tajwid review,At least four contrast families
+P0,Tajwid,Transfer,Emphatic letters lab,Maintain tafkhim without overgeneralizing it,Audio discrimination plus ayah reading,Reviewed teacher recordings,Tajwid review,Includes plain-letter contrast
+P0,Tajwid,Transfer,Qalqalah lab,Apply qalqalah at different positions,Listen classify record,Reviewed Tajwid curriculum,Tajwid review,Minor and major cases clearly scoped
+P0,Tajwid,Transfer,Ghunnah lab,Recognize and time ghunnah in reviewed examples,Timed listening plus speech,Reviewed Tajwid curriculum,Tajwid and audio review,Timing tolerance approved by teachers
+P0,Tajwid,Transfer,Nun sakinah and tanwin lab,Choose izhar idgham iqlab or ikhfa from context,Rule classification plus recitation,Reviewed Tajwid curriculum,Tajwid review,Includes unseen rule transfer
+P0,Tajwid,Transfer,Mim sakinah lab,Apply izhar shafawi idgham shafawi and ikhfa shafawi,Rule classification plus recitation,Reviewed Tajwid curriculum,Tajwid review,Terminology and examples approved
+P0,Tajwid,Transfer,Madd lab,Distinguish natural connected separated necessary and temporary madd,Listening length choice plus recitation,Reviewed Tajwid curriculum,Tajwid review,No timing claim without reviewer rubric
+P0,Tajwid,Transfer,Ra and lam lab,Apply reviewed heaviness and lightness cases,Context choice plus recording,Reviewed Tajwid curriculum,Tajwid review,Exceptions limited to taught scope
+P0,Tajwid,Transfer,Waqf and ibtida lab,Stop and restart without damaging meaning,Scenario choice plus recitation,Quran plus waqf reference,Tajwid and Islamic review,Every scenario includes meaning explanation
+P0,Foundations,Sources,How Islamic knowledge is sourced,Distinguish Quran hadith tafsir fiqh and opinion,Source classification,Quran and hadith-method references,Islamic review,No authority category is conflated
+P0,Foundations,Sources,What a hadith citation means,Read collection locator and grading information,Citation matching,Hadith methodology source,Hadith specialist review,Shows collection number translation and grade limits
+P0,Foundations,Belief,Islam iman and ihsan,Relate the three concepts without sectarian overreach,Scenario classification,Hadith Jibril plus reviewed commentary,Islamic review,Scope statement visible
+P0,Foundations,Worship,Prayer foundations,Explain purpose prerequisites and learning sequence,Interactive sequence,Quran Sunnah and declared fiqh track,Fiqh review,Madhhab scope explicitly labeled
+P0,Foundations,Worship,Purification foundations,Recognize core purpose and common prerequisites,Scenario decisions,Quran Sunnah and declared fiqh track,Fiqh review,Differences are labeled not blended
+P0,Foundations,Worship,Fasting foundations,Recognize intention timing exemptions and conduct,Scenario decisions,Quran Sunnah and declared fiqh track,Fiqh review,Medical edge cases refer outward
+P0,Foundations,Seerah,Meccan period map,Place major early events in a reviewed chronology,Timeline reconstruction,Quran hadith and reviewed seerah,Seerah review,Report type and confidence stored
+P0,Foundations,Seerah,Medinan period map,Place major later events and lessons in chronology,Timeline plus source matching,Quran hadith and reviewed seerah,Seerah review,Folklore excluded or labeled
+P0,Foundations,Character,Truth mercy patience and trust,Choose conduct using source-grounded scenarios,Scenario reasoning,Quran and sound hadith,Islamic review,Distractors are realistic not caricatures
+P0,Foundations,Pathways,New Muslim first month,Follow a safe non-overwhelming learning sequence,Personal plan builder,Reviewed common core and local referrals,Islamic review,No claim to replace local teacher or community

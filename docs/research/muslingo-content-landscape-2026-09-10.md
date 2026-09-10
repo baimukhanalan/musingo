@@ -320,8 +320,8 @@ outcomes, then let the lesson count follow.
 | **Total** | **246** | **532** | Every lesson source-complete and review-versioned |
 
 This is a target curriculum architecture, not permission to bulk-generate 286
-religious lessons. The first release gate should be 60 reworked or new lessons:
-20 Quran, 20 Arabic, 10 Tajwid transfer labs, and 10 Foundations lessons. That is
+religious lessons. The first release gate should be 61 reworked or new lessons:
+20 Quran, 21 Arabic, 10 Tajwid transfer labs, and 10 Foundations lessons. That is
 large enough to prove quality without creating an unreviewable content backlog.
 
 ## Content production workflow
@@ -410,6 +410,10 @@ for a production religious-learning claim.
 - `islamic-source-catalog-2026-09-10.csv`: spreadsheet-ready source catalog.
 - `tool/export_lesson_inventory.dart`: reproducible internal curriculum exporter.
 - `tool/harvest_source_metadata.mjs`: bounded metadata harvester.
+- `pilot-lesson-backlog-2026-09-10.csv`: 61 source-gated pilot lessons with
+  learning outcomes, required activities, review gates, and acceptance criteria.
+- `unified-source-registry-2026-09-10.json` and `.csv`: deduplicated research
+  registry assembled from the harvest, agent tables, and cited report links.
 - `agents/Muslingo_Quran_Content_Research_2026-09-10.xlsx`: 22-resource,
   20-gap, 56-source Quran and Tajwid research workbook.
 - `agents/muslingo_quranic_arabic_course_research_2026-09-10.md`: detailed

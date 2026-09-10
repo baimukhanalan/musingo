@@ -1,0 +1,57 @@
+ID,Publisher / authority,Page / artifact,Direct URL,Primary-source role,Claims used,Accessed,Reuse note
+S01,King Fahd Complex,Developer resources,https://qurancomplex.gov.sa/en/techquran/dev/,Official publisher,"Developer Quran text formats, metadata, riwayat and Tajwid reference materials",2026-09-10,File-specific public-use status must be retained
+S02,King Fahd Complex,Vision and mandate,https://qurancomplex.gov.sa/en/kfgqpc/vision/,Official organization page,Safeguarding Quran text and translations,2026-09-10,Reference only
+S03,King Fahd Complex,Policies,https://policy.qurancomplex.gov.sa/?Lan=en,Official policy,Ownership; exception for content explicitly declared public use,2026-09-10,Do not infer blanket reuse
+S04,Tanzil Project,Text download,https://tanzil.net/docs/download,Official corpus page,Versioned Uthmani/Imlaei Quran text download,2026-09-10,Follow linked text license
+S05,Tanzil Project,Text license,https://tanzil.net/docs/Text_License,Official license,CC BY 3.0; verbatim text; attribution; no changes,2026-09-10,Core legal evidence
+S06,Tanzil Project,Project verification,https://tanzil.net/docs/tanzil_project,Official methodology,Automated and manual text verification with specialists/huffaz,2026-09-10,Methodology reference
+S07,Quran Foundation,About Quran.com,https://quran.com/about-us?locale=en,Official organization page,Nonprofit/waqf governance and product scope,2026-09-10,Reference/attribution
+S08,Quran Foundation,API reference,https://api-docs.quran.com/docs/api-reference/,Official API docs,"Text, translations, tafsir, audio and structural APIs",2026-09-10,Terms apply
+S09,Quran Foundation,Developer terms,https://api-docs.quran.com/legal/developer-terms/,Official legal terms,"API license, caching, attribution, commercial limits, no ML training",2026-09-10,Core legal evidence; updated 2026-08-26
+S10,Quran Foundation,Developer FAQ,https://api-docs.quran.com/docs/tutorials/faq/,Official docs,"Content Sync, offline categories and attribution",2026-09-10,Confirm eligibility
+S11,Quran Foundation,Connected Apps,https://api-docs.quran.com/docs/connected-apps/,Official docs,Approved endpoints/licensed content and correction synchronization,2026-09-10,Program requirements
+S12,QuranEnc,Translation repository,https://quranenc.com/en/home,Official publisher platform,80+ languages; versioned translations; downloadable formats,2026-09-10,Edition terms apply
+S13,QuranEnc,API and republishing policies,https://quranenc.com/en/home/api,Official API/policy,Endpoints; no modification; attribution/version/update duties,2026-09-10,Core legal evidence
+S14,King Fahd Complex,Hafs recitation downloads,https://qurancomplex.gov.sa/category/moratal/hafs/,Official audio catalogue,Approved reciters and downloads,2026-09-10,Archive recording-level rights page
+S15,AlQuran.cloud,API,https://alquran.cloud/api,Official service docs,Keyless Quran API and editions,2026-09-10,Aggregator/source terms apply
+S16,AlQuran.cloud,Contributors,https://alquran.cloud/contributors,Official provenance page,Tanzil/Quran Academy texts and named audio contributors,2026-09-10,Use edition-level provenance
+S17,AlQuran.cloud,Terms and conditions,https://alquran.cloud/terms-and-conditions,Official legal terms,"2026 text/API/audio reuse conditions, attribution, removal rights",2026-09-10,Not a blanket underlying-rights grant
+S18,MP3Quran,API v3,https://www.mp3quran.net/ar/api/2,Official API docs,"Reciters, chapters, ayah/range and radio endpoints",2026-09-10,Recording-level check advised
+S19,MP3Quran,Contact / permissions,https://www.mp3quran.net/eng/contact-us,Official permissions statement,Broad permission to copy site material/use URLs,2026-09-10,Seek written commercial/offline confirmation
+S20,MP3Quran,English site,https://www.mp3quran.net/eng/,Official catalogue,Reciter library and supported interface languages,2026-09-10,Reference/streaming
+S21,Tarteel / QUL,Quranic Universal Library,https://qul.tarteel.ai/,Official data catalogue,"Scripts, translations, audio, Tajwid, morphology and metadata",2026-09-10,Dataset-specific licenses
+S22,Tarteel / QUL,Documentation,https://qul.tarteel.ai/docs,Official docs,Data model and resource guides,2026-09-10,Dataset-specific licenses
+S23,Tarteel / QUL,FAQ,https://qul.tarteel.ai/docs/faq,Official docs,"Downloads, self-hosting and commercial license cautions",2026-09-10,Core licensing caveat
+S24,Tarteel / QUL,Recitation tutorial,https://qul.tarteel.ai/docs/tutorial-recitation-end-to-end,Official docs,Gapped/gapless audio and word/ayah timing; no hotlinking,2026-09-10,Self-host licensed data
+S25,Tarteel,QUL source repository,https://github.com/TarteelAI/quranic-universal-library,Official GitHub repository,MIT application code and active project,2026-09-10,MIT does not cover every dataset
+S26,University of Leeds,Quranic Arabic Corpus download,https://corpus.quran.com/download/,Official dataset page,Morphology/syntax corpus and v0.4 download,2026-09-10,GPL plus text integrity condition
+S27,University of Leeds,Corpus license,https://corpus.quran.com/license.jsp,Official license,"GPL, attribution and Quran text no-modification condition",2026-09-10,Core legal evidence
+S28,University of Leeds,Dependency treebank,https://corpus.quran.com/treebank.jsp,Official project page,Syntax and annotation scope,2026-09-10,Reference/data use
+S29,Maqraa Al-Harmain,Official learning platform,https://maqraa.prh.gov.sa/en,Official government platform,"Live teachers, Tajwid, hifz, plans, evaluation and certificates",2026-09-10,All rights reserved
+S30,Saudi Press Agency,Maqraa language/service announcement,https://www.spa.gov.sa/en/N2087650,Official government news,Service languages and official positioning,2026-09-10,Reference only
+S31,UAE Awqaf,Official portal,https://www.awqaf.gov.ae/?lang=en,Official government portal,Quran education service and centers,2026-09-10,No reuse grant located
+S32,UAE Awqaf,Services guide,https://www.awqaf.gov.ae/assets/servicesguide/ServicesGuide-EN.pdf,Official government PDF,"Semesters, memorization, Tajwid and certification",2026-09-10,Reference only
+S33,UAE Awqaf,Student portal,https://studentportal.awqaf.gov.ae/,Official service portal,Enrollment/delivery access,2026-09-10,Service use only
+S34,Tarteel AI,Product site,https://tarteel.ai/,Official product page,"Voice follow-along, mistake detection, goals and tracking",2026-09-10,Proprietary
+S35,Tarteel AI,Free vs premium,https://support.tarteel.ai/en/articles/12267535-can-i-use-tarteel-for-free,Official help,Feature/access split,2026-09-10,Benchmark only
+S36,Tarteel AI,Testing mode,https://support.tarteel.ai/en/articles/16557456-getting-started-with-testing,Official help,Flashcard-style testing parameters,2026-09-10,Benchmark only
+S37,Tarteel AI,API availability,https://support.tarteel.ai/en/articles/12414464-do-you-have-an-api-i-can-use,Official help,No public Tarteel API; directs to QUL,2026-09-10,Do not integrate private service
+S38,Understand Al-Quran Academy,Tajweed the Easy Way,https://understandquran.com/learn-tajweed-the-easy-way-english/,Official course page,"Course topics, videos, PDFs, quizzes and exams",2026-09-10,Permission required for adaptation
+S39,Understand Al-Quran Academy,School teacher resources,https://understandquran.com/teacher-resource-center-english/class-first/,Official course page,Grade structure and teaching assets,2026-09-10,Permission required
+S40,Understand Al-Quran Academy,Teacher training,https://understandquran.com/teacher-training-course-english/,Official course page,"Pedagogy, planning and assessment training",2026-09-10,Permission required
+S41,Understand Al-Quran Academy,Terms and conditions,https://understandquran.com/term-conditions/,Official legal terms,Prohibition on reproduction/copy/exploitation without written permission,2026-09-10,Core legal evidence
+S42,AlHuda Online,Quran course catalogue,https://alhudaonline.org/online-courses/,Official course catalogue,"Tahfeedh, Tajweed, translation and learner segments",2026-09-10,No reuse grant
+S43,AlHuda Online,Program requirements,https://alhudaonline.org/welcome-to-al-huda-international/,Official program page,"Attendance, assignments, oral exams and pass thresholds",2026-09-10,Reference only
+S44,AlHuda Online,About,https://alhudaonline.org/about/,Official organization page,Nonprofit mission and structured courses,2026-09-10,Reference only
+S45,SeekersGuidance,Quranic Studies curriculum,https://academy.seekersguidance.org/?redirect=0&track=odc,Official academy,"Staged free curriculum, scholars, assessment and certificates",2026-09-10,No republication grant
+S46,Quran Flow,Program page,https://quranflow.org/,Official program page,"Placement, four skill levels, coaching, circles and pricing",2026-09-10,Commercial benchmark
+S47,Quran Flow,Privacy/content-use terms,https://quranflow.org/privacy-policies/,Official legal/policy page,Limited personal-use license; no derivatives or redistribution,2026-09-10,Core legal evidence
+S48,Quranly,Product site,https://www.quranly.app/,Official product page,"Habits, goals, progress and social accountability",2026-09-10,Proprietary
+S49,HIFZ,Support and methodology,https://gethifz.com/support,Official product docs,Listen/read/repeat/recall and Sabaq/Sabqi/Manzil,2026-09-10,Proprietary benchmark
+S50,Arabic 101,Official YouTube channel,https://www.youtube.com/@Arabic101,Creator channel,Arabic/Quran/Tajwid video catalogue,2026-09-10,Official player only
+S51,Understand Al-Quran,Official YouTube channel,https://www.youtube.com/@understandquran,Publisher channel,Tajwid/Quran lessons,2026-09-10,Official player + academy terms
+S52,Tarteel AI,Official tutorials playlist,https://youtube.com/playlist?list=PLjMqEsi-8yLmZRhOZWwVYCOnvV57dHmYU,Publisher playlist,Listening feature tutorials,2026-09-10,Official player only
+S53,Quran Flow,Official YouTube channel,https://www.youtube.com/@QuranRevolution,Publisher channel,Recitation and Tajwid-oriented videos,2026-09-10,Official player + product terms
+S54,YouTube,Terms of Service,https://www.youtube.com/t/terms,Platform legal terms,Embedded-player/personal-viewing scope and restrictions,2026-09-10,No copying/downloading absent permission
+S55,Google / YouTube,API Developer Policies,https://developers.google.com/youtube/terms/developer-policies,Official platform policy,No audiovisual download/import/cache/offline playback without approval,2026-09-10,Core platform-use evidence
+S56,Muslingo local inventory,Lesson/content inventory snapshot,Local read-only inventory: docs/research/muslingo-content-inventory-2026-09-10.json,Current product evidence,246 lessons; 2664 steps; source coverage and unique ayah counts,2026-09-10,Internal evidence; not a reuse source
