@@ -61,7 +61,7 @@ Production: https://muslingo-mobile.vercel.app
 
 - Восстановление забытого пароля по email еще не реализовано: для production потребуется подтвержденный почтовый провайдер и шаблоны писем. Обычная смена известного пароля работает.
 - Muslingo+ пока обозначен как будущая функция; production-платежи не подключены.
-- Локальная Android-сборка на текущем Mac не запускалась из-за отсутствия Java Runtime. GitHub Actions выполняет подписанную Android-сборку отдельно.
+- Android debug APK и нативный виджет успешно собраны в GitHub Actions. Подписанный release APK пока не создается: в GitHub отсутствуют `KEYSTORE_BASE64`, `STORE_PASSWORD`, `KEY_PASSWORD` и `KEY_ALIAS`.
 - Полная проверка микрофона, push-разрешений, lock-screen уведомлений и native-виджетов требует физического iOS/Android устройства и системных разрешений.
 - WebAssembly-сборка пока ограничена несовместимостью `flutter_secure_storage_web` и `flutter_tts`; обычная production web-сборка работает.
 
