@@ -34,7 +34,8 @@ export default withApi(async (request, response) => {
   await consumeLoginAttempt(pairKey);
 
   const rows = await sql`
-    SELECT u.id, u.email, u.display_name, u.password_salt, u.password_hash, p.document
+    SELECT u.id, u.email, u.display_name, u.password_salt, u.password_hash,
+           u.session_version, p.document
     FROM muslingo_users u
     JOIN muslingo_progress p ON p.user_id = u.id
     WHERE u.email = ${email}
@@ -51,7 +52,7 @@ export default withApi(async (request, response) => {
   // spray protection cannot be reset by an attacker who owns one valid account.
   await clearLoginFailures(pairKey);
   return response.status(200).json({
-    token: await issueToken(user.id),
+    token: await issueToken(user.id, user.session_version),
     profile: profile(user.document, user),
   });
 });

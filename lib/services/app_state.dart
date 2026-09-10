@@ -596,6 +596,96 @@ class AppState extends ChangeNotifier {
     return false;
   }
 
+  Future<bool> changePassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
+    if (_user == null || isGuest) {
+      _error = tr(
+        ru: 'Войди в аккаунт, чтобы изменить пароль.',
+        kk: 'Құпиясөзді өзгерту үшін аккаунтқа кір.',
+        en: 'Log in to change your password.',
+      );
+      notifyListeners();
+      return false;
+    }
+    if (currentPassword.isEmpty ||
+        newPassword.length < 8 ||
+        newPassword.length > 128) {
+      _error = tr(
+        ru: 'Новый пароль должен содержать от 8 до 128 символов.',
+        kk: 'Жаңа құпиясөз 8-ден 128 таңбаға дейін болуы керек.',
+        en: 'The new password must be 8 to 128 characters long.',
+      );
+      notifyListeners();
+      return false;
+    }
+    if (currentPassword == newPassword) {
+      _error = tr(
+        ru: 'Новый пароль должен отличаться от текущего.',
+        kk: 'Жаңа құпиясөз ағымдағы құпиясөзден өзгеше болуы керек.',
+        en: 'The new password must be different from the current password.',
+      );
+      notifyListeners();
+      return false;
+    }
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      if (isBackendUser) {
+        await _backend!.changePassword(
+          currentPassword: currentPassword,
+          newPassword: newPassword,
+        );
+      } else if (_user!.id.startsWith('local_')) {
+        final preferences = await SharedPreferences.getInstance();
+        final accounts = _decodeLocalAccounts(
+          preferences.getString(_localAccountsKey),
+        );
+        final email = _normalizeEmail(_user!.email);
+        final rawAccount = accounts[email];
+        if (rawAccount is! Map) {
+          _error = tr(
+            ru: 'Локальный аккаунт не найден.',
+            kk: 'Жергілікті аккаунт табылмады.',
+            en: 'Local account was not found.',
+          );
+          return false;
+        }
+        final account = Map<String, dynamic>.from(rawAccount);
+        final storedHash = account['passwordHash'] as String?;
+        if (storedHash == null ||
+            !_verifyLocalPassword(currentPassword, storedHash)) {
+          _error = tr(
+            ru: 'Текущий пароль указан неверно.',
+            kk: 'Ағымдағы құпиясөз қате.',
+            en: 'The current password is incorrect.',
+          );
+          return false;
+        }
+        account['passwordHash'] = _hashLocalPassword(newPassword);
+        accounts[email] = account;
+        await preferences.setString(_localAccountsKey, jsonEncode(accounts));
+      } else {
+        _error = tr(
+          ru: 'Для этого аккаунта смена пароля недоступна.',
+          kk: 'Бұл аккаунт үшін құпиясөзді өзгерту қолжетімсіз.',
+          en: 'Password changes are unavailable for this account.',
+        );
+        return false;
+      }
+      return true;
+    } catch (error) {
+      _error = readableBackendError(error);
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> _authenticate(
     Future<BackendProfile> Function() operation, {
     Map<String, dynamic>? localState,

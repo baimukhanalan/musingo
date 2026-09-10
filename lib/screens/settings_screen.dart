@@ -289,6 +289,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   text: state.tr(ru: 'Аккаунт', kk: 'Аккаунт', en: 'Account')),
               const SizedBox(height: 10),
               _SettingsCard(children: [
+                if (!state.isGuest)
+                  _SettingsRow(
+                    icon: Icons.lock_reset_rounded,
+                    label: state.tr(
+                      ru: 'Изменить пароль',
+                      kk: 'Құпиясөзді өзгерту',
+                      en: 'Change password',
+                    ),
+                    color: AppColors.sky,
+                    onTap: () =>
+                        Navigator.pushNamed(context, '/change-password'),
+                  ),
                 _SettingsRow(
                   icon: Icons.help_outline_rounded,
                   label: state.tr(ru: 'Помощь', kk: 'Көмек', en: 'Help'),

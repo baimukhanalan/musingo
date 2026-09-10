@@ -166,6 +166,61 @@ void main() {
     });
   });
 
+  group('смена пароля локального аккаунта', () {
+    test('отклоняет неверный текущий пароль и сохраняет прогресс', () async {
+      final state = await _guestState();
+      final lesson = state.getCourse(CourseType.quran)!.lessons.first;
+      await state.completeLesson(lesson.id, 0);
+      expect(
+        await state.registerWithEmail(
+          'Alan',
+          'password@example.test',
+          'Current123!',
+        ),
+        isTrue,
+      );
+
+      expect(await state.changePassword('Wrong123!', 'Changed456!'), isFalse);
+      expect(state.error, 'Текущий пароль указан неверно.');
+      expect(
+        await state.changePassword('Current123!', 'Changed456!'),
+        isTrue,
+      );
+      await state.logout();
+
+      expect(
+        await state.loginWithPassword('password@example.test', 'Current123!'),
+        isFalse,
+      );
+      expect(
+        await state.loginWithPassword('password@example.test', 'Changed456!'),
+        isTrue,
+      );
+      expect(
+        state
+            .getCourse(CourseType.quran)!
+            .lessons
+            .firstWhere((item) => item.id == lesson.id)
+            .status,
+        LessonStatus.completed,
+      );
+    });
+
+    test('не принимает короткий или повторный пароль', () async {
+      final state = await _guestState();
+      expect(
+        await state.registerWithEmail(
+          'Alan',
+          'validation@example.test',
+          'Current123!',
+        ),
+        isTrue,
+      );
+      expect(await state.changePassword('Current123!', 'short'), isFalse);
+      expect(await state.changePassword('Current123!', 'Current123!'), isFalse);
+    });
+  });
+
   group('Matching перемешивается по-настоящему', () {
     test('нет тривиальных совпадений — ответ не стоит напротив своего prompt',
         () {

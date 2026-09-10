@@ -2,6 +2,7 @@ import account from '../server/routes/account.js';
 import authLogin from '../server/routes/auth-login.js';
 import authLogout from '../server/routes/auth-logout.js';
 import authMe from '../server/routes/auth-me.js';
+import authPassword from '../server/routes/auth-password.js';
 import authRegister from '../server/routes/auth-register.js';
 import coach from '../server/routes/coach.js';
 import cronReminders from '../server/routes/cron-reminders.js';
@@ -24,6 +25,7 @@ const routes = new Map([
   ['auth/login', authLogin],
   ['auth/logout', authLogout],
   ['auth/me', authMe],
+  ['auth/password', authPassword],
   ['auth/register', authRegister],
   ['coach', coach],
   ['cron/reminders', cronReminders],

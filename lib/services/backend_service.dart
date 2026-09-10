@@ -195,6 +195,21 @@ class BackendService {
     await _clearStoredToken();
   }
 
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final response = await _request(
+      'POST',
+      '/api/auth/password',
+      body: {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      },
+    );
+    await _storeToken(response['token'] as String?);
+  }
+
   Future<BackendProfile> syncLearningData(
     Map<String, dynamic> state, {
     bool importGuest = false,
@@ -588,6 +603,12 @@ String readableBackendError(Object error) {
         return 'Аккаунт с таким email уже есть. Войди через email и пароль.';
       case 'invalid_credentials':
         return 'Неверный email или пароль.';
+      case 'invalid_current_password':
+        return 'Текущий пароль указан неверно.';
+      case 'password_reuse':
+        return 'Новый пароль должен отличаться от текущего.';
+      case 'password_changed':
+        return 'Пароль уже изменён в другой сессии. Войди снова.';
       case 'not_enough_energy':
         return 'Нужно 20 энергии, чтобы восстановить жизнь.';
       case 'hearts_full':

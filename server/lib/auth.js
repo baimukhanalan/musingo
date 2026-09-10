@@ -34,8 +34,8 @@ function secretKey() {
   return new TextEncoder().encode(value);
 }
 
-export async function issueToken(userId) {
-  return new SignJWT({})
+export async function issueToken(userId, sessionVersion = 0) {
+  return new SignJWT({ sv: Number(sessionVersion) })
     .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
     .setSubject(String(userId))
     .setIssuedAt()
@@ -45,6 +45,10 @@ export async function issueToken(userId) {
     .setJti(randomUUID())
     .setExpirationTime(tokenTtl)
     .sign(secretKey());
+}
+
+export function sessionVersionMatches(payload, storedVersion) {
+  return Number(payload?.sv ?? 0) === Number(storedVersion ?? 0);
 }
 
 export async function verifyToken(token) {
@@ -150,7 +154,7 @@ export async function requireSession(request) {
     throw new ApiError(401, 'invalid_session', 'Session is invalid.');
   }
   const rows = await sql`
-    SELECT id, email, display_name
+    SELECT id, email, display_name, session_version
     FROM muslingo_users
     WHERE id = ${payload.sub}::uuid
       AND NOT EXISTS (
@@ -160,6 +164,9 @@ export async function requireSession(request) {
     LIMIT 1
   `;
   if (rows.length === 0) throw new ApiError(401, 'invalid_session', 'Session is invalid.');
+  if (!sessionVersionMatches(payload, rows[0].session_version)) {
+    throw new ApiError(401, 'invalid_session', 'Session is invalid.');
+  }
   return { user: rows[0], payload };
 }
 

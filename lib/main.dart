@@ -18,6 +18,7 @@ import 'screens/league_screen.dart';
 import 'screens/achievements_screen.dart';
 import 'screens/streak_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/change_password_screen.dart';
 import 'screens/install_app_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/coach_screen.dart';
@@ -195,6 +196,9 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
         break;
       case '/settings':
         page = const SettingsScreen();
+        break;
+      case '/change-password':
+        page = const ChangePasswordScreen();
         break;
       case '/install':
         page = const InstallAppScreen();

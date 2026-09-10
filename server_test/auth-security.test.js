@@ -18,8 +18,10 @@ const {
   hashPassword,
   passwordMatches,
   verifyLoginPassword,
+  sessionVersionMatches,
 } = await import('../server/lib/auth.js');
 const { trustedClientIp, readJson, ApiError } = await import('../server/lib/http.js');
+const { passwordChangeKey } = await import('../server/lib/login-rate-limit.js');
 
 const SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 const ISS = 'muslingo';
@@ -68,6 +70,25 @@ test('issued token verifies and round-trips the UUID subject', async () => {
   assert.equal(typeof payload.jti, 'string');
   assert.ok(payload.exp > Math.floor(Date.now() / 1000));
   assert.ok(payload.nbf <= Math.floor(Date.now() / 1000));
+});
+
+test('issued token carries the session version used for global sign-out', async () => {
+  const payload = await verifyToken(await issueToken(UUID, 7));
+  assert.equal(payload.sv, 7);
+  assert.equal(sessionVersionMatches(payload, 7), true);
+  assert.equal(sessionVersionMatches(payload, 8), false);
+});
+
+test('legacy tokens without sv remain valid only at session version zero', () => {
+  assert.equal(sessionVersionMatches({}, 0), true);
+  assert.equal(sessionVersionMatches({}, 1), false);
+});
+
+test('password change limiter key is namespaced and does not expose user id', () => {
+  const key = passwordChangeKey(UUID);
+  assert.match(key, /^password-change:[a-f0-9]{64}$/);
+  assert.equal(key.includes(UUID), false);
+  assert.equal(key, passwordChangeKey(UUID));
 });
 
 test('a tampered token is rejected as invalid_session', async () => {

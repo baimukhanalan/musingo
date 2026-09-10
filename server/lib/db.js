@@ -82,6 +82,7 @@ function createSchema() {
       display_name text NOT NULL CHECK (char_length(display_name) BETWEEN 2 AND 60),
       password_salt text NOT NULL,
       password_hash text NOT NULL,
+      session_version integer NOT NULL DEFAULT 0,
       guest_imported boolean NOT NULL DEFAULT false,
       created_at timestamptz NOT NULL DEFAULT now(),
       updated_at timestamptz NOT NULL DEFAULT now()
@@ -169,6 +170,8 @@ function createSchema() {
     // ним падает `column ... does not exist` → 500 в push/cron/progress.
     await ignoreDuplicate(sql`ALTER TABLE muslingo_users
       ADD COLUMN IF NOT EXISTS guest_imported boolean NOT NULL DEFAULT false`);
+    await ignoreDuplicate(sql`ALTER TABLE muslingo_users
+      ADD COLUMN IF NOT EXISTS session_version integer NOT NULL DEFAULT 0`);
     await ignoreDuplicate(sql`ALTER TABLE muslingo_progress
       ADD COLUMN IF NOT EXISTS weekly_xp integer NOT NULL DEFAULT 0`);
     await ignoreDuplicate(sql`ALTER TABLE muslingo_progress

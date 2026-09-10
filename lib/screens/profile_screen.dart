@@ -151,6 +151,18 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 _MenuSection(
                   items: [
+                    if (!state.isGuest)
+                      _MenuItem(
+                        icon: Icons.lock_reset_rounded,
+                        label: state.tr(
+                          ru: 'Изменить пароль',
+                          kk: 'Құпиясөзді өзгерту',
+                          en: 'Change password',
+                        ),
+                        color: AppColors.sky,
+                        onTap: () =>
+                            Navigator.pushNamed(context, '/change-password'),
+                      ),
                     _MenuItem(
                       icon: Icons.settings_rounded,
                       label: state.tr(
