@@ -11,8 +11,9 @@ if [[ ! -d .vercel_flutter/.git ]]; then
   git -C .vercel_flutter remote add origin https://github.com/flutter/flutter.git
 fi
 
-git -C .vercel_flutter fetch --depth 1 origin "refs/tags/$flutter_version"
-git -C .vercel_flutter checkout --detach FETCH_HEAD
+git -C .vercel_flutter fetch --depth 1 origin \
+  "refs/tags/$flutter_version:refs/tags/$flutter_version"
+git -C .vercel_flutter checkout --detach "$flutter_version"
 test "$(git -C .vercel_flutter rev-parse HEAD)" = "$flutter_revision"
 
 ./.vercel_flutter/bin/flutter config --enable-web
