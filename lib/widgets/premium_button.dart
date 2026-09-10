@@ -37,15 +37,18 @@ class PremiumButton extends StatelessWidget {
           const SizedBox(width: 8),
         ],
         Flexible(
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontFamily: 'Nunito',
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-              color: AppColors.white,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+                color: AppColors.white,
+              ),
             ),
           ),
         ),

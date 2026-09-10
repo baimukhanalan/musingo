@@ -798,15 +798,24 @@ class _ChapterTile extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          quranDisplayName(chapter, state.locale.code),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: 'Nunito',
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textDark,
+                        SizedBox(
+                          height: 22,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                quranDisplayName(chapter, state.locale.code),
+                                maxLines: 1,
+                                style: const TextStyle(
+                                  fontFamily: 'Nunito',
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textDark,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 2),
