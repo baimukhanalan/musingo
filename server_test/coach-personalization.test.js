@@ -147,6 +147,20 @@ test('non-object request bodies remain untouched for legacy validation', () => {
   assert.equal(result.plan, null);
 });
 
+test('personalization preserves Vercel request properties outside object spread', () => {
+  const prototype = { headers: { origin: 'https://muslingo-mobile.vercel.app' } };
+  const request = Object.assign(Object.create(prototype), {
+    method: 'POST',
+    body: { question: 'What next?', locale: 'en', catalog, context: {} },
+  });
+
+  const result = personalizeCoachRequest(request);
+
+  assert.equal(result.request.headers, prototype.headers);
+  assert.equal(result.request.method, 'POST');
+  assert.equal(result.request.body.question, 'What next?');
+});
+
 test('API wrapper preserves the existing unavailable response contract', async () => {
   const previousGroq = process.env.GROQ_API_KEY;
   const previousOpenAI = process.env.OPENAI_API_KEY;

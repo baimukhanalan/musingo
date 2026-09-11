@@ -53,7 +53,7 @@ export function readJson(request) {
 
 function setHeaders(request, response) {
   const allowedOrigin = process.env.MUSLINGO_APP_ORIGIN;
-  const origin = request.headers.origin;
+  const origin = request.headers?.origin;
   if (origin && allowedOrigin && origin === allowedOrigin) {
     response.setHeader('Access-Control-Allow-Origin', origin);
     response.setHeader('Vary', 'Origin');
@@ -115,7 +115,7 @@ export function withApi(handler) {
     setHeaders(request, response);
     if (request.method === 'OPTIONS') return response.status(204).end();
     const allowedOrigin = process.env.MUSLINGO_APP_ORIGIN;
-    const origin = request.headers.origin;
+    const origin = request.headers?.origin;
     if (origin && allowedOrigin && origin !== allowedOrigin) {
       return response.status(403).json({ error: 'origin_not_allowed', message: 'Origin not allowed.' });
     }

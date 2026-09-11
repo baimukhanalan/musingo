@@ -355,16 +355,21 @@ export function personalizeCoachRequest(request) {
       500,
     ),
   };
-  return {
-    request: {
-      ...request,
-      body: {
-        question: body.question,
-        locale: body.locale,
-        catalog: coachCatalog(body.catalog),
-        context: enhancedContext,
-      },
+  const enhancedRequest = Object.create(Object.getPrototypeOf(request));
+  Object.defineProperties(enhancedRequest, Object.getOwnPropertyDescriptors(request));
+  Object.defineProperty(enhancedRequest, 'body', {
+    configurable: true,
+    enumerable: true,
+    writable: true,
+    value: {
+      question: body.question,
+      locale: body.locale,
+      catalog: coachCatalog(body.catalog),
+      context: enhancedContext,
     },
+  });
+  return {
+    request: enhancedRequest,
     plan,
   };
 }
