@@ -1,6 +1,30 @@
 // Shared by the single Vercel API router.
 const maxListItems = 2000;
 
+// The current lesson-attempt table can prove that a signed-in learner advanced
+// through sequential steps, but it cannot independently grade an answer. Keep
+// that boundary explicit and require enough server-recorded interaction and
+// elapsed time before a completion can mint rewards.
+export const MIN_RECORDED_LESSON_STEPS = 5;
+export const MIN_LESSON_ATTEMPT_MS = 10_000;
+export const MIN_MS_PER_RECORDED_STEP = 750;
+
+export function lessonAttemptEligibility(
+  attempt,
+  { now = Date.now(), minimumSteps = MIN_RECORDED_LESSON_STEPS } = {},
+) {
+  const completedSteps = Math.max(0, Math.floor(Number(attempt?.completed_steps) || 0));
+  const startedAt = Date.parse(String(attempt?.started_at ?? ''));
+  const minimumElapsedMs = Math.max(
+    MIN_LESSON_ATTEMPT_MS,
+    Math.min(120_000, completedSteps * MIN_MS_PER_RECORDED_STEP),
+  );
+  const elapsedMs = Number.isFinite(startedAt) ? now - startedAt : -1;
+  const eligible = Boolean(attempt) && !attempt.consumed_at &&
+    completedSteps >= minimumSteps && elapsedMs >= minimumElapsedMs;
+  return { eligible, completedSteps, elapsedMs, minimumElapsedMs, minimumSteps };
+}
+
 export function defaultProgress(user) {
   return {
     user: user.id,

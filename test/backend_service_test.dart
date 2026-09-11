@@ -139,4 +139,47 @@ void main() {
       'Новый пароль должен отличаться от текущего.',
     );
   });
+
+  test('requests recovery without authentication and reports delivery state',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/auth/password/forgot');
+      expect(request.headers.containsKey('Authorization'), isFalse);
+      expect(jsonDecode(request.body), {'email': 'alan@example.test'});
+      return http.Response(
+        jsonEncode({'accepted': true, 'delivery': 'provider_configured'}),
+        202,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+    final service = await BackendService.create(client: client);
+    final result = await service.requestPasswordReset('alan@example.test');
+    expect(result.accepted, isTrue);
+    expect(result.canDeliver, isTrue);
+    service.dispose();
+  });
+
+  test('submits one-time reset and verification tokens unauthenticated',
+      () async {
+    final paths = <String>[];
+    final client = MockClient((request) async {
+      paths.add(request.url.path);
+      expect(request.headers.containsKey('Authorization'), isFalse);
+      return http.Response('{}', 200,
+          headers: {'content-type': 'application/json'});
+    });
+    final service = await BackendService.create(client: client);
+    final resetToken = List.filled(43, 't').join();
+    final verificationToken = List.filled(43, 'v').join();
+    await service.resetPassword(
+      token: resetToken,
+      newPassword: 'Changed456!',
+    );
+    await service.confirmEmailVerification(verificationToken);
+    expect(paths, [
+      '/api/auth/password/reset',
+      '/api/auth/verification/confirm',
+    ]);
+    service.dispose();
+  });
 }

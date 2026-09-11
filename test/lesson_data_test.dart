@@ -238,6 +238,17 @@ void main() {
     expect(ids.toSet(), hasLength(ids.length));
   });
 
+  test('every lesson can satisfy the authoritative five-step receipt', () {
+    final lessons = LessonData.getCourses().expand((course) => course.lessons);
+    for (final lesson in lessons) {
+      expect(
+        lesson.steps.length,
+        greaterThanOrEqualTo(5),
+        reason: '${lesson.id} cannot satisfy the server completion receipt',
+      );
+    }
+  });
+
   test('every lesson has non-empty steps and well-formed questions', () {
     final lessons = LessonData.getCourses().expand((course) => course.lessons);
 

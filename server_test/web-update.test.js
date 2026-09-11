@@ -25,7 +25,8 @@ test('Vercel never caches Flutter bootstrap and retirement worker', async () => 
 test('successful web install is persisted and announced to Flutter', async () => {
   const index = await readFile(new URL('web/index.html', root), 'utf8');
   assert.match(index, /muslingo_app_installed/);
-  assert.match(index, /localStorage\.setItem\(installStateKey, 'true'\)/);
+  assert.match(index, /localStorage\.setItem\(installStateKey, String\(Date\.now\(\)\)\)/);
+  assert.match(index, /installStateMaxAgeMs/);
   assert.match(index, /runsStandalone\(\) \|\| storedAsInstalled\(\)/);
   assert.match(index, /choice\.outcome === 'accepted'/);
   assert.match(index, /CustomEvent\('muslingo-installed'\)/);

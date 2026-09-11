@@ -59,30 +59,38 @@ class LanguagePills extends StatelessWidget {
 
   Widget _pill(BuildContext context, AppLocale locale, String activeLabel) {
     final bool active = locale.label == activeLabel;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () {
-        if (onChanged != null) {
-          onChanged!(locale.label);
-        } else {
-          context.read<AppState>().setLocale(locale);
-        }
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: active ? AppColors.navyDark : Colors.transparent,
+    return Semantics(
+      button: true,
+      selected: active,
+      label: locale.label,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
           borderRadius: BorderRadius.circular(30),
-        ),
-        child: Text(
-          locale.label,
-          style: TextStyle(
-            fontFamily: 'Nunito',
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.5,
-            color: active ? AppColors.white : AppColors.textLight,
+          onTap: () {
+            if (onChanged != null) {
+              onChanged!(locale.label);
+            } else {
+              context.read<AppState>().setLocale(locale);
+            }
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: active ? AppColors.navyDark : Colors.transparent,
+              borderRadius: BorderRadius.circular(30),
+            ),
+            child: Text(
+              locale.label,
+              style: TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+                color: active ? AppColors.white : AppColors.textLight,
+              ),
+            ),
           ),
         ),
       ),

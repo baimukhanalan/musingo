@@ -23,6 +23,16 @@ export default withApi(async (request, response) => {
       AND consumed_at IS NULL
       AND expires_at > now()
       AND completed_steps = ${stepIndex}
+      AND jti = (
+        SELECT active.jti
+        FROM muslingo_lesson_attempts active
+        WHERE active.user_id = ${user.id}::uuid
+          AND active.lesson_id = ${lessonId}
+          AND active.consumed_at IS NULL
+          AND active.expires_at > now()
+        ORDER BY active.started_at DESC, active.jti DESC
+        LIMIT 1
+      )
     RETURNING completed_steps
   `;
   if (updated.length === 0) {
@@ -31,5 +41,9 @@ export default withApi(async (request, response) => {
       message: 'Lesson steps must be completed in order.',
     });
   }
-  return response.status(200).json({ completedSteps: Number(updated[0].completed_steps) });
+  return response.status(200).json({
+    recorded: true,
+    completedSteps: Number(updated[0].completed_steps),
+    receiptId: String(attempt.jti),
+  });
 });

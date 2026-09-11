@@ -127,6 +127,7 @@
     (() => {
       let installPrompt = null;
       const installStateKey = 'muslingo_app_installed';
+      const installStateMaxAgeMs = 30 * 24 * 60 * 60 * 1000;
 
       const runsStandalone = () =>
         window.matchMedia('(display-mode: standalone)').matches ||
@@ -134,7 +135,12 @@
 
       const storedAsInstalled = () => {
         try {
-          return window.localStorage.getItem(installStateKey) === 'true';
+          const installedAt = Number(window.localStorage.getItem(installStateKey));
+          if (!Number.isFinite(installedAt) || Date.now() - installedAt > installStateMaxAgeMs) {
+            window.localStorage.removeItem(installStateKey);
+            return false;
+          }
+          return true;
         } catch (_) {
           return false;
         }
@@ -142,7 +148,7 @@
 
       const markInstalled = () => {
         try {
-          window.localStorage.setItem(installStateKey, 'true');
+          window.localStorage.setItem(installStateKey, String(Date.now()));
         } catch (_) {
           // Standalone display mode remains the source of truth when storage
           // is unavailable (for example, in a restricted browser profile).
@@ -158,7 +164,7 @@
 
       if (runsStandalone()) {
         try {
-          window.localStorage.setItem(installStateKey, 'true');
+          window.localStorage.setItem(installStateKey, String(Date.now()));
         } catch (_) {}
       }
 

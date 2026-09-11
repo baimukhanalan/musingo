@@ -14,6 +14,14 @@ class AyahOfDay {
     required this.transliteration,
     required this.translation,
   });
+
+  String? translationFor(AppLocale locale) => switch (locale) {
+        AppLocale.ru => translation,
+        AppLocale.kk || AppLocale.en => null,
+      };
+
+  String secondaryTextFor(AppLocale locale) =>
+      translationFor(locale) ?? transliteration;
 }
 
 class DailyAyahData {
@@ -83,7 +91,7 @@ class DailyAyahData {
       if (ayah == null) return const ReminderMessage('', '');
       return ReminderMessage(
         '$title · №${ayah.globalAyahNumber}',
-        '${ayah.arabic}\n${ayah.translation}',
+        '${ayah.arabic}\n${ayah.secondaryTextFor(locale)}',
       );
     }).where((message) => message.title.isNotEmpty).toList(growable: false);
   }

@@ -20,6 +20,10 @@ export const COACH_USER_MAX_ATTEMPTS = 120;
 export const SPEECH_WINDOW_MINUTES = 60;
 export const SPEECH_ANONYMOUS_MAX_ATTEMPTS = 20;
 export const SPEECH_USER_MAX_ATTEMPTS = 120;
+export const SPEECH_AUTHENTICATED_IP_MAX_ATTEMPTS = 180;
+export const SPEECH_TEXT_ANONYMOUS_MAX_ATTEMPTS = 120;
+export const SPEECH_TEXT_USER_MAX_ATTEMPTS = 600;
+export const SPEECH_TEXT_IP_MAX_ATTEMPTS = 1200;
 export const PASSWORD_CHANGE_MAX_ATTEMPTS = 8;
 // Rows older than this can no longer trip any limiter; delete them so the table
 // cannot grow unbounded (previously one row per distinct key was never cleaned).
@@ -60,6 +64,55 @@ export function speechKey(ip, userId = '') {
   return `speech:${createHash('sha256')
     .update(`${String(ip ?? '')}|${String(userId ?? '')}`)
     .digest('hex')}`;
+}
+
+export function speechIpKey(ip, kind = 'audio') {
+  return `speech:${kind}:ip:${createHash('sha256')
+    .update(String(ip ?? ''))
+    .digest('hex')}`;
+}
+
+export function speechUserKey(userId, kind = 'audio') {
+  return `speech:${kind}:user:${createHash('sha256')
+    .update(String(userId ?? ''))
+    .digest('hex')}`;
+}
+
+export function speechRateLimitPlan({ ip, userId = '', audio = false } = {}) {
+  const authenticated = Boolean(userId);
+  const kind = audio ? 'audio' : 'text';
+  if (audio) {
+    const plan = [{
+      key: speechIpKey(ip, kind),
+      authenticated: false,
+      limit: authenticated
+        ? SPEECH_AUTHENTICATED_IP_MAX_ATTEMPTS
+        : SPEECH_ANONYMOUS_MAX_ATTEMPTS,
+    }];
+    if (authenticated) {
+      plan.push({
+        key: speechUserKey(userId, kind),
+        authenticated: true,
+        limit: SPEECH_USER_MAX_ATTEMPTS,
+      });
+    }
+    return plan;
+  }
+  const plan = [{
+    key: speechIpKey(ip, kind),
+    authenticated: false,
+    limit: authenticated
+      ? SPEECH_TEXT_IP_MAX_ATTEMPTS
+      : SPEECH_TEXT_ANONYMOUS_MAX_ATTEMPTS,
+  }];
+  if (authenticated) {
+    plan.push({
+      key: speechUserKey(userId, kind),
+      authenticated: true,
+      limit: SPEECH_TEXT_USER_MAX_ATTEMPTS,
+    });
+  }
+  return plan;
 }
 
 export function passwordChangeKey(userId) {

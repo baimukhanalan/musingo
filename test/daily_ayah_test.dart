@@ -90,6 +90,19 @@ void main() {
       expect(messages.every((message) => message.body.contains('\n')), isTrue);
       expect(messages[0].body, isNot(messages[1].body));
     });
+
+    test('does not label Russian translations as Kazakh or English', () {
+      const ayah = AyahOfDay(
+        globalAyahNumber: 1,
+        arabic: 'arabic',
+        transliteration: 'transliteration',
+        translation: 'russian-only',
+      );
+      expect(ayah.secondaryTextFor(AppLocale.ru), 'russian-only');
+      expect(ayah.secondaryTextFor(AppLocale.kk), 'transliteration');
+      expect(ayah.secondaryTextFor(AppLocale.en), 'transliteration');
+      expect(ayah.translationFor(AppLocale.kk), isNull);
+    });
   });
 
   testWidgets('card refreshes when its supplied calendar date changes',

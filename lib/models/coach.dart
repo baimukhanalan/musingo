@@ -59,6 +59,7 @@ class CoachMessage {
 
 class CoachContext {
   final LearningGoal? goal;
+  final LearningSkillProfile? skillProfile;
   final int placementLevel;
   final String? recommendation;
   final String? recommendedLessonId;
@@ -82,6 +83,7 @@ class CoachContext {
 
   const CoachContext({
     required this.goal,
+    this.skillProfile,
     required this.placementLevel,
     required this.recommendation,
     required this.recommendedLessonId,

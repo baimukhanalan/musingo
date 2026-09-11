@@ -185,7 +185,7 @@ class NotificationPlatform {
         _visibleBody(message.body, showOnLockScreen),
         _nextWeekday(index + 1, hour, minute),
         _detailsFor(message.body, showOnLockScreen: showOnLockScreen),
-        payload: '/home',
+        payload: '/daily-plan',
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
@@ -207,7 +207,7 @@ class NotificationPlatform {
           _visibleBody(streakMessage.body, showOnLockScreen),
           _nextWeekday(index + 1, eveningHour, eveningMinute),
           _detailsFor(streakMessage.body, showOnLockScreen: showOnLockScreen),
-          payload: '/home',
+          payload: '/daily-plan',
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
           uiLocalNotificationDateInterpretation:
               UILocalNotificationDateInterpretation.absoluteTime,

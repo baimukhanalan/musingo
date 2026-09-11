@@ -18,7 +18,9 @@ import 'screens/league_screen.dart';
 import 'screens/achievements_screen.dart';
 import 'screens/streak_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/progress_portability_screen.dart';
 import 'screens/change_password_screen.dart';
+import 'screens/email_account_screen.dart';
 import 'screens/install_app_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/coach_screen.dart';
@@ -56,10 +58,16 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _appState.setNotificationOpenHandler((route) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _navigatorKey.currentState?.pushNamedAndRemoveUntil(
-          route == '/home' ? route : '/home',
-          (existing) => false,
-        );
+        final navigator = _navigatorKey.currentState;
+        if (route == '/daily-plan' && _appState.recommendedLesson != null) {
+          navigator?.pushNamedAndRemoveUntil(
+            '/lesson',
+            (existing) => false,
+            arguments: _appState.recommendedLesson,
+          );
+          return;
+        }
+        navigator?.pushNamedAndRemoveUntil('/home', (existing) => false);
       });
     });
   }
@@ -126,8 +134,9 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
 
   Route<dynamic>? _generateRoute(RouteSettings settings) {
     Widget page;
+    final uri = Uri.tryParse(settings.name ?? '/') ?? Uri(path: '/');
 
-    switch (settings.name) {
+    switch (uri.path) {
       case '/':
       case '/splash':
         page = const _SplashScreen();
@@ -144,6 +153,18 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
           initialName: _appState.user?.name ?? '',
           initialEmail: _appState.user?.email ?? '',
         );
+        break;
+      case '/forgot-password':
+        page = ForgotPasswordScreen(
+          initialEmail:
+              settings.arguments is String ? settings.arguments as String : '',
+        );
+        break;
+      case '/reset-password':
+        page = ResetPasswordScreen(token: uri.queryParameters['token'] ?? '');
+        break;
+      case '/verify-email':
+        page = VerifyEmailScreen(token: uri.queryParameters['token'] ?? '');
         break;
       case '/home':
         page = const MainTabScreen();
@@ -200,6 +221,9 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
         break;
       case '/settings':
         page = const SettingsScreen();
+        break;
+      case '/progress-portability':
+        page = const ProgressPortabilityScreen();
         break;
       case '/change-password':
         page = _appState.canChangePassword

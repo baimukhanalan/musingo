@@ -205,7 +205,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 SliverToBoxAdapter(
                   child: _DailyPlanCard(
                     lesson: recommendedLesson,
-                    focus: state.learningGoal?.dailyFocus ??
+                    focus: state.learningGoal?.dailyFocusFor(state.locale) ??
                         state.tr(
                           ru: 'Новый материал, повторение и короткая проверка',
                           kk: 'Жаңа материал, қайталау және қысқа тексеру',

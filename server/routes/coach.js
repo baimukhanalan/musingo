@@ -71,6 +71,10 @@ function clampCatalog(value) {
 // приоритет над клиентскими, так как это авторитетный серверный источник.
 export function buildCoachContext(bodyContext = {}, progressDocument = null) {
   const ctx = bodyContext && typeof bodyContext === 'object' ? bodyContext : {};
+  const allowedSkills = ['letters', 'reading', 'surahRecall', 'meaning', 'tajwid'];
+  const clientSkills = ctx.skillProfile && typeof ctx.skillProfile === 'object'
+    ? Object.fromEntries(allowedSkills.map((skill) => [skill, clampInt(ctx.skillProfile[skill], 0, 100)]))
+    : null;
   const context = {
     xp: clampInt(ctx.xp, 0, 10_000_000),
     level: clampInt(ctx.level, 1, 1000),
@@ -81,6 +85,7 @@ export function buildCoachContext(bodyContext = {}, progressDocument = null) {
     placementLevel: clampInt(ctx.placementLevel, 1, 8),
     goal: clampString(ctx.goal, 80) || null,
     goalTitle: clampString(ctx.goalTitle, MAX_STRING) || null,
+    skillProfile: clientSkills,
     recommendation: clampString(ctx.recommendation, 500) || null,
     todayProgress: clampInt(ctx.todayProgress, 0, 1000),
     dailyGoal: clampInt(ctx.dailyGoal, 1, 1000),
@@ -127,6 +132,11 @@ export function buildCoachContext(bodyContext = {}, progressDocument = null) {
     }
     if (progressDocument.learningRecommendation) {
       context.recommendation = clampString(progressDocument.learningRecommendation, 500);
+    }
+    if (progressDocument.learningSkillProfile && typeof progressDocument.learningSkillProfile === 'object') {
+      context.skillProfile = Object.fromEntries(
+        allowedSkills.map((skill) => [skill, clampInt(progressDocument.learningSkillProfile[skill], 0, 100)]),
+      );
     }
     // knowledgeStates -> число «слабых»/просроченных карточек как ориентир.
     if (Array.isArray(progressDocument.knowledgeStates)) {

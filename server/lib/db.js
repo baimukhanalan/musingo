@@ -82,6 +82,7 @@ function createSchema() {
       display_name text NOT NULL CHECK (char_length(display_name) BETWEEN 2 AND 60),
       password_salt text NOT NULL,
       password_hash text NOT NULL,
+      email_verified_at timestamptz,
       session_version integer NOT NULL DEFAULT 0,
       guest_imported boolean NOT NULL DEFAULT false,
       created_at timestamptz NOT NULL DEFAULT now(),
@@ -102,6 +103,18 @@ function createSchema() {
       attempts integer NOT NULL DEFAULT 0,
       window_started_at timestamptz NOT NULL DEFAULT now()
     )`);
+    await ignoreDuplicate(sql`CREATE TABLE IF NOT EXISTS muslingo_email_tokens (
+      token_hash text PRIMARY KEY CHECK (char_length(token_hash) = 64),
+      user_id uuid NOT NULL REFERENCES muslingo_users(id) ON DELETE CASCADE,
+      purpose text NOT NULL CHECK (purpose IN ('verify_email', 'password_reset')),
+      expires_at timestamptz NOT NULL,
+      consumed_at timestamptz,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )`);
+    await ignoreDuplicate(sql`CREATE INDEX IF NOT EXISTS muslingo_email_tokens_user_purpose
+      ON muslingo_email_tokens (user_id, purpose, created_at DESC)`);
+    await ignoreDuplicate(sql`CREATE INDEX IF NOT EXISTS muslingo_email_tokens_expiry
+      ON muslingo_email_tokens (expires_at)`);
     await ignoreDuplicate(sql`CREATE TABLE IF NOT EXISTS muslingo_revoked_sessions (
       jti text PRIMARY KEY,
       user_id uuid NOT NULL REFERENCES muslingo_users(id) ON DELETE CASCADE,
@@ -172,6 +185,11 @@ function createSchema() {
       ADD COLUMN IF NOT EXISTS guest_imported boolean NOT NULL DEFAULT false`);
     await ignoreDuplicate(sql`ALTER TABLE muslingo_users
       ADD COLUMN IF NOT EXISTS session_version integer NOT NULL DEFAULT 0`);
+    // This migration deliberately leaves legacy accounts unverified. Existing
+    // password login remains compatible, but we never claim ownership proof
+    // that did not happen; recovery becomes available after explicit verify.
+    await ignoreDuplicate(sql`ALTER TABLE muslingo_users
+      ADD COLUMN IF NOT EXISTS email_verified_at timestamptz`);
     await ignoreDuplicate(sql`ALTER TABLE muslingo_progress
       ADD COLUMN IF NOT EXISTS weekly_xp integer NOT NULL DEFAULT 0`);
     await ignoreDuplicate(sql`ALTER TABLE muslingo_progress
@@ -203,5 +221,7 @@ function createSchema() {
       ON muslingo_friendships (friend_id)`);
     await ignoreDuplicate(sql`CREATE INDEX IF NOT EXISTS muslingo_push_user
       ON muslingo_push_subscriptions (user_id)`);
+    await sql`DELETE FROM muslingo_email_tokens
+      WHERE expires_at <= now() OR consumed_at < now() - interval '24 hours'`;
   })();
 }

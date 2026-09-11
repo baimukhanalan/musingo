@@ -3,7 +3,11 @@ import authLogin from '../server/routes/auth-login.js';
 import authLogout from '../server/routes/auth-logout.js';
 import authMe from '../server/routes/auth-me.js';
 import authPassword from '../server/routes/auth-password.js';
+import authPasswordForgot from '../server/routes/auth-password-forgot.js';
+import authPasswordReset from '../server/routes/auth-password-reset.js';
 import authRegister from '../server/routes/auth-register.js';
+import authVerificationConfirm from '../server/routes/auth-verification-confirm.js';
+import authVerificationRequest from '../server/routes/auth-verification-request.js';
 import coach from '../server/routes/coach.js';
 import cronReminders from '../server/routes/cron-reminders.js';
 import friends from '../server/routes/friends.js';
@@ -26,7 +30,11 @@ const routes = new Map([
   ['auth/logout', authLogout],
   ['auth/me', authMe],
   ['auth/password', authPassword],
+  ['auth/password/forgot', authPasswordForgot],
+  ['auth/password/reset', authPasswordReset],
   ['auth/register', authRegister],
+  ['auth/verification/confirm', authVerificationConfirm],
+  ['auth/verification/request', authVerificationRequest],
   ['coach', coach],
   ['cron/reminders', cronReminders],
   ['friends', friends],

@@ -105,6 +105,7 @@ class _CoachScreenState extends State<CoachScreen> {
             state.knowledgeStates.length;
     return CoachContext(
       goal: state.learningGoal,
+      skillProfile: state.learningSkillProfile,
       placementLevel: state.placementLevel,
       recommendation: state.learningRecommendation,
       recommendedLessonId: lesson?.id,

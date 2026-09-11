@@ -1,6 +1,6 @@
 import { optionalUser } from '../lib/auth.js';
 import { clientIp, method, readJson, withApi } from '../lib/http.js';
-import { consumeSpeechAttempt, speechKey } from '../lib/login-rate-limit.js';
+import { consumeSpeechAttempt, speechRateLimitPlan } from '../lib/login-rate-limit.js';
 import {
   hasSpeechTranscriptionProvider,
   transcribeSpeech,
@@ -136,6 +136,11 @@ export async function evaluateSpeechBody(body, { transcribe = transcribeSpeech }
           : 'Есть расхождение с образцом. Прослушай фрагмент и повтори медленнее.',
       engine: transcribedAudio ? 'serverAudioTranscription' : 'serverTextComparison',
       fallbackUsed: !transcribedAudio,
+      audioHandling: {
+        sentToConfiguredProcessor: transcribedAudio,
+        storedByMuslingo: false,
+        providerRetentionVerified: false,
+      },
     },
   };
 }
@@ -190,7 +195,15 @@ export default withApi(async (request, response) => {
   // откатывается на локальную оценку, поэтому requireUser отключил бы серверную
   // оценку для всех. Защита от перегрузки CPU — жёсткий лимит длины ниже.
   const body = readJson(request);
-  if (!clampInput(body.transcript) && body.audioBase64) {
+  const hasTranscript = Boolean(clampInput(body.transcript));
+  const hasAudio = !hasTranscript && Boolean(body.audioBase64);
+  if (hasAudio) {
+    if (body.audioProcessorConsent !== true) {
+      return response.status(400).json({
+        error: 'audio_consent_required',
+        message: 'Explicit consent is required before audio processing.',
+      });
+    }
     const recording = decodeSpeechAudio(body.audioBase64, body.audioMimeType);
     if (!recording) {
       return response.status(400).json({
@@ -204,15 +217,25 @@ export default withApi(async (request, response) => {
         message: 'Speech transcription is not configured.',
       });
     }
-    const user = await optionalUser(request);
-    await consumeSpeechAttempt('speech:global', {
+  }
+  const user = await optionalUser(request);
+  for (const bucket of speechRateLimitPlan({
+    ip: clientIp(request),
+    userId: user?.id,
+    audio: hasAudio,
+  })) {
+    await consumeSpeechAttempt(bucket.key, bucket);
+  }
+  if (hasAudio) {
+    // Apply the provider-wide cap only after caller-specific buckets. A caller
+    // already over its own limit cannot consume the shared provider budget.
+    await consumeSpeechAttempt('speech:audio:global', {
       authenticated: false,
       limit: SPEECH_GLOBAL_MAX_ATTEMPTS,
     });
-    await consumeSpeechAttempt(speechKey(clientIp(request), user?.id), {
-      authenticated: Boolean(user),
-    });
   }
+  response.setHeader('Cache-Control', 'no-store, private');
+  response.setHeader('Pragma', 'no-cache');
   const result = await evaluateSpeechBody(body);
   return response.status(result.status).json(result.payload);
 });

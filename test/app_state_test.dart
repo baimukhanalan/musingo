@@ -45,11 +45,19 @@ void main() {
       goal: LearningGoal.arabicReading,
       level: 2,
       recommendation: 'Начни с букв.',
+      skillProfile: const LearningSkillProfile({
+        LearningSkill.letters: 25,
+        LearningSkill.reading: 20,
+        LearningSkill.surahRecall: 45,
+        LearningSkill.meaning: 15,
+        LearningSkill.tajwid: 35,
+      }),
     );
 
     expect(state.isGuest, isTrue);
     expect(state.learningGoal, LearningGoal.arabicReading);
     expect(state.placementLevel, 2);
+    expect(state.learningSkillProfile?.weakestSkill, LearningSkill.meaning);
     expect(state.recommendedLesson?.course, CourseType.arabic);
 
     final restored = AppState();
@@ -57,6 +65,21 @@ void main() {
     expect(restored.isGuest, isTrue);
     expect(restored.learningGoal, LearningGoal.arabicReading);
     expect(restored.learningRecommendation, 'Начни с букв.');
+    expect(restored.learningSkillProfile?.scoreFor(LearningSkill.letters), 25);
+  });
+
+  test('skill profile derives an objective level and weakest skill', () {
+    const profile = LearningSkillProfile({
+      LearningSkill.letters: 100,
+      LearningSkill.reading: 100,
+      LearningSkill.surahRecall: 45,
+      LearningSkill.meaning: 15,
+      LearningSkill.tajwid: 35,
+    });
+
+    expect(profile.overallScore, 59);
+    expect(profile.placementLevel, 5);
+    expect(profile.weakestSkill, LearningSkill.meaning);
   });
 
   test('pronunciation goal starts the Tajwid learning path', () async {
@@ -71,6 +94,26 @@ void main() {
 
     expect(state.recommendedLesson?.course, CourseType.tajwid);
     expect(state.recommendedLesson?.id, 'tj01');
+  });
+
+  test('objective weak reading overrides a requested surah start', () async {
+    final state = AppState();
+    await _waitUntilInitialized(state);
+
+    await state.completePlacement(
+      goal: LearningGoal.shortSurahs,
+      level: 3,
+      recommendation: 'Сначала укрепи чтение.',
+      skillProfile: const LearningSkillProfile({
+        LearningSkill.letters: 100,
+        LearningSkill.reading: 20,
+        LearningSkill.surahRecall: 100,
+        LearningSkill.meaning: 100,
+        LearningSkill.tajwid: 100,
+      }),
+    );
+
+    expect(state.recommendedLesson?.course, CourseType.arabic);
   });
 
   test('strong Arabic placement starts after already demonstrated lessons',

@@ -1,7 +1,13 @@
 import { requireUser, verifyLessonAttempt } from '../lib/auth.js';
 import { sql } from '../lib/db.js';
 import { ApiError, integer, method, readJson, text, withApi } from '../lib/http.js';
-import { isRewardReplay, leaderboardContribution, nextDailyProgress, profile } from '../lib/progress.js';
+import {
+  isRewardReplay,
+  leaderboardContribution,
+  lessonAttemptEligibility,
+  nextDailyProgress,
+  profile,
+} from '../lib/progress.js';
 
 // Full lesson registry mirrored from the client (lib/services/lessons/
 // {arabic,quran,rules,tajwid}_lessons.dart). Every lesson id the app can complete MUST
@@ -151,7 +157,17 @@ export default withApi(async (request, response) => {
   });
   const rewardToken = String(attempt.jti);
   const attemptRows = await sql`
-    SELECT completed_steps, started_at, consumed_at
+    SELECT completed_steps, started_at, consumed_at,
+      jti = (
+        SELECT active.jti
+        FROM muslingo_lesson_attempts active
+        WHERE active.user_id = ${user.id}::uuid
+          AND active.lesson_id = ${lessonId}
+          AND active.consumed_at IS NULL
+          AND active.expires_at > now()
+        ORDER BY active.started_at DESC, active.jti DESC
+        LIMIT 1
+      ) AS is_latest
     FROM muslingo_lesson_attempts
     WHERE jti = ${rewardToken}
       AND user_id = ${user.id}::uuid
@@ -160,9 +176,27 @@ export default withApi(async (request, response) => {
     LIMIT 1
   `;
   const attemptState = attemptRows[0];
-  if (!attemptState || attemptState.consumed_at ||
-      Number(attemptState.completed_steps ?? 0) < 3 ||
-      Date.now() - new Date(attemptState.started_at).getTime() < 10_000) {
+  if (attemptState?.consumed_at) {
+    const rows = await sql`
+      SELECT document FROM muslingo_progress WHERE user_id = ${user.id}::uuid
+    `;
+    if (rows.length > 0) {
+      const current = profile(rows[0].document, user);
+      if (isRewardReplay(current.rewardHistory, rewardToken)) {
+        return response.status(200).json({
+          replayed: true,
+          xpEarned: 0,
+          streakBonus: 0,
+          firstCompletion: false,
+          recordedSteps: Number(attemptState.completed_steps ?? 0),
+          reportedSpeechAttempts: speechAttempts,
+          progress: current,
+        });
+      }
+    }
+  }
+  const receipt = lessonAttemptEligibility(attemptState);
+  if (!receipt.eligible || attemptState?.is_latest !== true) {
     throw new ApiError(400, 'incomplete_lesson_attempt', 'Lesson attempt is incomplete.');
   }
   // Competitive rewards use the server's UTC day. A client-local date remains
@@ -199,7 +233,10 @@ export default withApi(async (request, response) => {
       : Number(current.streak ?? 0);
     const streakBonus = newDay && streak === 7 ? 10 : newDay && streak === 30 ? 50 : newDay && streak === 100 ? 200 : 0;
     const xp = Number(current.xp ?? 0) + xpEarned + streakBonus;
-    const energyEarned = Math.max(4, 12 - errors * 2);
+    // XP and energy are based on the server-recorded attempt receipt. `errors`
+    // remains a bounded self-report used only for the learner's own hearts; it
+    // cannot increase rewards or public ranking.
+    const energyEarned = 8;
     // Personal xp above is credited in full. Only the slice that reaches the
     // weekly leaderboard is clipped to the per-day cap (remaining budget for
     // `today`); the day-scoped counter is written back under the same version.
@@ -225,7 +262,9 @@ export default withApi(async (request, response) => {
       learnedDuas: Number(current.learnedDuas ?? 0) + (firstCompletion && lessonId === 'r4' ? 2 : 0),
       dailyProgress: nextDailyProgress({ current, today }),
       lessonAttempts: Number(current.lessonAttempts ?? 0) + 1,
-      speechAttempts: Number(current.speechAttempts ?? 0) + speechAttempts,
+      // The current schema does not link /speech/evaluate calls to a lesson
+      // receipt. Do not turn a client-supplied number into authoritative usage.
+      speechAttempts: Number(current.speechAttempts ?? 0),
       rewardChestsOpened: Number(current.rewardChestsOpened ?? 0) + 3,
       leaderboardXpToday: leaderboard.leaderboardXpToday,
       leaderboardXpDay: leaderboard.leaderboardXpDay,
@@ -250,12 +289,17 @@ export default withApi(async (request, response) => {
       await sql`
         UPDATE muslingo_lesson_attempts
         SET consumed_at = now()
-        WHERE jti = ${rewardToken} AND consumed_at IS NULL
+        WHERE jti = ${rewardToken}
+          AND user_id = ${user.id}::uuid
+          AND lesson_id = ${lessonId}
+          AND consumed_at IS NULL
       `;
       return response.status(200).json({
         xpEarned,
         streakBonus,
         firstCompletion,
+        recordedSteps: receipt.completedSteps,
+        reportedSpeechAttempts: speechAttempts,
         progress: profile(updated[0].document, user),
       });
     }

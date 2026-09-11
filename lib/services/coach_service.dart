@@ -114,6 +114,7 @@ class CoachService {
       'placementLevel': context.placementLevel,
       'goal': context.goal?.storageValue,
       'goalTitle': context.goal?.title,
+      'skillProfile': context.skillProfile?.toJson(),
       'recommendation': context.recommendation,
       'recommendedLessonId': context.recommendedLessonId,
       'recommendedLessonTitle': context.recommendedLessonTitle,
@@ -280,9 +281,23 @@ class CoachService {
 
     if (_containsAny(normalized, ['слаб', 'ошиб', 'пута'])) {
       if (context.weakKnowledge.isEmpty) {
+        final profile = context.skillProfile;
+        if (profile != null) {
+          final skill = profile.weakestSkill;
+          return CoachResponse(
+            text: 'По стартовой диагностике слабее всего навык '
+                '«${skill.title}» (${profile.scoreFor(skill)}%). Начни с '
+                'рекомендованного урока, а после практики я уточню вывод по '
+                'реальным ошибкам и повторениям.',
+            sources: const [_progressSource],
+            actionType: CoachActionType.startLesson,
+            actionLabel: 'Начать практику',
+            lessonId: context.recommendedLessonId,
+          );
+        }
         return const CoachResponse(
           text: 'Пока устойчивых слабых мест не найдено. Они появятся здесь '
-              'после вопросов, matching и проверки произношения.',
+              'после вопросов, сопоставления и проверки произношения.',
           sources: [_progressSource],
         );
       }

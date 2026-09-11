@@ -215,20 +215,22 @@ class _DailyAyahCardState extends State<DailyAyahCard>
                 color: AppColors.textGrey,
               ),
             ),
-            const SizedBox(height: 10),
-            Container(height: 1, color: AppColors.border),
-            const SizedBox(height: 10),
-            Text(
-              ayah.translation,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'Nunito',
-                fontSize: 14,
-                height: 1.4,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textDark,
+            if (ayah.translationFor(state.locale) case final translation?) ...[
+              const SizedBox(height: 10),
+              Container(height: 1, color: AppColors.border),
+              const SizedBox(height: 10),
+              Text(
+                translation,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 14,
+                  height: 1.4,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textDark,
+                ),
               ),
-            ),
+            ],
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.center,

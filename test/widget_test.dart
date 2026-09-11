@@ -54,6 +54,11 @@ void main() {
     expect(find.text('Начать — 2 минуты'), findsOneWidget);
     expect(find.byKey(const ValueKey('premium-intro-mascot')), findsOneWidget);
 
+    await tester.tap(find.text('EN'));
+    await tester.pump();
+    expect(find.text('Your path to the Quran'), findsOneWidget);
+    expect(state.locale.code, 'en');
+
     await _teardown(tester);
   });
 
@@ -206,19 +211,24 @@ void main() {
 
     await tester.tap(find.text('Начать — 2 минуты'));
     await tester.pump();
-    await tester.tap(find.text('Улучшить произношение'));
+    await tester.tap(find.text('Читать арабский текст'));
     await tester.pump();
     for (final answer in <String>[
-      'Знаю некоторые',
-      'По слогам и медленно',
-      'Знаю частично',
-      'Некоторые слова',
-      'Есть отдельные ошибки',
+      'ح',
+      'ба',
+      'أَحَدٌ',
+      'Во имя Аллаха, Милостивого, Милосердного',
+      'Удвоение согласного звука',
     ]) {
       await tester.tap(find.text(answer));
       await tester.pump();
     }
 
+    expect(
+      find.textContaining('У тебя уверенная база'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Начни с арабских букв'), findsNothing);
     expect(find.text('Начать первый урок'), findsOneWidget);
     await tester.tap(find.text('Начать первый урок'));
     await tester.pump();
@@ -226,7 +236,8 @@ void main() {
 
     expect(find.text('lesson-route'), findsOneWidget);
     expect(state.isGuest, isTrue);
-    expect(state.learningGoal, LearningGoal.pronunciation);
+    expect(state.learningGoal, LearningGoal.arabicReading);
+    expect(state.learningSkillProfile?.overallScore, 100);
 
     await _teardown(tester);
   });

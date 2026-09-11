@@ -4,7 +4,13 @@ import test from 'node:test';
 // progress.js has no side-effect imports (no db.js), so these run without a
 // DATABASE_URL. Both anti-cheat holes live here: the guest-import caps in
 // mergeLearningState and the reward-replay dedup in isRewardReplay.
-import { defaultProgress, isRewardReplay, mergeLearningState } from '../server/lib/progress.js';
+import {
+  defaultProgress,
+  isRewardReplay,
+  lessonAttemptEligibility,
+  mergeLearningState,
+  MIN_RECORDED_LESSON_STEPS,
+} from '../server/lib/progress.js';
 
 const user = { id: 'u1', email: 'a@b.co', display_name: 'Alan' };
 
@@ -103,4 +109,51 @@ test('isRewardReplay tolerates missing/empty history or token', () => {
   assert.equal(isRewardReplay(undefined, 'a:b:1'), false);
   assert.equal(isRewardReplay(null, 'a:b:1'), false);
   assert.equal(isRewardReplay(['a:b:1'], ''), false);
+});
+
+// --- authoritative lesson-attempt receipts ------------------------------
+
+test('lesson reward requires enough sequentially recorded server steps', () => {
+  const now = Date.parse('2026-09-11T12:00:00Z');
+  const short = lessonAttemptEligibility({
+    completed_steps: MIN_RECORDED_LESSON_STEPS - 1,
+    started_at: '2026-09-11T11:59:00Z',
+    consumed_at: null,
+  }, { now });
+  assert.equal(short.eligible, false);
+
+  const complete = lessonAttemptEligibility({
+    completed_steps: MIN_RECORDED_LESSON_STEPS,
+    started_at: '2026-09-11T11:59:00Z',
+    consumed_at: null,
+  }, { now });
+  assert.equal(complete.eligible, true);
+  assert.equal(complete.completedSteps, MIN_RECORDED_LESSON_STEPS);
+});
+
+test('lesson reward refuses a consumed or implausibly fast receipt', () => {
+  const now = Date.parse('2026-09-11T12:00:00Z');
+  const fast = lessonAttemptEligibility({
+    completed_steps: 20,
+    started_at: '2026-09-11T11:59:50Z',
+    consumed_at: null,
+  }, { now });
+  assert.equal(fast.minimumElapsedMs, 15_000);
+  assert.equal(fast.eligible, false);
+
+  const consumed = lessonAttemptEligibility({
+    completed_steps: 20,
+    started_at: '2026-09-11T11:58:00Z',
+    consumed_at: '2026-09-11T11:59:00Z',
+  }, { now });
+  assert.equal(consumed.eligible, false);
+});
+
+test('lesson reward refuses missing or malformed attempt timestamps', () => {
+  assert.equal(lessonAttemptEligibility(null).eligible, false);
+  assert.equal(lessonAttemptEligibility({
+    completed_steps: 99,
+    started_at: 'not-a-date',
+    consumed_at: null,
+  }).eligible, false);
 });

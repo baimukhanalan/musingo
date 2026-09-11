@@ -412,36 +412,45 @@ class _ModeSegment extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          height: 44,
-          decoration: BoxDecoration(
-            color: selected ? AppColors.navyDark : Colors.transparent,
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: label,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
             borderRadius: BorderRadius.circular(26),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon,
-                  size: 19,
-                  color: selected ? Colors.white : AppColors.textLight),
-              const SizedBox(width: 7),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    color: selected ? Colors.white : AppColors.textLight,
-                  ),
-                ),
+            onTap: onTap,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              height: 44,
+              decoration: BoxDecoration(
+                color: selected ? AppColors.navyDark : Colors.transparent,
+                borderRadius: BorderRadius.circular(26),
               ),
-            ],
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon,
+                      size: 19,
+                      color: selected ? Colors.white : AppColors.textLight),
+                  const SizedBox(width: 7),
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'Nunito',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        color: selected ? Colors.white : AppColors.textLight,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

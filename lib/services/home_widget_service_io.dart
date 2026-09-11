@@ -34,11 +34,7 @@ class HomeWidgetPlatform {
         'number': ayah.globalAyahNumber,
         'title': title,
         'arabic': ayah.arabic,
-        'translation': switch (locale) {
-          AppLocale.ru => ayah.translation,
-          AppLocale.kk => ayah.translation,
-          AppLocale.en => ayah.translation,
-        },
+        'translation': ayah.secondaryTextFor(locale),
       });
     }
 

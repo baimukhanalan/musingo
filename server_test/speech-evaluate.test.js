@@ -3,6 +3,15 @@ import test from 'node:test';
 
 import { callGroqTranscription } from '../server/lib/groq.js';
 import { callOpenAITranscription } from '../server/lib/openai.js';
+import {
+  SPEECH_ANONYMOUS_MAX_ATTEMPTS,
+  SPEECH_AUTHENTICATED_IP_MAX_ATTEMPTS,
+  SPEECH_TEXT_ANONYMOUS_MAX_ATTEMPTS,
+  SPEECH_TEXT_IP_MAX_ATTEMPTS,
+  SPEECH_TEXT_USER_MAX_ATTEMPTS,
+  SPEECH_USER_MAX_ATTEMPTS,
+  speechRateLimitPlan,
+} from '../server/lib/login-rate-limit.js';
 import speechEvaluate, {
   decodeSpeechAudio,
   evaluateSpeechBody,
@@ -104,6 +113,11 @@ test('speech body transcribes uploaded audio before scoring it', async () => {
   assert.equal(result.payload.score, 100);
   assert.equal(result.payload.engine, 'serverAudioTranscription');
   assert.equal(result.payload.fallbackUsed, false);
+  assert.deepEqual(result.payload.audioHandling, {
+    sentToConfiguredProcessor: true,
+    storedByMuslingo: false,
+    providerRetentionVerified: false,
+  });
 });
 
 test('speech body refuses uploaded audio without explicit processor consent', async () => {
@@ -115,6 +129,63 @@ test('speech body refuses uploaded audio without explicit processor consent', as
   }, { transcribe: async () => 'бسم الله' });
   assert.equal(result.status, 400);
   assert.equal(result.payload.error, 'audio_consent_required');
+});
+
+test('speech quota plan binds anonymous audio to a shared IP bucket', () => {
+  const plan = speechRateLimitPlan({ ip: '203.0.113.7', audio: true });
+  assert.equal(plan.length, 1);
+  assert.equal(plan[0].limit, SPEECH_ANONYMOUS_MAX_ATTEMPTS);
+  assert.match(plan[0].key, /^speech:audio:ip:[a-f0-9]{64}$/);
+  assert.equal(plan[0].key.includes('203.0.113.7'), false);
+});
+
+test('speech quota plan binds authenticated audio to both IP and account', () => {
+  const plan = speechRateLimitPlan({
+    ip: '203.0.113.7',
+    userId: '3f2504e0-4f89-11d3-9a0c-0305e82c3301',
+    audio: true,
+  });
+  assert.deepEqual(plan.map((bucket) => bucket.limit), [
+    SPEECH_AUTHENTICATED_IP_MAX_ATTEMPTS,
+    SPEECH_USER_MAX_ATTEMPTS,
+  ]);
+  assert.match(plan[0].key, /^speech:audio:ip:/);
+  assert.match(plan[1].key, /^speech:audio:user:/);
+});
+
+test('account rotation cannot create a fresh audio IP bucket', () => {
+  const first = speechRateLimitPlan({ ip: '203.0.113.7', userId: 'user-1', audio: true });
+  const second = speechRateLimitPlan({ ip: '203.0.113.7', userId: 'user-2', audio: true });
+  assert.equal(first[0].key, second[0].key);
+  assert.notEqual(first[1].key, second[1].key);
+});
+
+test('text comparison has separate distributed CPU buckets', () => {
+  const anonymous = speechRateLimitPlan({ ip: '198.51.100.8', audio: false });
+  assert.equal(anonymous[0].limit, SPEECH_TEXT_ANONYMOUS_MAX_ATTEMPTS);
+  assert.match(anonymous[0].key, /^speech:text:ip:/);
+
+  const authenticated = speechRateLimitPlan({
+    ip: '198.51.100.8',
+    userId: 'user-1',
+    audio: false,
+  });
+  assert.deepEqual(authenticated.map((bucket) => bucket.limit), [
+    SPEECH_TEXT_IP_MAX_ATTEMPTS,
+    SPEECH_TEXT_USER_MAX_ATTEMPTS,
+  ]);
+});
+
+test('text-only evaluation reports that no audio left Muslingo', async () => {
+  const result = await evaluateSpeechBody({
+    transcript: 'بسم الله',
+    target: 'بسم الله',
+  });
+  assert.deepEqual(result.payload.audioHandling, {
+    sentToConfiguredProcessor: false,
+    storedByMuslingo: false,
+    providerRetentionVerified: false,
+  });
 });
 
 test('Groq transcription sends audio as multipart form data', async () => {
@@ -190,10 +261,37 @@ test('route returns a clear error when audio transcription is not configured', a
         target: 'بسم الله',
         audioMimeType: 'audio/webm',
         audioBase64: Buffer.from('recorded voice').toString('base64'),
+        audioProcessorConsent: true,
       },
     }, response);
     assert.equal(response.statusCode, 503);
     assert.equal(response.body.error, 'speech_transcription_unavailable');
+  } finally {
+    if (previousKey === undefined) delete process.env.GROQ_API_KEY;
+    else process.env.GROQ_API_KEY = previousKey;
+    if (previousOpenAI === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousOpenAI;
+  }
+});
+
+test('route checks audio consent before provider availability or quota storage', async () => {
+  const previousKey = process.env.GROQ_API_KEY;
+  const previousOpenAI = process.env.OPENAI_API_KEY;
+  delete process.env.GROQ_API_KEY;
+  delete process.env.OPENAI_API_KEY;
+  try {
+    const response = mockResponse();
+    await speechEvaluate({
+      method: 'POST',
+      headers: {},
+      body: {
+        target: 'بسم الله',
+        audioMimeType: 'audio/webm',
+        audioBase64: Buffer.from('recorded voice').toString('base64'),
+      },
+    }, response);
+    assert.equal(response.statusCode, 400);
+    assert.equal(response.body.error, 'audio_consent_required');
   } finally {
     if (previousKey === undefined) delete process.env.GROQ_API_KEY;
     else process.env.GROQ_API_KEY = previousKey;

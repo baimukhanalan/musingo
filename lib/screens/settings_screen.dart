@@ -289,6 +289,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   text: state.tr(ru: 'Аккаунт', kk: 'Аккаунт', en: 'Account')),
               const SizedBox(height: 10),
               _SettingsCard(children: [
+                _SettingsRow(
+                  icon: Icons.import_export_rounded,
+                  label: state.tr(
+                    ru: 'Перенос прогресса',
+                    kk: 'Прогресті тасымалдау',
+                    en: 'Progress portability',
+                  ),
+                  subtitle: state.tr(
+                    ru: 'Экспортировать безопасную копию',
+                    kk: 'Қауіпсіз көшірмені экспорттау',
+                    en: 'Export a privacy-safe copy',
+                  ),
+                  color: AppColors.pistachio,
+                  onTap: () =>
+                      Navigator.pushNamed(context, '/progress-portability'),
+                ),
                 if (state.canChangePassword)
                   _SettingsRow(
                     icon: Icons.lock_reset_rounded,

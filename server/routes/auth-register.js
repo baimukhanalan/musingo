@@ -2,6 +2,10 @@ import { randomUUID } from 'node:crypto';
 
 import { hashPassword } from '../lib/auth.js';
 import { sql, ensureSchema } from '../lib/db.js';
+import {
+  genericEmailActionResponse,
+  issueAndSendAccountEmail,
+} from '../lib/email.js';
 import { ApiError, clientIp, method, readJson, text, withApi } from '../lib/http.js';
 import { consumeRegisterAttempt, registerKey } from '../lib/login-rate-limit.js';
 import { defaultProgress } from '../lib/progress.js';
@@ -27,7 +31,7 @@ export default withApi(async (request, response) => {
   const id = randomUUID();
   const credentials = await hashPassword(password);
   const initial = defaultProgress({ id, email, display_name: name });
-  await sql`
+  const created = await sql`
     WITH new_user AS (
       INSERT INTO muslingo_users (id, email, display_name, password_salt, password_hash)
       VALUES (${id}::uuid, ${email}, ${name}, ${credentials.salt}, ${credentials.hash})
@@ -38,9 +42,24 @@ export default withApi(async (request, response) => {
       SELECT id, ${JSON.stringify(initial)}::jsonb FROM new_user
       RETURNING user_id
     )
-    SELECT count(*)::int AS created FROM new_progress
+    SELECT user_id FROM new_progress
   `;
+  if (created[0]?.user_id) {
+    const delivery = await issueAndSendAccountEmail({
+      userId: created[0].user_id,
+      email,
+      purpose: 'verify_email',
+    });
+    if (delivery.status === 'failed') {
+      console.error('Muslingo account email delivery failed', {
+        purpose: 'verify_email',
+        providerStatus: delivery.providerStatus,
+      });
+    }
+  }
   // Identical status and body for new and existing addresses. The app follows
   // with the ordinary login endpoint, whose failure is already generic.
-  return response.status(202).json({ accepted: true });
+  return response.status(202).json({
+    ...genericEmailActionResponse(),
+  });
 });

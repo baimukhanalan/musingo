@@ -137,4 +137,68 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(seconds: 1));
   });
+
+  testWidgets('two failed pronunciation attempts allow an honest skip',
+      (tester) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final state = await guestState(tester);
+    var attempts = 0;
+    const arabic = 'الْحَمْدُ لِلَّهِ';
+    const lesson = Lesson(
+      id: 'speech_failure_test',
+      title: 'Произношение',
+      subtitle: 'Разбор ошибки',
+      course: CourseType.quran,
+      order: 1,
+      steps: [
+        LessonStep(
+          id: 'speech_failure',
+          type: LessonStepType.speak,
+          arabicText: arabic,
+          transliteration: 'Alhamdu lillah',
+        ),
+      ],
+    );
+
+    Future<SpeechEvaluationResult> simulator(LessonStep step) async {
+      attempts++;
+      return const SpeechEvaluationResult(
+        transcript: 'الحمد الله',
+        normalizedTranscript: 'الحمد الله',
+        target: arabic,
+        score: 54,
+        passed: false,
+        weakParts: ['لِلَّهِ'],
+        feedbackText: 'Повтори окончание медленнее.',
+        engine: SpeechEvaluationEngine.ai,
+        fallbackUsed: false,
+      );
+    }
+
+    await pumpLesson(tester, state, lesson, simulator: simulator);
+    await tester.tap(find.byKey(const ValueKey('lesson_speech_sample')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('lesson_speech_record')));
+    await tester.pump();
+
+    expect(find.text('Повтори окончание медленнее.'), findsOneWidget);
+    expect(find.text('Совпадение: 54%'), findsOneWidget);
+    expect(find.textContaining('Пропустить'), findsNothing);
+
+    final retry = find.byKey(const ValueKey('lesson_speech_retry'));
+    await tester.ensureVisible(retry);
+    await tester.pump();
+    await tester.tap(retry);
+    await tester.pump();
+
+    expect(attempts, 2);
+    expect(find.textContaining('Пропустить'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 1));
+  });
 }

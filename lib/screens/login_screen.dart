@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/app_state.dart';
+import '../services/backend_service.dart';
 import '../utils/colors.dart';
 import '../widgets/cat_character.dart';
 import '../widgets/premium_background.dart';
@@ -30,6 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _passVisible = false;
+  bool _needsVerification = false;
 
   @override
   void initState() {
@@ -68,8 +70,21 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     setState(() => _isLoading = false);
     if (success) {
+      final delivery = state.lastEmailDelivery;
+      if (delivery != null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(delivery == 'provider_configured'
+              ? 'Аккаунт создан. Если письмо доставлено, подтверди email по одноразовой ссылке.'
+              : 'Аккаунт создан. Отправка письма подтверждения пока не настроена.'),
+          backgroundColor: delivery == 'provider_configured'
+              ? AppColors.navy
+              : AppColors.gold,
+        ));
+      }
       Navigator.pushReplacementNamed(context, '/home');
     } else {
+      setState(() =>
+          _needsVerification = (state.error ?? '').contains('Подтверди email'));
       if ((state.error ?? '').contains('уже есть')) {
         setState(() => _showRegister = false);
       }
@@ -93,6 +108,8 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success) {
       Navigator.pushReplacementNamed(context, '/home');
     } else {
+      setState(() =>
+          _needsVerification = (state.error ?? '').contains('Подтверди email'));
       _showError(state.error);
     }
   }
@@ -210,6 +227,33 @@ class _LoginScreenState extends State<LoginScreen> {
           ],
         ),
         const SizedBox(height: 14),
+        if (!_showRegister)
+          TextButton(
+            key: const Key('forgot-password-button'),
+            onPressed: _isLoading
+                ? null
+                : () => Navigator.pushNamed(
+                      context,
+                      '/forgot-password',
+                      arguments: _emailCtrl.text.trim(),
+                    ),
+            child: const Text(
+              'Забыли пароль?',
+              style: TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: AppColors.navy,
+              ),
+            ),
+          ),
+        if (!_showRegister && _needsVerification)
+          TextButton.icon(
+            key: const Key('resend-verification-button'),
+            onPressed: _isLoading ? null : _resendVerification,
+            icon: const Icon(Icons.mark_email_read_outlined),
+            label: const Text('Отправить подтверждение ещё раз'),
+          ),
         TextButton(
           onPressed: _isLoading
               ? null
@@ -242,6 +286,30 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ];
+
+  Future<void> _resendVerification() async {
+    if (!_emailCtrl.text.contains('@')) {
+      _showError('Укажи email для подтверждения');
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final result = await context
+          .read<AppState>()
+          .requestEmailVerification(_emailCtrl.text.trim());
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(result.canDeliver
+            ? 'Если аккаунт ожидает подтверждения, новая ссылка отправлена.'
+            : 'Отправка писем пока не настроена администратором.'),
+        backgroundColor: result.canDeliver ? AppColors.navy : AppColors.gold,
+      ));
+    } catch (error) {
+      if (mounted) _showError(readableBackendError(error));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 }
 
 class _LoginHeader extends StatelessWidget {

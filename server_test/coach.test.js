@@ -66,6 +66,7 @@ test('buildCoachContext validates and clamps client body', () => {
     recommendedLessonId: 'lesson-7',
     recommendedLessonTitle: 'Сура Аль-Фатиха',
     dueReviewCount: 4,
+    skillProfile: { letters: -1, reading: 70, meaning: 140, unknown: 99 },
   });
   assert.equal(context.xp, 1250);
   assert.equal(context.streak, 0); // negative clamped
@@ -78,6 +79,13 @@ test('buildCoachContext validates and clamps client body', () => {
   assert.deepEqual(context.weakAreas, ['таджвид']);
   assert.equal(context.recommendedLessonId, 'lesson-7');
   assert.equal(context.dueReviewCount, 4);
+  assert.deepEqual(context.skillProfile, {
+    letters: 0,
+    reading: 70,
+    surahRecall: 0,
+    meaning: 100,
+    tajwid: 0,
+  });
 });
 
 test('buildCoachContext lets DB document override client-supplied values', () => {
@@ -90,6 +98,7 @@ test('buildCoachContext lets DB document override client-supplied values', () =>
       completedLessons: ['s1', 's2'],
       learningGoal: 'shortSurahs',
       placementLevel: 6,
+      learningSkillProfile: { letters: 80, reading: 60, meaning: 20 },
       knowledgeStates: [
         { id: 'k1', dueAt: '2000-01-01T00:00:00Z' },
         { id: 'k2', dueAt: '2999-01-01T00:00:00Z' },
@@ -104,6 +113,7 @@ test('buildCoachContext lets DB document override client-supplied values', () =>
   assert.equal(context.goal, 'shortSurahs');
   assert.equal(context.placementLevel, 6);
   assert.equal(context.dueReviewCount, 1); // only the past-due card counts
+  assert.equal(context.skillProfile.meaning, 20);
 });
 
 test('buildSystemPrompt honors locale and forbids self-issued fatwa', () => {

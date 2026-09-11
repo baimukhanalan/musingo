@@ -35,6 +35,18 @@ enum NativeLanguage {
   }
 }
 
+class PortableImportResult {
+  final int completedLessons;
+  final int knowledgeItems;
+  final int hafizItems;
+
+  const PortableImportResult({
+    required this.completedLessons,
+    required this.knowledgeItems,
+    required this.hafizItems,
+  });
+}
+
 class AppState extends ChangeNotifier {
   static const _localAccountsKey = 'local_email_accounts';
   static const _leagueSeasonKey = 'local_league_season';
@@ -50,6 +62,7 @@ class AppState extends ChangeNotifier {
   static const _learningGoalKey = 'learning_goal';
   static const _placementLevelKey = 'placement_level';
   static const _learningRecommendationKey = 'learning_recommendation';
+  static const _learningSkillProfileKey = 'learning_skill_profile';
   static const _learningProfilePrefix = 'learning_profile_';
   static const _memoryEnginePrefix = 'memory_engine_';
   static const _hafizProgressPrefix = 'hafiz_progress_';
@@ -87,6 +100,7 @@ class AppState extends ChangeNotifier {
   LearningGoal? _learningGoal;
   int _placementLevel = 1;
   String? _learningRecommendation;
+  LearningSkillProfile? _learningSkillProfile;
   Map<String, KnowledgeState> _knowledgeStates = {};
   Map<String, HafizProgress> _hafizProgress = {};
   final Map<String, Future<String>> _lessonAttempts = {};
@@ -114,7 +128,123 @@ class AppState extends ChangeNotifier {
       (BackendService.allowsLocalAccountFallback &&
           (_user?.id.startsWith('local_') ?? false));
   String? get backendAuthToken => isBackendUser ? _backend?.authToken : null;
+  String? get lastEmailDelivery => _backend?.lastEmailDelivery;
   bool get soundEnabled => _soundEnabled;
+
+  Future<EmailActionResult> requestPasswordReset(String email) async {
+    final backend = _backend ??= await BackendService.create();
+    return backend.requestPasswordReset(email);
+  }
+
+  Future<void> resetPassword(String token, String newPassword) async {
+    final backend = _backend ??= await BackendService.create();
+    await backend.resetPassword(token: token, newPassword: newPassword);
+  }
+
+  Future<void> confirmEmailVerification(String token) async {
+    final backend = _backend ??= await BackendService.create();
+    await backend.confirmEmailVerification(token);
+  }
+
+  Future<EmailActionResult> requestEmailVerification(String email) async {
+    final backend = _backend ??= await BackendService.create();
+    return backend.requestEmailVerification(email);
+  }
+
+  Future<PortableImportResult> importPortableProgress(
+    Map<String, dynamic> snapshot,
+  ) async {
+    if (isBackendUser) {
+      throw StateError(
+        'Импорт в синхронизированный аккаунт требует серверной проверки.',
+      );
+    }
+    if (_user == null) await loginAsGuest();
+    final progress = snapshot['progress'];
+    if (progress is! Map) {
+      throw const FormatException('В файле отсутствует раздел прогресса.');
+    }
+    final knownLessonIds = _courses
+        .expand((course) => course.lessons)
+        .map((lesson) => lesson.id)
+        .toSet();
+    final currentCompleted = _courses
+        .expand((course) => course.lessons)
+        .where((lesson) => lesson.status == LessonStatus.completed)
+        .map((lesson) => lesson.id)
+        .toSet();
+    final importedCompleted =
+        (progress['completedLessonIds'] as List? ?? const [])
+            .whereType<String>()
+            .where(knownLessonIds.contains)
+            .toSet();
+    _applyCourseProgress({...currentCompleted, ...importedCompleted});
+
+    var knowledgeCount = 0;
+    for (final raw in (progress['knowledgeStates'] as List? ?? const [])) {
+      if (raw is! Map || !knownLessonIds.contains(raw['lessonId'])) continue;
+      try {
+        final imported = KnowledgeState.fromJson(
+          Map<String, dynamic>.from(raw),
+        );
+        final existing = _knowledgeStates[imported.id];
+        if (existing == null ||
+            imported.lastReviewedAt.isAfter(existing.lastReviewedAt)) {
+          _knowledgeStates[imported.id] = imported;
+        }
+        knowledgeCount++;
+      } catch (_) {
+        // A malformed item is skipped without invalidating the whole snapshot.
+      }
+    }
+
+    var hafizCount = 0;
+    for (final raw in (progress['hafizProgress'] as List? ?? const [])) {
+      if (raw is! Map) continue;
+      try {
+        final imported = HafizProgress.fromJson(Map<String, dynamic>.from(raw));
+        final existing = _hafizProgress[imported.id];
+        if (existing == null ||
+            imported.lastReviewedAt.isAfter(existing.lastReviewedAt)) {
+          _hafizProgress[imported.id] = imported;
+        }
+        hafizCount++;
+      } catch (_) {
+        // Keep valid items even when one record is damaged.
+      }
+    }
+
+    final learning = snapshot['learningProfile'];
+    if (learning is Map) {
+      _learningGoal =
+          LearningGoalDetails.fromStorage(learning['goal'] as String?) ??
+              _learningGoal;
+      _placementLevel =
+          ((learning['placementLevel'] as num?)?.toInt() ?? _placementLevel)
+              .clamp(1, 8)
+              .toInt();
+      final recommendation = learning['recommendation'];
+      if (recommendation is String && recommendation.trim().isNotEmpty) {
+        _learningRecommendation = recommendation.trim().length <= 500
+            ? recommendation.trim()
+            : recommendation.trim().substring(0, 500);
+      }
+      final scores = learning['skillScores'];
+      if (scores is Map) {
+        _learningSkillProfile = LearningSkillProfile.fromJson(
+          Map<String, dynamic>.from(scores),
+        );
+      }
+    }
+
+    await _cacheCurrentState();
+    notifyListeners();
+    return PortableImportResult(
+      completedLessons: importedCompleted.length,
+      knowledgeItems: knowledgeCount,
+      hafizItems: hafizCount,
+    );
+  }
 
   /// Текущий язык интерфейса. Экраны читают его через
   /// `context.watch<AppState>().locale`, поэтому смена перестраивает подписчиков.
@@ -143,6 +273,7 @@ class AppState extends ChangeNotifier {
   LearningGoal? get learningGoal => _learningGoal;
   int get placementLevel => _placementLevel;
   String? get learningRecommendation => _learningRecommendation;
+  LearningSkillProfile? get learningSkillProfile => _learningSkillProfile;
 
   /// Дневная цель пользователя (сколько уроков за день). Дефолт — 3.
   int get dailyGoal => _user?.dailyGoal ?? 3;
@@ -219,12 +350,7 @@ class AppState extends ChangeNotifier {
     // Приоритет 2 — следующий незакрытый урок. Сначала по цели пользователя,
     // затем любой доступный/в процессе. null только когда всё пройдено и нет
     // просроченных повторений — инвариант, на который опираются тесты и хоум.
-    final preferredType = switch (_learningGoal) {
-      LearningGoal.arabicReading => CourseType.arabic,
-      LearningGoal.islamBasics => CourseType.rules,
-      LearningGoal.pronunciation => CourseType.tajwid,
-      _ => CourseType.quran,
-    };
+    final preferredType = _preferredCourseType;
     final preferred = getCourse(preferredType)?.lessons;
     if (preferred != null) {
       for (final lesson in preferred) {
@@ -429,6 +555,9 @@ class AppState extends ChangeNotifier {
       _placementLevel = preferences.getInt(_placementLevelKey) ?? 1;
       _learningRecommendation =
           preferences.getString(_learningRecommendationKey);
+      _learningSkillProfile = _decodeLearningSkillProfile(
+        preferences.getString(_learningSkillProfileKey),
+      );
       _backend = await BackendService.create();
       final profile = await _backend!.restoreSession();
       if (profile != null) {
@@ -881,6 +1010,17 @@ class AppState extends ChangeNotifier {
 
   String _normalizeEmail(String email) => email.trim().toLowerCase();
 
+  LearningSkillProfile? _decodeLearningSkillProfile(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      return LearningSkillProfile.fromJson(
+        Map<String, dynamic>.from(jsonDecode(raw) as Map),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   String _localUserId(String email) =>
       'local_${base64Url.encode(utf8.encode(email)).replaceAll('=', '')}';
 
@@ -893,6 +1033,7 @@ class AppState extends ChangeNotifier {
   ) async {
     final goalKey = _scopedLearningKey(userId, 'goal');
     final recommendationKey = _scopedLearningKey(userId, 'recommendation');
+    final skillProfileKey = _scopedLearningKey(userId, 'skill_profile');
     if (_learningGoal == null) {
       await prefs.remove(goalKey);
     } else {
@@ -907,6 +1048,14 @@ class AppState extends ChangeNotifier {
     } else {
       await prefs.setString(recommendationKey, _learningRecommendation!);
     }
+    if (_learningSkillProfile == null) {
+      await prefs.remove(skillProfileKey);
+    } else {
+      await prefs.setString(
+        skillProfileKey,
+        jsonEncode(_learningSkillProfile!.toJson()),
+      );
+    }
   }
 
   Future<void> _restoreLearningProfileForUser(
@@ -917,9 +1066,11 @@ class AppState extends ChangeNotifier {
     final goalKey = _scopedLearningKey(userId, 'goal');
     final levelKey = _scopedLearningKey(userId, 'placement_level');
     final recommendationKey = _scopedLearningKey(userId, 'recommendation');
+    final skillProfileKey = _scopedLearningKey(userId, 'skill_profile');
     final hasScopedProfile = prefs.containsKey(goalKey) ||
         prefs.containsKey(levelKey) ||
-        prefs.containsKey(recommendationKey);
+        prefs.containsKey(recommendationKey) ||
+        prefs.containsKey(skillProfileKey);
     if (!hasScopedProfile && migrateGlobalProfile) {
       await _saveLearningProfileForUser(prefs, userId);
       return;
@@ -927,6 +1078,8 @@ class AppState extends ChangeNotifier {
     _learningGoal = LearningGoalDetails.fromStorage(prefs.getString(goalKey));
     _placementLevel = prefs.getInt(levelKey) ?? 1;
     _learningRecommendation = prefs.getString(recommendationKey);
+    _learningSkillProfile =
+        _decodeLearningSkillProfile(prefs.getString(skillProfileKey));
   }
 
   /// Удаляет учебные данные КОНКРЕТНОГО пользователя из SharedPreferences.
@@ -943,6 +1096,7 @@ class AppState extends ChangeNotifier {
     await prefs.remove(_scopedLearningKey(userId, 'goal'));
     await prefs.remove(_scopedLearningKey(userId, 'placement_level'));
     await prefs.remove(_scopedLearningKey(userId, 'recommendation'));
+    await prefs.remove(_scopedLearningKey(userId, 'skill_profile'));
   }
 
   /// Сбрасывает общий (не привязанный к id) учебный профиль: цель, уровень и
@@ -952,9 +1106,11 @@ class AppState extends ChangeNotifier {
     _learningGoal = null;
     _placementLevel = 1;
     _learningRecommendation = null;
+    _learningSkillProfile = null;
     await prefs.remove(_learningGoalKey);
     await prefs.remove(_placementLevelKey);
     await prefs.remove(_learningRecommendationKey);
+    await prefs.remove(_learningSkillProfileKey);
   }
 
   Future<void> logout() async {
@@ -1082,11 +1238,13 @@ class AppState extends ChangeNotifier {
     required LearningGoal goal,
     required int level,
     required String recommendation,
+    LearningSkillProfile? skillProfile,
   }) async {
     if (_user == null) await loginAsGuest();
     _learningGoal = goal;
     _placementLevel = level.clamp(1, 8).toInt();
     _learningRecommendation = recommendation;
+    _learningSkillProfile = skillProfile;
     _applyPlacementCourseStart();
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(_learningGoalKey, goal.storageValue);
@@ -1095,6 +1253,14 @@ class AppState extends ChangeNotifier {
       _learningRecommendationKey,
       recommendation,
     );
+    if (skillProfile == null) {
+      await preferences.remove(_learningSkillProfileKey);
+    } else {
+      await preferences.setString(
+        _learningSkillProfileKey,
+        jsonEncode(skillProfile.toJson()),
+      );
+    }
     if (_user?.id.startsWith('local_') == true) {
       await _saveLearningProfileForUser(preferences, _user!.id);
     }
@@ -1103,8 +1269,29 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  CourseType get _preferredCourseType {
+    if (_learningGoal == LearningGoal.islamBasics) return CourseType.rules;
+    if (_learningGoal == LearningGoal.pronunciation) return CourseType.tajwid;
+    final profile = _learningSkillProfile;
+    if (profile != null) {
+      final weakest = profile.weakestSkill;
+      final score = profile.scoreFor(weakest);
+      if (score < 60 &&
+          (weakest == LearningSkill.letters ||
+              weakest == LearningSkill.reading)) {
+        return CourseType.arabic;
+      }
+      if (score < 50 && weakest == LearningSkill.tajwid) {
+        return CourseType.tajwid;
+      }
+    }
+    return _learningGoal == LearningGoal.arabicReading
+        ? CourseType.arabic
+        : CourseType.quran;
+  }
+
   void _applyPlacementCourseStart() {
-    if (_learningGoal != LearningGoal.arabicReading) return;
+    if (_preferredCourseType != CourseType.arabic) return;
     final courseIndex = _courses.indexWhere(
       (course) => course.type == CourseType.arabic,
     );
@@ -1181,14 +1368,26 @@ class AppState extends ChangeNotifier {
     return true;
   }
 
-  Future<void> setReminderTime(int hour, int minute) async {
+  Future<bool> setReminderTime(int hour, int minute) async {
+    final previousHour = _reminderHour;
+    final previousMinute = _reminderMinute;
     _reminderHour = hour.clamp(0, 23).toInt();
     _reminderMinute = minute.clamp(0, 59).toInt();
+    try {
+      if (_notificationsEnabled) await _scheduleLearningReminders();
+    } catch (_) {
+      _reminderHour = previousHour;
+      _reminderMinute = previousMinute;
+      _error =
+          'Новое время не сохранено: уведомление не удалось запланировать.';
+      notifyListeners();
+      return false;
+    }
     final preferences = await SharedPreferences.getInstance();
     await preferences.setInt(_reminderHourKey, _reminderHour);
     await preferences.setInt(_reminderMinuteKey, _reminderMinute);
-    if (_notificationsEnabled) await _scheduleLearningReminders();
     notifyListeners();
+    return true;
   }
 
   Future<bool> setDailyAyahNotificationsEnabled(bool enabled) async {
@@ -1196,32 +1395,60 @@ class AppState extends ChangeNotifier {
       final permissionGranted = await setNotificationsEnabled(true);
       if (!permissionGranted) return false;
     }
+    final previous = _dailyAyahNotificationsEnabled;
     _dailyAyahNotificationsEnabled = enabled;
+    try {
+      if (_notificationsEnabled) await _scheduleLearningReminders();
+    } catch (_) {
+      _dailyAyahNotificationsEnabled = previous;
+      _error = 'Настройка аята дня не сохранена: планирование недоступно.';
+      notifyListeners();
+      return false;
+    }
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_dailyAyahNotificationsKey, enabled);
-    if (_notificationsEnabled) await _scheduleLearningReminders();
     notifyListeners();
     return true;
   }
 
-  Future<void> setDailyAyahTime(int hour, int minute) async {
+  Future<bool> setDailyAyahTime(int hour, int minute) async {
+    final previousHour = _dailyAyahHour;
+    final previousMinute = _dailyAyahMinute;
     _dailyAyahHour = hour.clamp(0, 23).toInt();
     _dailyAyahMinute = minute.clamp(0, 59).toInt();
+    try {
+      if (_notificationsEnabled && _dailyAyahNotificationsEnabled) {
+        await _scheduleLearningReminders();
+      }
+    } catch (_) {
+      _dailyAyahHour = previousHour;
+      _dailyAyahMinute = previousMinute;
+      _error = 'Новое время аята не сохранено: планирование недоступно.';
+      notifyListeners();
+      return false;
+    }
     final preferences = await SharedPreferences.getInstance();
     await preferences.setInt(_dailyAyahHourKey, _dailyAyahHour);
     await preferences.setInt(_dailyAyahMinuteKey, _dailyAyahMinute);
-    if (_notificationsEnabled && _dailyAyahNotificationsEnabled) {
-      await _scheduleLearningReminders();
-    }
     notifyListeners();
+    return true;
   }
 
-  Future<void> setLockScreenPreviewEnabled(bool enabled) async {
+  Future<bool> setLockScreenPreviewEnabled(bool enabled) async {
+    final previous = _lockScreenPreviewEnabled;
     _lockScreenPreviewEnabled = enabled;
+    try {
+      if (_notificationsEnabled) await _scheduleLearningReminders();
+    } catch (_) {
+      _lockScreenPreviewEnabled = previous;
+      _error = 'Настройка экрана блокировки не сохранена.';
+      notifyListeners();
+      return false;
+    }
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_lockScreenPreviewKey, enabled);
-    if (_notificationsEnabled) await _scheduleLearningReminders();
     notifyListeners();
+    return true;
   }
 
   Future<bool> setHomeWidgetEnabled(bool enabled) async {
@@ -1890,6 +2117,12 @@ class AppState extends ChangeNotifier {
             .toInt();
     _learningRecommendation =
         state['learningRecommendation'] as String? ?? _learningRecommendation;
+    final skillProfile = state['learningSkillProfile'];
+    if (skillProfile is Map) {
+      _learningSkillProfile = LearningSkillProfile.fromJson(
+        Map<String, dynamic>.from(skillProfile),
+      );
+    }
     _nativeLanguage = NativeLanguage.fromCode(
           state['nativeLanguage'] as String?,
         ) ??
@@ -1977,6 +2210,7 @@ class AppState extends ChangeNotifier {
       'learningGoal': _learningGoal?.storageValue,
       'placementLevel': _placementLevel,
       'learningRecommendation': _learningRecommendation,
+      'learningSkillProfile': _learningSkillProfile?.toJson(),
       'nativeLanguage': _nativeLanguage?.code,
       'soundEnabled': _soundEnabled,
     };
@@ -2019,6 +2253,12 @@ class AppState extends ChangeNotifier {
       await preferences.setString(
         _learningRecommendationKey,
         _learningRecommendation!,
+      );
+    }
+    if (_learningSkillProfile != null) {
+      await preferences.setString(
+        _learningSkillProfileKey,
+        jsonEncode(_learningSkillProfile!.toJson()),
       );
     }
     if (_nativeLanguage != null) {

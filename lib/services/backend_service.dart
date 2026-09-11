@@ -35,6 +35,15 @@ class LessonCompletionResult {
   });
 }
 
+class EmailActionResult {
+  final bool accepted;
+  final String delivery;
+
+  const EmailActionResult({required this.accepted, required this.delivery});
+
+  bool get canDeliver => delivery == 'provider_configured';
+}
+
 class BackendException implements Exception {
   final int statusCode;
   final String code;
@@ -54,6 +63,7 @@ class BackendService {
   final FlutterSecureStorage _secureStorage;
   final bool _secureStorageAvailable;
   String? _token;
+  String? _lastEmailDelivery;
 
   BackendService._(
     this._client,
@@ -134,6 +144,7 @@ class BackendService {
 
   bool get isAuthenticated => _token?.isNotEmpty == true;
   String? get authToken => _token;
+  String? get lastEmailDelivery => _lastEmailDelivery;
 
   Future<BackendProfile?> restoreSession() async {
     if (!isAuthenticated) return null;
@@ -151,12 +162,13 @@ class BackendService {
     required String email,
     required String password,
   }) async {
-    await _request(
+    final response = await _request(
       'POST',
       '/api/auth/register',
       authenticated: false,
       body: {'name': name, 'email': email, 'password': password},
     );
+    _lastEmailDelivery = response['delivery'] as String?;
     return login(email: email, password: password);
   }
 
@@ -208,6 +220,53 @@ class BackendService {
       },
     );
     await _storeToken(response['token'] as String?);
+  }
+
+  Future<EmailActionResult> requestPasswordReset(String email) async {
+    final response = await _request(
+      'POST',
+      '/api/auth/password/forgot',
+      authenticated: false,
+      body: {'email': email.trim()},
+    );
+    return EmailActionResult(
+      accepted: response['accepted'] == true,
+      delivery: response['delivery'] as String? ?? 'unknown',
+    );
+  }
+
+  Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    await _request(
+      'POST',
+      '/api/auth/password/reset',
+      authenticated: false,
+      body: {'token': token, 'newPassword': newPassword},
+    );
+  }
+
+  Future<EmailActionResult> requestEmailVerification(String email) async {
+    final response = await _request(
+      'POST',
+      '/api/auth/verification/request',
+      authenticated: false,
+      body: {'email': email.trim()},
+    );
+    return EmailActionResult(
+      accepted: response['accepted'] == true,
+      delivery: response['delivery'] as String? ?? 'unknown',
+    );
+  }
+
+  Future<void> confirmEmailVerification(String token) async {
+    await _request(
+      'POST',
+      '/api/auth/verification/confirm',
+      authenticated: false,
+      body: {'token': token},
+    );
   }
 
   Future<BackendProfile> syncLearningData(
@@ -609,6 +668,10 @@ String readableBackendError(Object error) {
         return 'Новый пароль должен отличаться от текущего.';
       case 'password_changed':
         return 'Пароль уже изменён в другой сессии. Войди снова.';
+      case 'invalid_or_expired_token':
+        return 'Ссылка недействительна или уже использована. Запроси новую.';
+      case 'email_not_verified':
+        return 'Подтверди email по ссылке из письма, затем войди снова.';
       case 'not_enough_energy':
         return 'Нужно 20 энергии, чтобы восстановить жизнь.';
       case 'hearts_full':

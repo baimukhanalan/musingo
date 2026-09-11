@@ -21,7 +21,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   // Экран 1a (интро) показывается до диагностики. Кнопка «Начать» запускает
   // существующий поток: выбор цели → вопросы → результат → completePlacement.
   bool _started = false;
-  String _lang = 'RU';
 
   LearningGoal? _goal;
   int _step = 0;
@@ -33,124 +32,124 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   List<_PlacementQuestion> _localizedQuestions(AppState state) => [
         _PlacementQuestion(
           state.tr(
-            ru: 'Насколько хорошо ты узнаешь арабские буквы?',
-            kk: 'Араб әріптерін қаншалықты жақсы танисың?',
-            en: 'How well do you recognize Arabic letters?',
-          ),
-          [
-            state.tr(
-                ru: 'Пока не узнаю', kk: 'Әзірге танымаймын', en: 'Not yet'),
-            state.tr(
-                ru: 'Знаю некоторые',
-                kk: 'Кейбірін білемін',
-                en: 'I know some'),
-            state.tr(
-                ru: 'Узнаю почти все',
-                kk: 'Барлығын дерлік танимын',
-                en: 'I recognize almost all'),
-          ],
+              ru: 'Найди арабскую букву ح',
+              kk: 'ح араб әрпін тап',
+              en: 'Find the Arabic letter ح'),
+          const ['ه', 'خ', 'ح'],
+          skill: LearningSkill.letters,
+          optionScores: const [25, 40, 100],
         ),
         _PlacementQuestion(
           state.tr(
-            ru: 'Как ты читаешь арабский текст?',
-            kk: 'Араб мәтінін қалай оқисың?',
-            en: 'How do you read Arabic text?',
-          ),
+              ru: 'Как читается بَ ?',
+              kk: 'بَ қалай оқылады?',
+              en: 'How is بَ read?'),
           [
-            state.tr(
-                ru: 'Пока не читаю', kk: 'Әзірге оқымаймын', en: 'Not yet'),
-            state.tr(
-                ru: 'По слогам и медленно',
-                kk: 'Буындап, баяу',
-                en: 'Syllable by syllable, slowly'),
-            state.tr(
-                ru: 'Читаю самостоятельно',
-                kk: 'Өз бетімше оқимын',
-                en: 'I read on my own'),
+            state.tr(ru: 'би', kk: 'би', en: 'bi'),
+            state.tr(ru: 'ба', kk: 'ба', en: 'ba'),
+            state.tr(ru: 'бу', kk: 'бу', en: 'bu'),
           ],
+          skill: LearningSkill.reading,
+          optionScores: const [20, 100, 20],
         ),
         _PlacementQuestion(
           state.tr(
-            ru: 'Насколько уверенно ты знаешь Аль-Фатиху?',
-            kk: 'Әл-Фатиханы қаншалықты сенімді білесің?',
-            en: 'How confidently do you know Al-Fatiha?',
-          ),
-          [
-            state.tr(
-                ru: 'Еще не учил',
-                kk: 'Әлі жаттаған жоқпын',
-                en: "Haven't learned it yet"),
-            state.tr(
-                ru: 'Знаю частично',
-                kk: 'Ішінара білемін',
-                en: 'I know it partially'),
-            state.tr(
-                ru: 'Знаю полностью',
-                kk: 'Толық білемін',
-                en: 'I know it fully'),
-          ],
+              ru: 'Продолжи: قُلْ هُوَ ٱللَّهُ ...',
+              kk: 'Жалғастыр: قُلْ هُوَ ٱللَّهُ ...',
+              en: 'Continue: قُلْ هُوَ ٱللَّهُ ...'),
+          const ['ٱلْفَلَقِ', 'أَحَدٌ', 'ٱلصَّمَدُ'],
+          skill: LearningSkill.surahRecall,
+          optionScores: const [0, 100, 45],
         ),
         _PlacementQuestion(
           state.tr(
-            ru: 'Понимаешь ли ты смысл знакомых аятов?',
-            kk: 'Таныс аяттардың мағынасын түсінесің бе?',
-            en: 'Do you understand the meaning of familiar verses?',
+            ru: 'Что означает «بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ»?',
+            kk: '«بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ» нені білдіреді?',
+            en: 'What does “بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ” mean?',
           ),
           [
-            state.tr(ru: 'Пока нет', kk: 'Әзірге жоқ', en: 'Not yet'),
             state.tr(
-                ru: 'Некоторые слова', kk: 'Кейбір сөздерді', en: 'Some words'),
+                ru: 'Хвала Аллаху, Господу миров',
+                kk: 'Әлемдердің Раббысы Аллаға мадақ',
+                en: 'Praise belongs to Allah, Lord of the worlds'),
             state.tr(
-                ru: 'Понимаю общий смысл',
-                kk: 'Жалпы мағынасын түсінемін',
-                en: 'I understand the general meaning'),
+                ru: 'Веди нас прямым путём',
+                kk: 'Бізді тура жолға сала гөр',
+                en: 'Guide us to the straight path'),
+            state.tr(
+                ru: 'Во имя Аллаха, Милостивого, Милосердного',
+                kk: 'Аса қамқор, ерекше мейірімді Алланың атымен',
+                en: 'In the name of Allah, the Most Compassionate, the Most Merciful'),
           ],
+          skill: LearningSkill.meaning,
+          optionScores: const [25, 15, 100],
         ),
         _PlacementQuestion(
           state.tr(
-            ru: 'Как ты оцениваешь свое произношение?',
-            kk: 'Айтылымыңды қалай бағалайсың?',
-            en: 'How would you rate your pronunciation?',
-          ),
+              ru: 'Что показывает знак шадда ّ ?',
+              kk: 'Шадда ّ белгісі нені көрсетеді?',
+              en: 'What does the shadda sign ّ indicate?'),
           [
             state.tr(
-                ru: 'Нужна помощь с основами',
-                kk: 'Негіздерге көмек керек',
-                en: 'I need help with the basics'),
+                ru: 'Остановку в конце слова',
+                kk: 'Сөз соңындағы тоқтауды',
+                en: 'A stop at the end of a word'),
             state.tr(
-                ru: 'Есть отдельные ошибки',
-                kk: 'Жекелеген қателер бар',
-                en: 'I have some mistakes'),
+                ru: 'Удвоение согласного звука',
+                kk: 'Дауыссыз дыбыстың қосарлануын',
+                en: 'Doubling a consonant sound'),
             state.tr(
-                ru: 'Хочу улучшать таджвид',
-                kk: 'Тәжуидті жетілдіргім келеді',
-                en: 'I want to improve my tajwid'),
+                ru: 'Только долгую гласную',
+                kk: 'Тек созылыңқы дауыстыны',
+                en: 'Only a long vowel'),
           ],
+          skill: LearningSkill.tajwid,
+          optionScores: const [15, 100, 35],
         ),
       ];
 
   bool get _choosingGoal => _step == 0;
   bool get _showingResult => _step > _questionCount;
   int get _questionIndex => _step - 1;
-  int get _score => _answers.fold(0, (sum, value) => sum + value);
-  int get _level => (_score / 3).floor().clamp(0, 7) + 1;
+  LearningSkillProfile get _skillProfile {
+    final questions = _localizedQuestions(context.read<AppState>());
+    return LearningSkillProfile({
+      for (var index = 0; index < _answers.length; index++)
+        questions[index].skill: questions[index].scoreFor(_answers[index]),
+    });
+  }
+
+  int get _level => _skillProfile.placementLevel;
 
   String get _recommendation {
     final state = context.read<AppState>();
     final goal = _goal;
-    if (_score <= 2 || (goal == LearningGoal.arabicReading && _level <= 2)) {
+    final profile = _skillProfile;
+    final weakest = profile.weakestSkill;
+    if ((weakest == LearningSkill.letters &&
+            profile.scoreFor(LearningSkill.letters) < 60) ||
+        (goal == LearningGoal.arabicReading && profile.overallScore < 45)) {
       return state.tr(
         ru: 'Начни с арабских букв и их звучания. Первый урок поможет увидеть различия и сразу потренировать слух.',
         kk: 'Араб әріптері мен олардың дыбысталуынан баста. Бірінші сабақ айырмашылықтарды көруге және есту қабілетін бірден жаттықтыруға көмектеседі.',
         en: 'Start with the Arabic letters and their sounds. The first lesson helps you see the differences and train your ear right away.',
       );
     }
-    if (goal == LearningGoal.arabicReading) {
+    if ((weakest == LearningSkill.reading &&
+            profile.scoreFor(LearningSkill.reading) < 60) ||
+        goal == LearningGoal.arabicReading) {
       if (_level <= 4) {
         return state.tr(
           ru: 'Ты узнаёшь буквы. Начни со сборки слогов и чтения коротких сочетаний, не повторяя весь алфавит с нуля.',
           kk: 'Әріптерді танисың. Әліпбиді қайта бастамай, буындар мен қысқа тіркестерді оқудан баста.',
           en: 'You recognize the letters. Start with syllables and short combinations instead of repeating the whole alphabet.',
+        );
+      }
+      if (_level >= 7) {
+        return state.tr(
+          ru: 'У тебя уверенная база. Пропускаем алфавит: начнем с коранических слов и чтения аятов.',
+          kk: 'Негізің сенімді. Әліпбиді өткізіп, Құран сөздері мен аяттарды оқудан бастаймыз.',
+          en: 'You have a strong foundation. We will skip the alphabet and begin with Quranic words and verse reading.',
         );
       }
       return state.tr(
@@ -166,14 +165,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         en: 'Start with a short introductory lesson about Islam and the Quran. After it, the path will add comprehension questions.',
       );
     }
-    if (goal == LearningGoal.pronunciation || _answers.last == 0) {
+    if (weakest == LearningSkill.tajwid || goal == LearningGoal.pronunciation) {
       return state.tr(
         ru: 'Сначала укрепим произношение знакомых фраз: образец, повторение и разбор вероятных ошибок.',
         kk: 'Алдымен таныс сөз тіркестерінің айтылуын бекітеміз: үлгі, қайталау және ықтимал қателерді талдау.',
         en: "First we'll strengthen the pronunciation of familiar phrases: a model, repetition and a review of likely mistakes.",
       );
     }
-    if (goal == LearningGoal.quranMeaning) {
+    if (weakest == LearningSkill.meaning || goal == LearningGoal.quranMeaning) {
       return state.tr(
         ru: 'Начни с Аль-Фатихи: разберем смысл по частям и свяжем перевод с арабскими словами.',
         kk: 'Әл-Фатихадан баста: мағынасын бөліктеп талдап, аударманы араб сөздерімен байланыстырамыз.',
@@ -200,6 +199,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       goal: _goal!,
       level: _level,
       recommendation: _recommendation,
+      skillProfile: _skillProfile,
     );
     if (!mounted) return;
     final firstLesson = state.recommendedLesson;
@@ -232,16 +232,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget _buildIntro(AppState state) {
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 16, 4),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(20, 12, 16, 4),
           child: Row(
             children: [
-              const _Wordmark(),
-              const Spacer(),
-              LanguagePills(
-                selected: _lang,
-                onChanged: (lang) => setState(() => _lang = lang),
-              ),
+              _Wordmark(),
+              Spacer(),
+              LanguagePills(),
             ],
           ),
         ),
@@ -408,6 +405,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ? _ResultStep(
                         key: const ValueKey('result'),
                         level: _level,
+                        skillProfile: _skillProfile,
                         recommendation: _recommendation,
                         saving: _saving,
                         onContinue: _finish,
@@ -605,7 +603,7 @@ class _GoalStep extends StatelessWidget {
           final goal = entry.value;
           return _ChoiceTile(
             icon: icons[entry.key],
-            label: goal.title,
+            label: goal.titleFor(state.locale),
             selected: selected == goal,
             onTap: () => onSelected(goal),
           );
@@ -680,6 +678,7 @@ class _QuestionStep extends StatelessWidget {
 
 class _ResultStep extends StatelessWidget {
   final int level;
+  final LearningSkillProfile skillProfile;
   final String recommendation;
   final bool saving;
   final VoidCallback onContinue;
@@ -687,6 +686,7 @@ class _ResultStep extends StatelessWidget {
   const _ResultStep({
     super.key,
     required this.level,
+    required this.skillProfile,
     required this.recommendation,
     required this.saving,
     required this.onContinue,
@@ -715,6 +715,8 @@ class _ResultStep extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 18),
+        _SkillProfileCard(profile: skillProfile),
+        const SizedBox(height: 14),
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
@@ -787,6 +789,88 @@ class _ResultStep extends StatelessWidget {
   }
 }
 
+class _SkillProfileCard extends StatelessWidget {
+  final LearningSkillProfile profile;
+
+  const _SkillProfileCard({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    String label(LearningSkill skill) => switch (skill) {
+          LearningSkill.letters =>
+            state.tr(ru: 'Буквы', kk: 'Әріптер', en: 'Letters'),
+          LearningSkill.reading =>
+            state.tr(ru: 'Чтение', kk: 'Оқу', en: 'Reading'),
+          LearningSkill.surahRecall =>
+            state.tr(ru: 'Суры', kk: 'Сүрелер', en: 'Surahs'),
+          LearningSkill.meaning =>
+            state.tr(ru: 'Смысл', kk: 'Мағына', en: 'Meaning'),
+          LearningSkill.tajwid =>
+            state.tr(ru: 'Таджвид', kk: 'Тәжуид', en: 'Tajwid'),
+        };
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          for (final skill in LearningSkill.values) ...[
+            Row(
+              children: [
+                SizedBox(
+                  width: 76,
+                  child: Text(
+                    label(skill),
+                    style: const TextStyle(
+                      fontFamily: 'Nunito',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(5),
+                    child: LinearProgressIndicator(
+                      minHeight: 8,
+                      value: profile.scoreFor(skill) / 100,
+                      backgroundColor: AppColors.border,
+                      color: skill == profile.weakestSkill
+                          ? AppColors.coral
+                          : AppColors.sky,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: 34,
+                  child: Text(
+                    '${profile.scoreFor(skill)}%',
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      fontFamily: 'Nunito',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (skill != LearningSkill.values.last) const SizedBox(height: 10),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _ChoiceTile extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -848,6 +932,15 @@ class _ChoiceTile extends StatelessWidget {
 class _PlacementQuestion {
   final String title;
   final List<String> options;
+  final LearningSkill skill;
+  final List<int> optionScores;
 
-  const _PlacementQuestion(this.title, this.options);
+  const _PlacementQuestion(
+    this.title,
+    this.options, {
+    required this.skill,
+    required this.optionScores,
+  });
+
+  int scoreFor(int optionIndex) => optionScores[optionIndex].clamp(0, 100);
 }

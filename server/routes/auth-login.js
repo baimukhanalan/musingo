@@ -5,6 +5,7 @@ import { sql, ensureSchema } from '../lib/db.js';
 import { ApiError, clientIp, method, readJson, text, withApi } from '../lib/http.js';
 import { clearLoginFailures, consumeLoginAttempt } from '../lib/login-rate-limit.js';
 import { profile } from '../lib/progress.js';
+import { emailProviderStatus } from '../lib/email.js';
 
 // Per-ip cap catches password spraying across many emails from one address
 // while still tolerating a shared NAT. Overridable for busy egress IPs.
@@ -35,7 +36,7 @@ export default withApi(async (request, response) => {
 
   const rows = await sql`
     SELECT u.id, u.email, u.display_name, u.password_salt, u.password_hash,
-           u.session_version, p.document
+           u.email_verified_at, u.session_version, p.document
     FROM muslingo_users u
     JOIN muslingo_progress p ON p.user_id = u.id
     WHERE u.email = ${email}
@@ -48,11 +49,19 @@ export default withApi(async (request, response) => {
   if (!(await verifyLoginPassword(user, password))) {
     throw new ApiError(401, 'invalid_credentials', 'Invalid email or password.');
   }
+  if (!user.email_verified_at && emailProviderStatus() === 'provider_configured') {
+    throw new ApiError(403, 'email_not_verified', 'Email verification is required.');
+  }
   // Only the pair key is cleared on success; the ip counter is left to expire so
   // spray protection cannot be reset by an attacker who owns one valid account.
   await clearLoginFailures(pairKey);
   return response.status(200).json({
     token: await issueToken(user.id, user.session_version),
-    profile: profile(user.document, user),
+    profile: {
+      ...profile(user.document, user),
+      emailVerified: Boolean(user.email_verified_at),
+    },
+    emailVerified: Boolean(user.email_verified_at),
+    verificationRequired: !user.email_verified_at,
   });
 });
