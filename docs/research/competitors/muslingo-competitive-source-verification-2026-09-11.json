@@ -1,0 +1,13 @@
+{
+  "verificationDate": "2026-09-11",
+  "checked": 456,
+  "method": "HTTP HEAD with redirect following; GET fallback when HEAD returns 405; stable prior same-day results are preserved on rerun.",
+  "counts": {
+    "200": 412,
+    "403": 37,
+    "404": 3,
+    "405": 1,
+    "500": 1,
+    "network_error": 2
+  }
+}
