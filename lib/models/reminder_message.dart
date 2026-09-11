@@ -190,7 +190,7 @@ const _ruPools = _LocalePools(
     ),
     ReminderMessage(
       '{streak} дней — это характер',
-      'Такую привычку строят единицы. Кот гордится тобой, {name}.',
+      'Такую привычку строят единицы. Айн гордится тобой, {name}.',
     ),
     ReminderMessage(
       'Стрик на {streak} дней — красота',
@@ -253,19 +253,19 @@ const _ruPools = _LocalePools(
   // (f) Реплики от лица кота-маскота — всегда обращаемся по имени.
   mascot: <ReminderMessage>[
     ReminderMessage(
-      'Кот скучает по тебе, {name}',
+      'Айн скучает по тебе, {name}',
       'Я разложил урок и жду. Заглянешь на шесть минут?',
     ),
     ReminderMessage(
       'Мяу! Пора заниматься, {name}',
-      'Кот уже сидит у экрана и машет лапой. Один короткий урок — и он счастлив.',
+      'Айн уже сидит у экрана и машет лапой. Один короткий урок — и он счастлив.',
     ),
     ReminderMessage(
-      '{name}, кот приготовил урок',
+      '{name}, Айн приготовил урок',
       'Тёплый коврик, свежий аят и ты. Всё готово для короткого занятия.',
     ),
     ReminderMessage(
-      'Кот верит в тебя, {name}',
+      'Айн верит в тебя, {name}',
       'Даже самый маленький шаг сегодня — это уже победа. Сделаем его вместе?',
     ),
   ],
@@ -301,7 +301,7 @@ const _kkPools = _LocalePools(
     ),
     ReminderMessage(
       '{streak} күн — бұл мінез',
-      'Мұндай әдетті сирек адам қалыптастырады. Мысық сені мақтан тұтады, {name}.',
+      'Мұндай әдетті сирек адам қалыптастырады. Айн сені мақтан тұтады, {name}.',
     ),
     ReminderMessage(
       '{streak} күндік серия — керемет',
@@ -360,19 +360,19 @@ const _kkPools = _LocalePools(
   ],
   mascot: <ReminderMessage>[
     ReminderMessage(
-      'Мысық сені сағынды, {name}',
+      'Айн сені сағынды, {name}',
       'Сабақты жайып қойып, күтіп отырмын. Алты минутқа кіресің бе?',
     ),
     ReminderMessage(
       'Мияу! Оқитын кез, {name}',
-      'Мысық экран алдында отыр, тәпелтегін бұлғап тұр. Бір қысқа сабақ — ол бақытты.',
+      'Айн экран алдында отыр, тәпелтегін бұлғап тұр. Бір қысқа сабақ — ол бақытты.',
     ),
     ReminderMessage(
-      '{name}, мысық сабақ дайындады',
+      '{name}, Айн сабақ дайындады',
       'Жылы кілем, жаңа аят және сен. Қысқа сабаққа бәрі дайын.',
     ),
     ReminderMessage(
-      'Мысық саған сенеді, {name}',
+      'Айн саған сенеді, {name}',
       'Бүгінгі ең кішкентай қадам да — жеңіс. Оны бірге жасайық па?',
     ),
   ],
@@ -408,7 +408,7 @@ const _enPools = _LocalePools(
     ),
     ReminderMessage(
       '{streak} days takes character',
-      'Few people build a habit like this. The cat is proud of you, {name}.',
+      'Few people build a habit like this. Ayn is proud of you, {name}.',
     ),
     ReminderMessage(
       'A {streak}-day streak, beautiful',
@@ -467,19 +467,19 @@ const _enPools = _LocalePools(
   ],
   mascot: <ReminderMessage>[
     ReminderMessage(
-      'The cat misses you, {name}',
+      'Ayn misses you, {name}',
       'I have laid out the lesson and I am waiting. Coming in for six minutes?',
     ),
     ReminderMessage(
       'Meow! Time to study, {name}',
-      'The cat is at the screen waving a paw. One short lesson and it is happy.',
+      'Ayn is at the screen waving a paw. One short lesson and he is happy.',
     ),
     ReminderMessage(
-      '{name}, the cat prepared a lesson',
+      '{name}, Ayn prepared a lesson',
       'A warm mat, a fresh verse, and you. Everything is ready for a short session.',
     ),
     ReminderMessage(
-      'The cat believes in you, {name}',
+      'Ayn believes in you, {name}',
       'Even the smallest step today is already a win. Shall we take it together?',
     ),
   ],

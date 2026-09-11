@@ -33,6 +33,7 @@ void main() {
     test('имя подставляется в реплики маскота', () {
       final messages = buildReminders(name: 'Амина', streak: 3, now: _now);
       expect(_mentions(messages, 'Амина'), isTrue);
+      expect(_mentions(messages, 'Айн'), isTrue);
       // Плейсхолдеры не должны оставаться сырыми.
       expect(_mentions(messages, '{name}'), isFalse);
       expect(_mentions(messages, '{streak}'), isFalse);

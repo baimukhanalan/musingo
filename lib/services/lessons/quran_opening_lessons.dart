@@ -44,7 +44,7 @@ final List<Lesson> quranOpeningLessons = [
         quranGlobalAyahNumber: 1,
         arabicText: 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
         transliteration: 'Бисмилляхи р-рахмани р-рахим',
-        russianText: 'Повтори за котом эту фразу',
+        russianText: 'Повтори за Айном эту фразу',
       ),
       // Проверка перевода: дистракторы — реальные переводы других аятов.
       LessonStep(

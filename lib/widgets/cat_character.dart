@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+const String muslingoMascotName = 'Айн';
+
 enum CatMood {
   idle,
   success,
@@ -150,21 +152,21 @@ class _CatCharacterState extends State<CatCharacter>
   String _labelForMood(CatMood mood) {
     switch (mood) {
       case CatMood.idle:
-        return 'Кот Muslingo спокойно ждёт';
+        return '$muslingoMascotName, кот Muslingo, спокойно ждёт';
       case CatMood.success:
-        return 'Кот Muslingo поздравляет с правильным ответом';
+        return '$muslingoMascotName поздравляет с правильным ответом';
       case CatMood.error:
-        return 'Кот Muslingo поддерживает после ошибки';
+        return '$muslingoMascotName поддерживает после ошибки';
       case CatMood.greet:
-        return 'Кот Muslingo приветствует';
+        return '$muslingoMascotName приветствует';
       case CatMood.support:
-        return 'Кот Muslingo обдумывает подсказку';
+        return '$muslingoMascotName обдумывает подсказку';
       case CatMood.praise:
-        return 'Кот Muslingo объясняет новый материал';
+        return '$muslingoMascotName объясняет новый материал';
       case CatMood.learning:
-        return 'Кот Muslingo читает и учится';
+        return '$muslingoMascotName читает и учится';
       case CatMood.prayer:
-        return 'Кот Muslingo молится';
+        return '$muslingoMascotName молится';
     }
   }
 }
