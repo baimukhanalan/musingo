@@ -148,8 +148,10 @@ test('non-object request bodies remain untouched for legacy validation', () => {
 });
 
 test('API wrapper preserves the existing unavailable response contract', async () => {
-  const previous = process.env.GROQ_API_KEY;
+  const previousGroq = process.env.GROQ_API_KEY;
+  const previousOpenAI = process.env.OPENAI_API_KEY;
   delete process.env.GROQ_API_KEY;
+  delete process.env.OPENAI_API_KEY;
   const response = {
     statusCode: null,
     body: null,
@@ -171,7 +173,9 @@ test('API wrapper preserves the existing unavailable response contract', async (
     assert.equal(response.body.error, 'coach_unavailable');
     assert.equal(response.body.dailyPlan, undefined);
   } finally {
-    if (previous === undefined) delete process.env.GROQ_API_KEY;
-    else process.env.GROQ_API_KEY = previous;
+    if (previousGroq === undefined) delete process.env.GROQ_API_KEY;
+    else process.env.GROQ_API_KEY = previousGroq;
+    if (previousOpenAI === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousOpenAI;
   }
 });
