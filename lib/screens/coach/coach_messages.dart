@@ -92,11 +92,13 @@ class _CoachHeader extends StatelessWidget {
 class _MessageView extends StatelessWidget {
   final CoachMessage message;
   final VoidCallback? onAction;
+  final VoidCallback? onReport;
   final ValueChanged<String> onSource;
 
   const _MessageView({
     required this.message,
     required this.onAction,
+    required this.onReport,
     required this.onSource,
   });
 
@@ -156,6 +158,33 @@ class _MessageView extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (!isUser && !isGreeting) ...[
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.auto_awesome_outlined,
+                          size: 14,
+                          color: AppColors.textGrey,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          state.tr(
+                            ru: 'AI-объяснение',
+                            kk: 'AI түсіндірмесі',
+                            en: 'AI-generated explanation',
+                          ),
+                          style: const TextStyle(
+                            fontFamily: 'Nunito',
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textGrey,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 7),
+                  ],
                   Text(
                     message.text,
                     style: TextStyle(
@@ -207,6 +236,19 @@ class _MessageView extends StatelessWidget {
                           ),
                         ),
                       ),
+                    ),
+                  ],
+                  if (onReport != null) ...[
+                    const SizedBox(height: 6),
+                    TextButton.icon(
+                      key: ValueKey('coach-report-${message.id}'),
+                      onPressed: onReport,
+                      icon: const Icon(Icons.flag_outlined, size: 17),
+                      label: Text(state.tr(
+                        ru: 'Сообщить о неточности',
+                        kk: 'Дәлсіздік туралы хабарлау',
+                        en: 'Report an inaccuracy',
+                      )),
                     ),
                   ],
                 ],

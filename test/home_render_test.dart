@@ -327,6 +327,27 @@ void main() {
     expect(find.byKey(const Key('coach-back-button')), findsOneWidget);
   });
 
+  testWidgets('ответ Coach помечен как AI и его можно отправить на проверку',
+      (tester) async {
+    final state = await guestState(tester);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AppState>.value(
+        value: state,
+        child: const MaterialApp(home: CoachScreen()),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Что повторить сегодня?'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('AI-объяснение'), findsOneWidget);
+    expect(find.text('Сообщить о неточности'), findsOneWidget);
+
+    await teardown(tester);
+  });
+
   testWidgets('Экран «Друзья» рендерится (гость → предложение аккаунта)',
       (tester) async {
     final state = await guestState(tester);

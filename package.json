@@ -7,6 +7,8 @@
     "node": "24.x"
   },
   "scripts": {
+    "content:build": "node tool/build_curriculum_570.mjs",
+    "pretest:api": "node tool/build_curriculum_570.mjs",
     "test:api": "node --test server_test/*.test.js"
   },
   "dependencies": {

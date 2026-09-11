@@ -83,8 +83,17 @@ class _CoachScreenState extends State<CoachScreen> {
   }
 
   CoachContext _contextFrom(AppState state) {
+    final now = DateTime.now();
+    final due = state.knowledgeStates.where((item) => item.isDue(now)).toList()
+      ..sort((a, b) => a.nextReviewAt.compareTo(b.nextReviewAt));
     final weak = state.knowledgeStates.where((item) => item.isWeak).toList()
-      ..sort((a, b) => a.strength.compareTo(b.strength));
+      ..sort((a, b) {
+        final dueOrder = (b.isDue(now) ? 1 : 0).compareTo(a.isDue(now) ? 1 : 0);
+        if (dueOrder != 0) return dueOrder;
+        final lapseOrder = b.lapses.compareTo(a.lapses);
+        if (lapseOrder != 0) return lapseOrder;
+        return a.strength.compareTo(b.strength);
+      });
     final lesson = state.recommendedLesson;
     final quran = state.getCourse(CourseType.quran);
     final arabic = state.getCourse(CourseType.arabic);
@@ -96,6 +105,12 @@ class _CoachScreenState extends State<CoachScreen> {
         .where((lesson) => lesson.status == LessonStatus.completed)
         .map((lesson) => lesson.title)
         .take(12)
+        .toList(growable: false);
+    final knownSurahs = (quran?.lessons ?? const <Lesson>[])
+        .where((lesson) => lesson.status == LessonStatus.completed)
+        .map((lesson) => lesson.title.replaceFirst('Закрепление: ', ''))
+        .toSet()
+        .take(50)
         .toList(growable: false);
     final memoryAccuracy = state.knowledgeStates.isEmpty
         ? 0.0
@@ -111,7 +126,10 @@ class _CoachScreenState extends State<CoachScreen> {
       recommendedLessonId: lesson?.id,
       recommendedLessonTitle: lesson?.title,
       dueReviewCount: state.dueReviewCount,
+      dueKnowledge: due,
       weakKnowledge: weak,
+      nextReviewAt: state.nextReviewAt,
+      recommendedCourse: lesson?.course.name,
       xp: state.user?.xp ?? 0,
       streak: state.user?.streak ?? 0,
       totalLessons: state.user?.totalLessons ?? 0,
@@ -126,6 +144,15 @@ class _CoachScreenState extends State<CoachScreen> {
       tajwidCompleted: tajwid?.completedLessons ?? 0,
       memoryAccuracy: memoryAccuracy,
       completedLessonTitles: completedTitles,
+      knownSurahs: knownSurahs,
+      availableMinutes: 6,
+      hearts: state.user?.hearts ?? 5,
+      energy: state.user?.energy ?? 0,
+      lessonAttempts: state.user?.lessonAttempts ?? 0,
+      speechAttempts: state.user?.speechAttempts ?? 0,
+      learnedAyats: state.user?.learnedAyats ?? 0,
+      learnedDuas: state.user?.learnedDuas ?? 0,
+      lastStudyAt: state.user?.lastStudyDate,
     );
   }
 
@@ -172,15 +199,42 @@ class _CoachScreenState extends State<CoachScreen> {
       _messages.add(CoachMessage(
         id: 'coach_${DateTime.now().microsecondsSinceEpoch}',
         role: CoachRole.coach,
-        text: response.text,
+        text: _displayText(response, state),
         createdAt: DateTime.now(),
         sources: response.sources,
+        reasoning: response.reasoning,
+        dailyPlan: response.dailyPlan,
+        nextAction: response.nextAction,
         actionType: response.actionType,
         actionLabel: response.actionLabel,
         lessonId: response.lessonId,
       ));
     });
     _scrollToBottom();
+  }
+
+  String _displayText(CoachResponse response, AppState state) {
+    final sections = <String>[response.text];
+    final reasoning = response.reasoning?.trim();
+    if (reasoning?.isNotEmpty == true) {
+      sections.add(
+          '${state.tr(ru: 'Почему так', kk: 'Неліктен', en: 'Why this')}\n$reasoning');
+    }
+    if (response.dailyPlan.isNotEmpty) {
+      final items = response.dailyPlan.asMap().entries.map((entry) {
+        final item = entry.value;
+        final detail = item.detail.trim().isEmpty ? '' : ': ${item.detail}';
+        return '${entry.key + 1}. ${item.title}$detail';
+      }).join('\n');
+      sections.add(
+          '${state.tr(ru: 'План на сегодня', kk: 'Бүгінгі жоспар', en: 'Today\'s plan')}\n$items');
+    }
+    final nextAction = response.nextAction?.trim();
+    if (nextAction?.isNotEmpty == true) {
+      sections.add(
+          '${state.tr(ru: 'Следующий шаг', kk: 'Келесі қадам', en: 'Next step')}\n$nextAction');
+    }
+    return sections.join('\n\n');
   }
 
   Future<BackendService> _ensureBackend() async =>
@@ -318,6 +372,10 @@ class _CoachScreenState extends State<CoachScreen> {
                       onAction: message.actionType == null
                           ? null
                           : () => _runAction(message),
+                      onReport: message.role == CoachRole.coach &&
+                              message.id != 'greeting'
+                          ? () => _reportAnswer(message)
+                          : null,
                       onSource: _openUrl,
                     );
                   },
@@ -340,6 +398,19 @@ class _CoachScreenState extends State<CoachScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _reportAnswer(CoachMessage message) async {
+    final uri = Uri(
+      scheme: 'mailto',
+      path: 'support@muslingo.app',
+      queryParameters: {
+        'subject': 'Muslingo Coach: content review request',
+        'body':
+            'Answer ID: ${message.id}\n\nDescribe the possible inaccuracy:\n',
+      },
+    );
+    await _openUrl(uri.toString());
   }
 }
 

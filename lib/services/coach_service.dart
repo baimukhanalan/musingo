@@ -1,4 +1,5 @@
 import '../models/coach.dart';
+import '../models/knowledge_state.dart';
 import '../models/learning_profile.dart';
 import 'backend_service.dart';
 
@@ -87,7 +88,7 @@ class CoachService {
         final remote = await backend.askCoach(
           question: question,
           locale: locale,
-          context: _contextPayload(
+          context: contextPayload(
             context,
             xp: xp,
             streak: streak,
@@ -95,7 +96,7 @@ class CoachService {
           ),
           catalog: catalog,
         );
-        if (remote != null) return remote;
+        if (remote != null) return _withPersonalization(remote, context);
       } catch (_) {
         // Любой сбой backend — тихий откат на локальный движок ниже.
       }
@@ -104,7 +105,7 @@ class CoachService {
   }
 
   /// Плоский JSON-снимок прогресса для серверного коуча.
-  Map<String, dynamic> _contextPayload(
+  Map<String, dynamic> contextPayload(
     CoachContext context, {
     required int xp,
     required int streak,
@@ -118,7 +119,9 @@ class CoachService {
       'recommendation': context.recommendation,
       'recommendedLessonId': context.recommendedLessonId,
       'recommendedLessonTitle': context.recommendedLessonTitle,
+      'recommendedCourse': context.recommendedCourse,
       'dueReviewCount': context.dueReviewCount,
+      'nextReviewAt': context.nextReviewAt?.toIso8601String(),
       'xp': context.xp == 0 ? xp : context.xp,
       'streak': context.streak == 0 ? streak : context.streak,
       'totalLessons': context.totalLessons,
@@ -132,11 +135,25 @@ class CoachService {
       'basicsCompleted': context.basicsCompleted,
       'tajwidCompleted': context.tajwidCompleted,
       'accuracy': (context.memoryAccuracy * 100).round(),
+      'recentAccuracy': (context.memoryAccuracy * 100).round(),
+      'availableMinutes': context.availableMinutes,
+      'knownSurahs': context.knownSurahs,
       'completedLessonIds': completedLessonIds,
       'completedLessonTitles': context.completedLessonTitles,
+      'hearts': context.hearts,
+      'energy': context.energy,
+      'lessonAttempts': context.lessonAttempts,
+      'speechAttempts': context.speechAttempts,
+      'learnedAyats': context.learnedAyats,
+      'learnedDuas': context.learnedDuas,
+      'lastStudyAt': context.lastStudyAt?.toIso8601String(),
       'weakAreas': context.weakKnowledge
           .take(8)
-          .map((knowledge) => knowledge.label)
+          .map((knowledge) => '${knowledge.label} '
+              '[${knowledge.kind.name}; '
+              'strength=${(knowledge.strength * 100).round()}%; '
+              'lapses=${knowledge.lapses}; '
+              'due=${knowledge.isDue()}]')
           .toList(growable: false),
       'weakKnowledge': context.weakKnowledge
           .take(8)
@@ -149,10 +166,39 @@ class CoachService {
                 'lapses': k.lapses,
               })
           .toList(growable: false),
+      'dueKnowledge': context.dueKnowledge
+          .take(8)
+          .map((k) => {
+                'id': k.id,
+                'lessonId': k.lessonId,
+                'label': k.label,
+                'kind': k.kind.name,
+                'strength': k.strength,
+                'repetitions': k.repetitions,
+                'lapses': k.lapses,
+                'nextReviewAt': k.nextReviewAt.toIso8601String(),
+              })
+          .toList(growable: false),
+      'dueItems': context.dueKnowledge
+          .take(8)
+          .map((k) => {
+                'id': k.id,
+                'lessonId': k.lessonId,
+                'label': k.label,
+                'kind': k.kind.name,
+                'strength': k.strength,
+                'lapses': k.lapses,
+                'dueAt': k.nextReviewAt.toIso8601String(),
+              })
+          .toList(growable: false),
     };
   }
 
   CoachResponse answer(String question, CoachContext context) {
+    return _withPersonalization(_answerCore(question, context), context);
+  }
+
+  CoachResponse _answerCore(String question, CoachContext context) {
     final normalized = question.trim().toLowerCase();
     if (normalized.isEmpty) {
       return const CoachResponse(
@@ -424,6 +470,146 @@ class CoachService {
           'вопрос. Я могу помочь выбрать урок, разобрать Аль-Фатиху, найти '
           'слабые места, объяснить тему терпения или составить план на 7 дней.',
     );
+  }
+
+  CoachResponse _withPersonalization(
+    CoachResponse response,
+    CoachContext context,
+  ) {
+    if (response.actionType == CoachActionType.contactSpecialist ||
+        (response.actionType != CoachActionType.startLesson &&
+            !response.sources.contains(_progressSource))) {
+      return response;
+    }
+
+    final plan = response.dailyPlan.isEmpty
+        ? _buildDailyPlan(context)
+        : response.dailyPlan;
+    final reasoning = response.reasoning?.trim().isNotEmpty == true
+        ? response.reasoning
+        : _buildReasoning(context);
+    final nextAction = response.nextAction?.trim().isNotEmpty == true
+        ? response.nextAction
+        : _buildNextAction(context);
+    final sources = [...response.sources];
+    if (!sources.any((source) => source.title == _progressSource.title)) {
+      sources.add(_progressSource);
+    }
+    return CoachResponse(
+      text: response.text,
+      sources: sources,
+      reasoning: reasoning,
+      dailyPlan: plan,
+      nextAction: nextAction,
+      actionType: response.actionType,
+      actionLabel: response.actionLabel,
+      lessonId: response.lessonId,
+    );
+  }
+
+  List<CoachPlanItem> _buildDailyPlan(CoachContext context) {
+    final plan = <CoachPlanItem>[];
+    final priority = _priorityKnowledge(context);
+    if (context.dueReviewCount > 0) {
+      final first = priority.isEmpty ? null : priority.first;
+      plan.add(CoachPlanItem(
+        title: 'Повторение памяти',
+        detail: first == null
+            ? '${context.dueReviewCount} элементов по расписанию'
+            : '${first.label}: сила ${(first.strength * 100).round()}%, '
+                'ошибок ${first.lapses}',
+        lessonId: first?.lessonId ?? context.recommendedLessonId,
+        isReview: true,
+      ));
+    }
+
+    final weak = priority.where((item) => item.isWeak).firstOrNull;
+    if (weak != null && !plan.any((item) => item.lessonId == weak.lessonId)) {
+      plan.add(CoachPlanItem(
+        title: 'Укрепить слабое место',
+        detail: '${weak.label}: короткая практика без подсказки',
+        lessonId: weak.lessonId,
+        isReview: true,
+      ));
+    } else if (context.weakKnowledge.isEmpty && context.skillProfile != null) {
+      final skill = context.skillProfile!.weakestSkill;
+      plan.add(CoachPlanItem(
+        title: 'Фокус диагностики',
+        detail: '${skill.title}: ${context.skillProfile!.scoreFor(skill)}%',
+        lessonId: context.recommendedLessonId,
+      ));
+    }
+
+    if (context.recommendedLessonTitle?.trim().isNotEmpty == true &&
+        !plan.any((item) => item.lessonId == context.recommendedLessonId)) {
+      plan.add(CoachPlanItem(
+        title: 'Следующий урок',
+        detail: context.recommendedLessonTitle!,
+        lessonId: context.recommendedLessonId,
+      ));
+    }
+    if (context.hafizDueCount > 0 && plan.length < 3) {
+      plan.add(CoachPlanItem(
+        title: 'Hafiz-повторение',
+        detail: '${context.hafizDueCount} аятов ожидают проверки',
+        isReview: true,
+      ));
+    }
+    return plan.take(3).toList(growable: false);
+  }
+
+  String _buildReasoning(CoachContext context) {
+    final priority = _priorityKnowledge(context);
+    if (context.dueReviewCount > 0) {
+      final detail = priority.isEmpty
+          ? ''
+          : ' Самый срочный элемент: «${priority.first.label}» '
+              'с силой ${(priority.first.strength * 100).round()}%.';
+      return 'Сначала идут ${context.dueReviewCount} просроченных повторений, '
+          'чтобы не закрепить забывание.$detail';
+    }
+    if (context.weakKnowledge.isNotEmpty) {
+      final weak = priority.first;
+      return 'Приоритет выбран по слабому элементу «${weak.label}»: '
+          'сила ${(weak.strength * 100).round()}%, ошибок ${weak.lapses}.';
+    }
+    final profile = context.skillProfile;
+    if (profile != null) {
+      final skill = profile.weakestSkill;
+      return 'Пока мало данных Memory Engine, поэтому фокус взят из '
+          'диагностики: ${skill.title.toLowerCase()} '
+          '${profile.scoreFor(skill)}%.';
+    }
+    return 'Просроченных повторений нет, поэтому маршрут продолжает следующий '
+        'доступный урок уровня ${context.placementLevel}.';
+  }
+
+  String _buildNextAction(CoachContext context) {
+    final remaining = (context.dailyGoal - context.todayProgress).clamp(0, 999);
+    final lesson = context.recommendedLessonTitle ?? 'рекомендованный урок';
+    if (remaining == 0) {
+      return 'Дневная цель выполнена. Открой «$lesson» только для закрепления.';
+    }
+    return 'Открой «$lesson». После него останется '
+        '${(remaining - 1).clamp(0, 999)} из $remaining шагов дневной цели.';
+  }
+
+  List<KnowledgeState> _priorityKnowledge(CoachContext context) {
+    final byId = <String, KnowledgeState>{
+      for (final item in context.weakKnowledge) item.id: item,
+      for (final item in context.dueKnowledge) item.id: item,
+    };
+    final items = byId.values.toList();
+    items.sort((a, b) {
+      final dueOrder = (b.isDue() ? 1 : 0).compareTo(a.isDue() ? 1 : 0);
+      if (dueOrder != 0) return dueOrder;
+      final lapseOrder = b.lapses.compareTo(a.lapses);
+      if (lapseOrder != 0) return lapseOrder;
+      final strengthOrder = a.strength.compareTo(b.strength);
+      if (strengthOrder != 0) return strengthOrder;
+      return a.nextReviewAt.compareTo(b.nextReviewAt);
+    });
+    return items;
   }
 
   bool _needsSpecialist(String text) => _containsAny(text, [

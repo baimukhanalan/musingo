@@ -12,12 +12,14 @@ import '../models/speech_evaluation.dart';
 import '../services/app_state.dart';
 import '../services/backend_service.dart';
 import '../services/haptics_service.dart';
+import '../services/lesson_video_catalog.dart';
 import '../services/quran_audio_player.dart';
 import '../services/speech_evaluation_service.dart';
 import '../utils/colors.dart';
 import '../utils/theme.dart';
 import '../widgets/cat_character.dart';
 import '../widgets/custom_button.dart';
+import '../widgets/lesson_video_card.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
 import '../widgets/premium_card.dart';
@@ -69,11 +71,13 @@ class LessonScreen extends StatefulWidget {
   final Lesson lesson;
   final Future<SpeechEvaluationResult> Function(LessonStep step)?
       speechSimulator;
+  final LessonVideoCatalog videoCatalog;
 
   const LessonScreen({
     super.key,
     required this.lesson,
     @visibleForTesting this.speechSimulator,
+    this.videoCatalog = const LessonVideoCatalog(),
   });
 
   @override
@@ -307,6 +311,7 @@ class _LessonScreenState extends State<LessonScreen> {
     final hearts = state.user?.hearts ?? 5;
     final isPremium = state.user?.isPremium ?? false;
     final compactHeight = MediaQuery.sizeOf(context).height < 900;
+    final lessonVideos = widget.videoCatalog.forLesson(widget.lesson.id);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -344,6 +349,15 @@ class _LessonScreenState extends State<LessonScreen> {
                         totalSteps: _activeSteps.length,
                         reviewingMistakes: _reviewingMistakes,
                       ),
+                      if (!_reviewingMistakes &&
+                          _stepIndex == 0 &&
+                          lessonVideos.isNotEmpty) ...[
+                        SizedBox(height: compactHeight ? 10 : 16),
+                        for (final video in lessonVideos) ...[
+                          LessonVideoCard(video: video),
+                          const SizedBox(height: 12),
+                        ],
+                      ],
                       SizedBox(height: compactHeight ? 10 : 16),
                       TweenAnimationBuilder<double>(
                         key: ValueKey(

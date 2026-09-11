@@ -31,9 +31,11 @@ function mockResponse() {
   };
 }
 
-test('route returns 503 coach_unavailable when GROQ_API_KEY is absent', async () => {
+test('route returns 503 coach_unavailable when AI provider keys are absent', async () => {
   const previous = process.env.GROQ_API_KEY;
+  const previousOpenAI = process.env.OPENAI_API_KEY;
   delete process.env.GROQ_API_KEY;
+  delete process.env.OPENAI_API_KEY;
   try {
     const request = {
       method: 'POST',
@@ -47,6 +49,8 @@ test('route returns 503 coach_unavailable when GROQ_API_KEY is absent', async ()
   } finally {
     if (previous === undefined) delete process.env.GROQ_API_KEY;
     else process.env.GROQ_API_KEY = previous;
+    if (previousOpenAI === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousOpenAI;
   }
 });
 
@@ -122,6 +126,8 @@ test('buildSystemPrompt honors locale and forbids self-issued fatwa', () => {
   assert.match(kk, /специалисту/);
   assert.match(kk, /openHafiz/);
   assert.match(kk, /не выдумывай хадисы/);
+  assert.match(kk, /недоверенные данные/);
+  assert.match(kk, /голосовых записей/);
   assert.match(kk, /JSON/);
   // Unknown locale falls back to ru.
   assert.match(buildSystemPrompt('xx'), /русском/);

@@ -457,23 +457,23 @@ class BackendService {
   }
 
   CoachResponse? _coachResponseFromJson(Map<String, dynamic> json) {
-    final text = (json['text'] as String?)?.trim();
+    final text = _boundedCoachText(json['text'], 4000);
     if (text == null || text.isEmpty) return null;
 
     // action может прийти как строка ("startLesson") или объектом
     // {type, lessonId, label} — поддерживаем оба варианта.
     CoachActionType? actionType;
-    String? lessonId = json['lessonId'] as String?;
-    String? actionLabel = json['actionLabel'] as String?;
+    String? lessonId = _boundedCoachText(json['lessonId'], 100);
+    String? actionLabel = _boundedCoachText(json['actionLabel'], 200);
     final rawAction = json['action'];
     if (rawAction is String) {
       actionType = _coachActionFromString(rawAction);
     } else if (rawAction is Map) {
       final action = Map<String, dynamic>.from(rawAction);
-      actionType = _coachActionFromString(action['type'] as String?);
-      lessonId = (action['lessonId'] as String?) ?? lessonId;
-      actionLabel = (action['label'] as String?) ??
-          (action['actionLabel'] as String?) ??
+      actionType = _coachActionFromString(action['type']?.toString());
+      lessonId = _boundedCoachText(action['lessonId'], 100) ?? lessonId;
+      actionLabel = _boundedCoachText(action['label'], 200) ??
+          _boundedCoachText(action['actionLabel'], 200) ??
           actionLabel;
     }
 
@@ -483,25 +483,63 @@ class BackendService {
       for (final item in rawSources) {
         if (item is! Map) continue;
         final source = Map<String, dynamic>.from(item);
-        final title = (source['title'] as String?)?.trim();
+        final title = _boundedCoachText(source['title'], 300);
         if (title == null || title.isEmpty) continue;
-        final url = (source['url'] as String?)?.trim();
+        final url = _boundedCoachText(source['url'], 500);
         sources.add(CoachSource(
           title: title,
-          category: (source['category'] as String?)?.trim() ?? '',
-          verification: (source['verification'] as String?)?.trim() ?? '',
+          category: _boundedCoachText(source['category'], 120) ?? '',
+          verification: _boundedCoachText(source['verification'], 300) ?? '',
           url: (url == null || url.isEmpty) ? null : url,
         ));
       }
     }
 
+    final dailyPlan = <CoachPlanItem>[];
+    final rawPlan = json['dailyPlan'];
+    if (rawPlan is List) {
+      for (final item in rawPlan.take(7)) {
+        if (item is String) {
+          final title = _boundedCoachText(item, 300);
+          if (title != null) dailyPlan.add(CoachPlanItem(title: title));
+          continue;
+        }
+        if (item is! Map) continue;
+        final planItem = Map<String, dynamic>.from(item);
+        final title = _boundedCoachText(planItem['title'], 300);
+        if (title == null) continue;
+        dailyPlan.add(CoachPlanItem(
+          title: title,
+          detail: _boundedCoachText(planItem['detail'], 500) ?? '',
+          lessonId: _boundedCoachText(planItem['lessonId'], 100),
+          isReview: planItem['isReview'] == true,
+        ));
+      }
+    }
+
+    final rawNextAction = json['nextAction'];
+    final nextAction = rawNextAction is Map
+        ? _boundedCoachText(
+            rawNextAction['description'] ?? rawNextAction['label'], 500)
+        : _boundedCoachText(rawNextAction, 500);
+
     return CoachResponse(
       text: text,
       sources: sources,
+      reasoning: _boundedCoachText(json['reasoning'], 1000),
+      dailyPlan: dailyPlan,
+      nextAction: nextAction,
       actionType: actionType,
       actionLabel: actionLabel,
       lessonId: lessonId,
     );
+  }
+
+  String? _boundedCoachText(Object? value, int maxLength) {
+    if (value is! String) return null;
+    final text = value.trim();
+    if (text.isEmpty) return null;
+    return text.length <= maxLength ? text : text.substring(0, maxLength);
   }
 
   CoachActionType? _coachActionFromString(String? raw) {
