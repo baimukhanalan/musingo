@@ -30,12 +30,19 @@ void main() {
   }
 
   Future<void> pumpLesson(
-      WidgetTester tester, AppState state, Lesson lesson) async {
+    WidgetTester tester,
+    AppState state,
+    Lesson lesson, {
+    Future<void> Function(LessonStep step)? audioPlaybackSimulator,
+  }) async {
     await tester.pumpWidget(
       ChangeNotifierProvider<AppState>.value(
         value: state,
         child: MaterialApp(
-          home: LessonScreen(lesson: lesson),
+          home: LessonScreen(
+            lesson: lesson,
+            audioPlaybackSimulator: audioPlaybackSimulator,
+          ),
           onGenerateRoute: (settings) => MaterialPageRoute<void>(
             settings: settings,
             builder: (_) => const SizedBox.shrink(),
@@ -160,7 +167,12 @@ void main() {
   testWidgets('listenChoice: кнопка воспроизведения и варианты, гейт по выбору',
       (tester) async {
     final state = await guestState(tester);
-    await pumpLesson(tester, state, lessonWith(listenStep));
+    await pumpLesson(
+      tester,
+      state,
+      lessonWith(listenStep),
+      audioPlaybackSimulator: (_) async {},
+    );
 
     expect(tester.takeException(), isNull);
     expect(find.text('Прослушай аят и выбери его перевод'), findsOneWidget);

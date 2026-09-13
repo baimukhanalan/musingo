@@ -5,10 +5,12 @@ import 'package:just_audio/just_audio.dart';
 class QuranAudioPlaybackState {
   final bool playing;
   final bool completed;
+  final Object? error;
 
   const QuranAudioPlaybackState({
     required this.playing,
     this.completed = false,
+    this.error,
   });
 }
 

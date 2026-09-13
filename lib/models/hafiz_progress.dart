@@ -88,18 +88,63 @@ class HafizProgress {
     );
   }
 
-  factory HafizProgress.fromJson(Map<String, dynamic> json) => HafizProgress(
-        surahNumber: (json['surahNumber'] as num).toInt(),
-        surahName: json['surahName'] as String? ?? 'Сура',
-        verseNumber: (json['verseNumber'] as num).toInt(),
-        globalVerseNumber: (json['globalVerseNumber'] as num).toInt(),
-        attempts: (json['attempts'] as num?)?.toInt() ?? 1,
-        repetitions: (json['repetitions'] as num?)?.toInt() ?? 0,
-        bestScore: (json['bestScore'] as num?)?.toInt() ?? 0,
-        mastery: (json['mastery'] as num?)?.toDouble() ?? 0,
-        lastReviewedAt: DateTime.parse(json['lastReviewedAt'] as String),
-        nextReviewAt: DateTime.parse(json['nextReviewAt'] as String),
-      );
+  factory HafizProgress.fromJson(Map<String, dynamic> json) {
+    int integer(String key,
+        {required int min, required int max, int? fallback}) {
+      final raw = json[key];
+      if (raw == null && fallback != null) return fallback;
+      if (raw is! num || !raw.isFinite || raw % 1 != 0) {
+        throw FormatException('Некорректное поле Hafiz: $key.');
+      }
+      final value = raw.toInt();
+      if (value < min || value > max) {
+        throw FormatException('Поле Hafiz $key вне допустимого диапазона.');
+      }
+      return value;
+    }
+
+    final rawName = json['surahName'];
+    if (rawName != null && rawName is! String) {
+      throw const FormatException('Некорректное название суры.');
+    }
+    final surahName = (rawName as String? ?? 'Сура').trim();
+    if (surahName.isEmpty || surahName.length > 200) {
+      throw const FormatException('Некорректное название суры.');
+    }
+    final rawMastery = json['mastery'] ?? 0;
+    if (rawMastery is! num ||
+        !rawMastery.isFinite ||
+        rawMastery < 0 ||
+        rawMastery > 1) {
+      throw const FormatException('Некорректный уровень освоения Hafiz.');
+    }
+    final rawLastReviewedAt = json['lastReviewedAt'];
+    final rawNextReviewAt = json['nextReviewAt'];
+    if (rawLastReviewedAt is! String || rawNextReviewAt is! String) {
+      throw const FormatException('Некорректные даты Hafiz.');
+    }
+    final lastReviewedAt = DateTime.tryParse(rawLastReviewedAt);
+    final nextReviewAt = DateTime.tryParse(rawNextReviewAt);
+    if (lastReviewedAt == null ||
+        nextReviewAt == null ||
+        nextReviewAt.isBefore(lastReviewedAt)) {
+      throw const FormatException('Некорректные даты Hafiz.');
+    }
+
+    return HafizProgress(
+      surahNumber: integer('surahNumber', min: 1, max: 114),
+      surahName: surahName,
+      // 286 — максимальное число аятов в одной суре.
+      verseNumber: integer('verseNumber', min: 1, max: 286),
+      globalVerseNumber: integer('globalVerseNumber', min: 1, max: 6236),
+      attempts: integer('attempts', min: 1, max: 1000000, fallback: 1),
+      repetitions: integer('repetitions', min: 0, max: 1000000, fallback: 0),
+      bestScore: integer('bestScore', min: 0, max: 100, fallback: 0),
+      mastery: rawMastery.toDouble(),
+      lastReviewedAt: lastReviewedAt,
+      nextReviewAt: nextReviewAt,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'surahNumber': surahNumber,

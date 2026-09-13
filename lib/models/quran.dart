@@ -70,3 +70,17 @@ class QuranChapter {
     required this.fullAudioUrl,
   });
 }
+
+class QuranSearchMatch {
+  final int surahNumber;
+  final int ayahNumber;
+  final String surahName;
+  final String text;
+
+  const QuranSearchMatch({
+    required this.surahNumber,
+    required this.ayahNumber,
+    required this.surahName,
+    required this.text,
+  });
+}

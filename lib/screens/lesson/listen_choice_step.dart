@@ -3,6 +3,7 @@ part of '../lesson_screen.dart';
 class _ListenChoiceStep extends StatefulWidget {
   final LessonStep step;
   final bool simulatePlayback;
+  final Future<void> Function(LessonStep step)? playbackSimulator;
   final int? selectedAnswer;
   final bool answered;
   final void Function(int)? onSelect;
@@ -11,6 +12,7 @@ class _ListenChoiceStep extends StatefulWidget {
     super.key,
     required this.step,
     required this.simulatePlayback,
+    this.playbackSimulator,
     required this.selectedAnswer,
     required this.answered,
     this.onSelect,
@@ -21,8 +23,9 @@ class _ListenChoiceStep extends StatefulWidget {
 }
 
 class _ListenChoiceStepState extends State<_ListenChoiceStep> {
-  late final FlutterTts _tts;
+  late final SpeechSynthesizer _tts;
   late final QuranAudioPlayer _audioPlayer;
+  StreamSubscription<QuranAudioPlaybackState>? _audioSubscription;
   bool _playing = false;
   int _plays = 0;
 
@@ -30,7 +33,12 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
   void initState() {
     super.initState();
     _audioPlayer = QuranAudioPlayer();
-    _tts = FlutterTts();
+    _audioSubscription = _audioPlayer.playbackStateStream.listen((playback) {
+      if (!mounted) return;
+      setState(() => _playing = playback.playing);
+      if (playback.error != null) _showUnavailable(null);
+    });
+    _tts = SpeechSynthesizer();
     _tts.setCompletionHandler(() {
       if (mounted) setState(() => _playing = false);
     });
@@ -41,13 +49,32 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
 
   @override
   void dispose() {
-    if (!widget.simulatePlayback) _tts.stop();
+    if (!widget.simulatePlayback && widget.playbackSimulator == null) {
+      _tts.stop();
+    }
+    _audioSubscription?.cancel();
     _audioPlayer.dispose();
     super.dispose();
   }
 
   Future<void> _play() async {
     HapticsService.tap();
+    if (widget.playbackSimulator != null) {
+      try {
+        await widget.playbackSimulator!(widget.step);
+        if (mounted) {
+          setState(() {
+            _playing = false;
+            _plays++;
+          });
+        }
+      } catch (_) {
+        if (!mounted) return;
+        setState(() => _playing = false);
+        _showUnavailable(null);
+      }
+      return;
+    }
     if (widget.simulatePlayback) {
       setState(() {
         _playing = false;
@@ -64,7 +91,6 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
 
     setState(() {
       _playing = true;
-      _plays++;
     });
 
     final ayahNumber = widget.step.quranGlobalAyahNumber;
@@ -73,7 +99,11 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
       for (final source in quranAudioSources(ayahNumber)) {
         try {
           await _audioPlayer.playUrl(source);
-          if (mounted) setState(() => _playing = false);
+          if (mounted) {
+            setState(() {
+              _plays++;
+            });
+          }
           return;
         } catch (error) {
           lastError = error;
@@ -97,8 +127,14 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
       await _tts.setPitch(1.0);
       await _tts.setVolume(1.0);
       await _tts.awaitSpeakCompletion(true);
-      await _tts.speak(text);
-      if (mounted) setState(() => _playing = false);
+      final result = await _tts.speak(text);
+      if (result != 1) throw StateError('Text-to-speech did not start.');
+      if (mounted) {
+        setState(() {
+          _playing = false;
+          _plays++;
+        });
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() => _playing = false);

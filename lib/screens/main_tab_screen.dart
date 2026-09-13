@@ -239,12 +239,16 @@ class _HafizHubScreenState extends State<_HafizHubScreen> {
 
   Future<void> _openHafiz(HafizProgress progress) async {
     if (_openingId != null) return;
+    final localeCode = context.read<AppState>().locale.code;
     setState(() => _openingId = progress.id);
     try {
       final chapters = await _repository.fetchChapters();
       final summary =
           chapters.firstWhere((c) => c.number == progress.surahNumber);
-      final chapter = await _repository.fetchChapter(summary);
+      final chapter = await _repository.fetchChapter(
+        summary,
+        localeCode: localeCode,
+      );
       final verse = chapter.verses
           .firstWhere((v) => v.numberInChapter == progress.verseNumber);
       if (!mounted) return;

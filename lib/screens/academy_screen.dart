@@ -342,17 +342,19 @@ class _MetaChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(30),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 13, color: AppColors.navy),
           const SizedBox(width: 5),
-          Text(
-            label,
-            style: const TextStyle(
-              fontFamily: 'Nunito',
-              fontSize: 11.5,
-              fontWeight: FontWeight.w800,
-              color: AppColors.navy,
+          Flexible(
+            child: Text(
+              label,
+              softWrap: true,
+              style: const TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+                color: AppColors.navy,
+              ),
             ),
           ),
         ],

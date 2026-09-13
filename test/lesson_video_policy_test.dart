@@ -63,6 +63,34 @@ void main() {
 
     expect(catalog.forLesson('lesson-1'), [valid]);
     expect(catalog.forLesson('lesson-2'), [other]);
+    expect(
+      catalog.forLesson('lesson-1', languageCode: 'kk'),
+      isEmpty,
+      reason: 'A learner should not see a video in another explanation track.',
+    );
+  });
+
+  test('curated catalog maps only reviewed optional videos to real lessons',
+      () {
+    expect(
+      LessonVideoCatalog.curated.forLesson('a1', languageCode: 'ru'),
+      hasLength(1),
+    );
+    expect(
+      LessonVideoCatalog.curated.forLesson('a1', languageCode: 'kk'),
+      hasLength(1),
+    );
+    expect(
+      LessonVideoCatalog.curated.forLesson('a2', languageCode: 'kk'),
+      isEmpty,
+    );
+    expect(
+      LessonVideoCatalog.curated.entries.every(
+        (video) =>
+            policy.validate(video, now: DateTime.utc(2026, 9, 12)).canDisplay,
+      ),
+      isTrue,
+    );
   });
 
   test('CMS JSON round-trip retains mandatory governance metadata', () {

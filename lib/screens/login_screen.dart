@@ -33,6 +33,9 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _passVisible = false;
   bool _needsVerification = false;
 
+  String _t({required String ru, required String kk, required String en}) =>
+      context.read<AppState>().tr(ru: ru, kk: kk, en: en);
+
   @override
   void initState() {
     super.initState();
@@ -54,8 +57,12 @@ class _LoginScreenState extends State<LoginScreen> {
         !_emailCtrl.text.contains('@') ||
         _passCtrl.text.length < 8) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Укажи имя, корректный email и пароль от 8 символов'),
+        SnackBar(
+            content: Text(_t(
+              ru: 'Укажи имя, корректный email и пароль от 8 символов',
+              kk: 'Атыңды, дұрыс email және кемінде 8 таңбалы құпиясөзді енгіз',
+              en: 'Enter your name, a valid email, and an 8-character password',
+            )),
             backgroundColor: AppColors.error),
       );
       return;
@@ -74,8 +81,16 @@ class _LoginScreenState extends State<LoginScreen> {
       if (delivery != null) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(delivery == 'provider_configured'
-              ? 'Аккаунт создан. Если письмо доставлено, подтверди email по одноразовой ссылке.'
-              : 'Аккаунт создан. Отправка письма подтверждения пока не настроена.'),
+              ? _t(
+                  ru: 'Аккаунт создан. Если письмо доставлено, подтверди email по одноразовой ссылке.',
+                  kk: 'Аккаунт құрылды. Хат келсе, бір реттік сілтеме арқылы email-ды раста.',
+                  en: 'Account created. If the email arrives, confirm it using the one-time link.',
+                )
+              : _t(
+                  ru: 'Аккаунт создан. Отправка письма подтверждения пока не настроена.',
+                  kk: 'Аккаунт құрылды. Растау хатын жіберу әзірге бапталмаған.',
+                  en: 'Account created. Verification email delivery is not configured yet.',
+                )),
           backgroundColor: delivery == 'provider_configured'
               ? AppColors.navy
               : AppColors.gold,
@@ -94,7 +109,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     if (!_emailCtrl.text.contains('@') || _passCtrl.text.isEmpty) {
-      _showError('Введи email и пароль');
+      _showError(_t(
+        ru: 'Введи email и пароль',
+        kk: 'Email мен құпиясөзді енгіз',
+        en: 'Enter your email and password',
+      ));
       return;
     }
     setState(() => _isLoading = true);
@@ -125,7 +144,12 @@ class _LoginScreenState extends State<LoginScreen> {
   void _showError(String? message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message ?? 'Не удалось войти'),
+        content: Text(message ??
+            _t(
+              ru: 'Не удалось войти',
+              kk: 'Кіру мүмкін болмады',
+              en: 'Could not sign in',
+            )),
         backgroundColor: AppColors.error,
       ),
     );
@@ -133,6 +157,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
     return Scaffold(
       backgroundColor: AppColors.background,
       body: PremiumBackground(
@@ -147,7 +172,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 const CatCharacter(mood: CatMood.greet, size: 132),
                 const SizedBox(height: 18),
                 Text(
-                  _showRegister ? 'Создай аккаунт' : 'Добро пожаловать!',
+                  _showRegister
+                      ? state.tr(
+                          ru: 'Создай аккаунт',
+                          kk: 'Аккаунт құр',
+                          en: 'Create an account')
+                      : state.tr(
+                          ru: 'Добро пожаловать!',
+                          kk: 'Қош келдің!',
+                          en: 'Welcome!'),
                   style: const TextStyle(
                     fontFamily: 'Nunito',
                     fontSize: 30,
@@ -160,8 +193,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 6),
                 Text(
                   _showRegister
-                      ? 'Начни учиться прямо сейчас'
-                      : 'Коран и ислам шаг за шагом',
+                      ? state.tr(
+                          ru: 'Начни учиться прямо сейчас',
+                          kk: 'Оқуды дәл қазір баста',
+                          en: 'Start learning right now')
+                      : state.tr(
+                          ru: 'Коран и ислам шаг за шагом',
+                          kk: 'Құран мен исламды қадамдап үйрен',
+                          en: 'Quran and Islam, step by step'),
                   style: const TextStyle(
                     fontFamily: 'Nunito',
                     fontSize: 15,
@@ -181,87 +220,73 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  List<Widget> _authForm() => [
-        if (_showRegister) ...[
-          _Field(
-              controller: _nameCtrl,
-              label: 'Твоё имя',
-              icon: Icons.person_outline),
-          const SizedBox(height: 12),
-        ],
+  List<Widget> _authForm() {
+    final state = context.watch<AppState>();
+    return [
+      if (_showRegister) ...[
         _Field(
-            controller: _emailCtrl,
-            label: 'Email',
-            icon: Icons.email_outlined,
-            type: TextInputType.emailAddress),
+            controller: _nameCtrl,
+            label: state.tr(ru: 'Твоё имя', kk: 'Атың', en: 'Your name'),
+            icon: Icons.person_outline),
         const SizedBox(height: 12),
-        _Field(
-          controller: _passCtrl,
-          label: 'Пароль',
-          icon: Icons.lock_outline,
-          obscure: !_passVisible,
-          suffix: IconButton(
-            icon: Icon(_passVisible ? Icons.visibility_off : Icons.visibility,
-                color: AppColors.textGrey),
-            onPressed: () => setState(() => _passVisible = !_passVisible),
+      ],
+      _Field(
+          controller: _emailCtrl,
+          label: 'Email',
+          icon: Icons.email_outlined,
+          type: TextInputType.emailAddress),
+      const SizedBox(height: 12),
+      _Field(
+        controller: _passCtrl,
+        label: state.tr(ru: 'Пароль', kk: 'Құпиясөз', en: 'Password'),
+        icon: Icons.lock_outline,
+        obscure: !_passVisible,
+        suffix: IconButton(
+          icon: Icon(_passVisible ? Icons.visibility_off : Icons.visibility,
+              color: AppColors.textGrey),
+          onPressed: () => setState(() => _passVisible = !_passVisible),
+        ),
+      ),
+      const SizedBox(height: 22),
+      Stack(
+        alignment: Alignment.center,
+        children: [
+          PremiumButton(
+            label: _showRegister
+                ? state.tr(
+                    ru: 'Создать аккаунт',
+                    kk: 'Аккаунт құру',
+                    en: 'Create account')
+                : state.tr(ru: 'Войти', kk: 'Кіру', en: 'Sign in'),
+            onPressed: _isLoading ? null : (_showRegister ? _register : _login),
           ),
-        ),
-        const SizedBox(height: 22),
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            PremiumButton(
-              label: _showRegister ? 'Создать аккаунт' : 'Войти',
-              onPressed:
-                  _isLoading ? null : (_showRegister ? _register : _login),
-            ),
-            if (_isLoading)
-              const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.6,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        if (!_showRegister)
-          TextButton(
-            key: const Key('forgot-password-button'),
-            onPressed: _isLoading
-                ? null
-                : () => Navigator.pushNamed(
-                      context,
-                      '/forgot-password',
-                      arguments: _emailCtrl.text.trim(),
-                    ),
-            child: const Text(
-              'Забыли пароль?',
-              style: TextStyle(
-                fontFamily: 'Nunito',
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: AppColors.navy,
+          if (_isLoading)
+            const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.6,
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
               ),
             ),
-          ),
-        if (!_showRegister && _needsVerification)
-          TextButton.icon(
-            key: const Key('resend-verification-button'),
-            onPressed: _isLoading ? null : _resendVerification,
-            icon: const Icon(Icons.mark_email_read_outlined),
-            label: const Text('Отправить подтверждение ещё раз'),
-          ),
+        ],
+      ),
+      const SizedBox(height: 14),
+      if (!_showRegister)
         TextButton(
+          key: const Key('forgot-password-button'),
           onPressed: _isLoading
               ? null
-              : () => setState(() => _showRegister = !_showRegister),
+              : () => Navigator.pushNamed(
+                    context,
+                    '/forgot-password',
+                    arguments: _emailCtrl.text.trim(),
+                  ),
           child: Text(
-            _showRegister
-                ? 'Уже есть аккаунт? Войти'
-                : 'Нет аккаунта? Зарегистрироваться',
+            state.tr(
+                ru: 'Забыли пароль?',
+                kk: 'Құпиясөзді ұмыттың ба?',
+                en: 'Forgot password?'),
             style: const TextStyle(
               fontFamily: 'Nunito',
               fontSize: 14,
@@ -270,26 +295,68 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 2),
+      if (!_showRegister && _needsVerification)
         TextButton.icon(
-          onPressed: _isLoading ? null : _continueLocally,
-          icon: const Icon(Icons.phone_iphone_rounded,
-              size: 18, color: AppColors.textGrey),
-          label: const Text(
-            'Продолжить без аккаунта',
-            style: TextStyle(
-              fontFamily: 'Nunito',
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textGrey,
-            ),
+          key: const Key('resend-verification-button'),
+          onPressed: _isLoading ? null : _resendVerification,
+          icon: const Icon(Icons.mark_email_read_outlined),
+          label: Text(state.tr(
+            ru: 'Отправить подтверждение ещё раз',
+            kk: 'Растауды қайта жіберу',
+            en: 'Resend verification',
+          )),
+        ),
+      TextButton(
+        onPressed: _isLoading
+            ? null
+            : () => setState(() => _showRegister = !_showRegister),
+        child: Text(
+          _showRegister
+              ? state.tr(
+                  ru: 'Уже есть аккаунт? Войти',
+                  kk: 'Аккаунтың бар ма? Кіру',
+                  en: 'Already have an account? Sign in')
+              : state.tr(
+                  ru: 'Нет аккаунта? Зарегистрироваться',
+                  kk: 'Аккаунтың жоқ па? Тіркелу',
+                  en: 'No account? Register'),
+          style: const TextStyle(
+            fontFamily: 'Nunito',
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            color: AppColors.navy,
           ),
         ),
-      ];
+      ),
+      const SizedBox(height: 2),
+      TextButton.icon(
+        onPressed: _isLoading ? null : _continueLocally,
+        icon: const Icon(Icons.phone_iphone_rounded,
+            size: 18, color: AppColors.textGrey),
+        label: Text(
+          state.tr(
+            ru: 'Продолжить без аккаунта',
+            kk: 'Аккаунтсыз жалғастыру',
+            en: 'Continue without an account',
+          ),
+          style: const TextStyle(
+            fontFamily: 'Nunito',
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textGrey,
+          ),
+        ),
+      ),
+    ];
+  }
 
   Future<void> _resendVerification() async {
     if (!_emailCtrl.text.contains('@')) {
-      _showError('Укажи email для подтверждения');
+      _showError(_t(
+        ru: 'Укажи email для подтверждения',
+        kk: 'Растау үшін email енгіз',
+        en: 'Enter an email to verify',
+      ));
       return;
     }
     setState(() => _isLoading = true);
@@ -300,8 +367,16 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(result.canDeliver
-            ? 'Если аккаунт ожидает подтверждения, новая ссылка отправлена.'
-            : 'Отправка писем пока не настроена администратором.'),
+            ? _t(
+                ru: 'Если аккаунт ожидает подтверждения, новая ссылка отправлена.',
+                kk: 'Аккаунт растауды күтіп тұрса, жаңа сілтеме жіберілді.',
+                en: 'If the account is awaiting verification, a new link was sent.',
+              )
+            : _t(
+                ru: 'Отправка писем пока не настроена администратором.',
+                kk: 'Хат жіберуді әкімші әлі баптамаған.',
+                en: 'Email delivery has not been configured by the administrator.',
+              )),
         backgroundColor: result.canDeliver ? AppColors.navy : AppColors.gold,
       ));
     } catch (error) {
@@ -318,6 +393,7 @@ class _LoginHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final canPop = Navigator.canPop(context);
+    final state = context.watch<AppState>();
     return SizedBox(
       height: 42,
       child: Stack(
@@ -329,7 +405,7 @@ class _LoginHeader extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: IconButton(
                 key: const Key('login-back-button'),
-                tooltip: 'Назад',
+                tooltip: state.tr(ru: 'Назад', kk: 'Артқа', en: 'Back'),
                 onPressed: () => Navigator.maybePop(context),
                 icon: const Icon(Icons.arrow_back_ios_new_rounded),
                 color: AppColors.navyDark,

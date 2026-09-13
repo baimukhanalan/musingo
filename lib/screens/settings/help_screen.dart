@@ -43,9 +43,9 @@ class HelpScreen extends StatelessWidget {
             kk: 'XP-ны қалай аламын?',
             en: 'How do I earn XP?'),
         'a': state.tr(
-            ru: 'XP начисляется за уроки (+25), правильные ответы (+5) и повторение аятов (+2).',
-            kk: 'XP сабақтар (+25), дұрыс жауаптар (+5) және аяттарды қайталау (+2) үшін беріледі.',
-            en: 'XP is awarded for lessons (+25), correct answers (+5), and reviewing ayahs (+2).')
+            ru: 'За первое прохождение начисляется награда, указанная в уроке (обычно +25 XP), за повтор пройденного урока — +5 XP. На 7, 30 и 100 днях страйка добавляются бонусы +10, +50 и +200 XP.',
+            kk: 'Алғашқы өту үшін сабақта көрсетілген сыйақы беріледі (әдетте +25 XP), өткен сабақты қайталау үшін — +5 XP. 7, 30 және 100 күндік страйкта +10, +50 және +200 XP бонустары қосылады.',
+            en: 'The first completion earns the reward shown in the lesson (usually +25 XP), and replaying a completed lesson earns +5 XP. Streak milestones at 7, 30, and 100 days add +10, +50, and +200 XP.')
       },
       {
         'q': state.tr(

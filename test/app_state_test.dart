@@ -37,6 +37,29 @@ void main() {
     );
   });
 
+  test('achievements are rebuilt for the active user after logout', () async {
+    final state = AppState();
+    await _waitUntilInitialized(state);
+    await state.loginAsGuest();
+
+    for (var index = 0; index < 10; index++) {
+      await state.completeLesson('r1', 0);
+    }
+    expect(
+      state.achievements
+          .firstWhere((item) => item.id == 'lessons_10')
+          .isUnlocked,
+      isTrue,
+    );
+
+    await state.logout();
+    expect(state.achievements.every((item) => !item.isUnlocked), isTrue);
+
+    await state.loginAsGuest();
+    expect(state.user?.totalLessons, 0);
+    expect(state.achievements.every((item) => !item.isUnlocked), isTrue);
+  });
+
   test('placement creates local profile and personal recommendation', () async {
     final state = AppState();
     await _waitUntilInitialized(state);

@@ -30,8 +30,9 @@ class _SpeakStep extends StatefulWidget {
 class _SpeakStepState extends State<_SpeakStep> {
   final SpeechToText _speech = SpeechToText();
   late final SpeechEvaluationService _speechEvaluation;
-  late final FlutterTts _tts;
+  late final SpeechSynthesizer _tts;
   late final QuranAudioPlayer _audioPlayer;
+  StreamSubscription<QuranAudioPlaybackState>? _audioSubscription;
   bool _recording = false;
   bool _done = false;
   bool _passed = false;
@@ -62,7 +63,21 @@ class _SpeakStepState extends State<_SpeakStep> {
   void initState() {
     super.initState();
     _audioPlayer = QuranAudioPlayer();
-    _tts = FlutterTts();
+    _audioSubscription = _audioPlayer.playbackStateStream.listen((playback) {
+      if (!mounted) return;
+      setState(() {
+        _samplePlaying = playback.playing;
+        if (playback.error != null) {
+          _samplePlayed = false;
+          _speechError = context.read<AppState>().tr(
+                ru: 'Не удалось воспроизвести образец.',
+                kk: 'Үлгіні ойнату мүмкін болмады.',
+                en: 'Could not play the sample.',
+              );
+        }
+      });
+    });
+    _tts = SpeechSynthesizer();
     _tts.setCompletionHandler(() {
       if (mounted) setState(() => _samplePlaying = false);
     });
@@ -103,6 +118,14 @@ class _SpeakStepState extends State<_SpeakStep> {
         );
       });
       return;
+    }
+
+    // Never start the microphone while the reference is still audible: it
+    // contaminates ASR input and makes the pronunciation score meaningless.
+    if (_samplePlaying) {
+      await _tts.stop();
+      await _audioPlayer.stop();
+      if (mounted) setState(() => _samplePlaying = false);
     }
 
     _prepareNewAttempt();
@@ -368,7 +391,6 @@ class _SpeakStepState extends State<_SpeakStep> {
     for (final source in sources) {
       try {
         await _audioPlayer.playUrl(source);
-        if (mounted) setState(() => _samplePlaying = false);
         return;
       } catch (error) {
         lastError = error;
@@ -476,6 +498,7 @@ class _SpeakStepState extends State<_SpeakStep> {
   void dispose() {
     _speech.cancel();
     _tts.stop();
+    _audioSubscription?.cancel();
     _audioPlayer.dispose();
     _speechEvaluation.cancel();
     _speechEvaluation.dispose();
@@ -833,6 +856,7 @@ class _SpeakStepState extends State<_SpeakStep> {
                 kk: 'Айтылым қадамын өткізіп жіберу',
                 en: 'Skip the pronunciation step'),
             child: GestureDetector(
+              key: const ValueKey('lesson_speech_skip'),
               onTap: () {
                 HapticsService.tap();
                 setState(() {

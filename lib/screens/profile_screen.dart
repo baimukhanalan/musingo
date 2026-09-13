@@ -110,9 +110,9 @@ class ProfileScreen extends StatelessWidget {
                       _MenuItem(
                         icon: Icons.cloud_upload_rounded,
                         label: state.tr(
-                            ru: 'Сохранить прогресс',
-                            kk: 'Прогресті сақтау',
-                            en: 'Save progress'),
+                            ru: 'Создать аккаунт',
+                            kk: 'Аккаунт жасау',
+                            en: 'Create account'),
                         color: AppColors.navy,
                         onTap: () => Navigator.pushNamed(context, '/login'),
                       ),

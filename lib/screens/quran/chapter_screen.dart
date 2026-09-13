@@ -3,11 +3,15 @@ part of '../quran_screen.dart';
 class QuranChapterScreen extends StatefulWidget {
   final QuranChapterSummary chapter;
   final QuranRepository repository;
+  final int? initialAyahNumber;
+  final String localeCode;
 
   const QuranChapterScreen({
     super.key,
     required this.chapter,
     required this.repository,
+    this.initialAyahNumber,
+    this.localeCode = 'ru',
   });
 
   @override
@@ -15,6 +19,7 @@ class QuranChapterScreen extends StatefulWidget {
 }
 
 class _QuranChapterScreenState extends State<QuranChapterScreen> {
+  final GlobalKey _initialAyahSliverKey = GlobalKey();
   late Future<QuranChapter> _chapterFuture;
   late final QuranAudioPlayer _audioPlayer;
   StreamSubscription<QuranAudioPlaybackState>? _stateSubscription;
@@ -26,14 +31,24 @@ class _QuranChapterScreenState extends State<QuranChapterScreen> {
   List<QuranVerse> _chapterQueue = const [];
   int _chapterQueueIndex = 0;
   bool _chapterUsesVerseQueue = false;
+  QuranVerse? _activeVerseData;
+  bool _usingVerseFallback = false;
+  bool _recoveringLateAudioError = false;
 
   @override
   void initState() {
     super.initState();
-    _chapterFuture = widget.repository.fetchChapter(widget.chapter);
+    _chapterFuture = widget.repository.fetchChapter(
+      widget.chapter,
+      localeCode: widget.localeCode,
+    );
     _audioPlayer = QuranAudioPlayer();
     _stateSubscription = _audioPlayer.playbackStateStream.listen((state) {
       if (!mounted) return;
+      if (state.error != null) {
+        unawaited(_recoverFromLateAudioError(state.error!));
+        return;
+      }
       if (state.completed &&
           _playbackMode == _QuranPlaybackMode.chapter &&
           _chapterUsesVerseQueue) {
@@ -136,7 +151,7 @@ class _QuranChapterScreenState extends State<QuranChapterScreen> {
 
       setState(() {
         _playbackMode = _QuranPlaybackMode.chapter;
-        _chapterQueue = const [];
+        _chapterQueue = chapter.verses;
         _chapterQueueIndex = 0;
         _chapterUsesVerseQueue = false;
         _isChapterLoading = true;
@@ -220,13 +235,16 @@ class _QuranChapterScreenState extends State<QuranChapterScreen> {
       if (verse.audioFallbackUrl != null) verse.audioFallbackUrl!,
     ];
     Object? lastError;
-    for (final source in sources) {
+    for (var index = 0; index < sources.length; index++) {
+      final source = sources[index];
       try {
         await _audioPlayer.playUrl(source);
         lastError = null;
         if (mounted) {
           setState(() {
             _activeVerse = verse.numberInChapter;
+            _activeVerseData = verse;
+            _usingVerseFallback = index > 0;
             _loadingVerse = null;
             _isChapterLoading = false;
           });
@@ -246,6 +264,8 @@ class _QuranChapterScreenState extends State<QuranChapterScreen> {
     if (!mounted) return;
     setState(() {
       _activeVerse = null;
+      _activeVerseData = null;
+      _usingVerseFallback = false;
       _loadingVerse = null;
       _isChapterLoading = false;
       _chapterUsesVerseQueue = false;
@@ -256,6 +276,8 @@ class _QuranChapterScreenState extends State<QuranChapterScreen> {
     if (!mounted) return;
     setState(() {
       _activeVerse = null;
+      _activeVerseData = null;
+      _usingVerseFallback = false;
       _loadingVerse = null;
       _isPlaying = false;
       _isChapterLoading = false;
@@ -264,6 +286,67 @@ class _QuranChapterScreenState extends State<QuranChapterScreen> {
       _chapterQueueIndex = 0;
       _chapterUsesVerseQueue = false;
     });
+  }
+
+  Future<void> _recoverFromLateAudioError(Object error) async {
+    if (_recoveringLateAudioError || !mounted || _playbackMode == null) return;
+    _recoveringLateAudioError = true;
+    try {
+      await _audioPlayer.stop();
+      if (!mounted) return;
+
+      if (_playbackMode == _QuranPlaybackMode.chapter &&
+          !_chapterUsesVerseQueue &&
+          _chapterQueue.isNotEmpty) {
+        final firstVerse = _chapterQueue.first;
+        setState(() {
+          _chapterUsesVerseQueue = true;
+          _chapterQueueIndex = 0;
+          _isChapterLoading = true;
+          _loadingVerse = firstVerse.numberInChapter;
+        });
+        await _playVerse(firstVerse);
+        return;
+      }
+
+      final verse = _activeVerseData;
+      final fallback = verse?.audioFallbackUrl;
+      if (verse != null &&
+          !_usingVerseFallback &&
+          fallback != null &&
+          fallback.trim().isNotEmpty) {
+        setState(() {
+          _isChapterLoading = _playbackMode == _QuranPlaybackMode.chapter;
+          _loadingVerse = verse.numberInChapter;
+          _usingVerseFallback = true;
+        });
+        await _audioPlayer.playUrl(fallback);
+        if (!mounted) return;
+        setState(() {
+          _activeVerse = verse.numberInChapter;
+          _loadingVerse = null;
+          _isChapterLoading = false;
+        });
+        return;
+      }
+      throw error;
+    } catch (recoveryError) {
+      debugPrint('Quran late audio recovery failed: $recoveryError');
+      if (!mounted) return;
+      _clearAudioState();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.read<AppState>().tr(
+                ru: 'Воспроизведение остановилось. Проверь интернет и повтори.',
+                kk: 'Ойнату тоқтады. Интернетті тексеріп, қайталап көріңіз.',
+                en: 'Playback stopped. Check your connection and try again.',
+              )),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      _recoveringLateAudioError = false;
+    }
   }
 
   void _resumePlayback(int verseNumber) {
@@ -285,6 +368,112 @@ class _QuranChapterScreenState extends State<QuranChapterScreen> {
       showDragHandle: true,
       backgroundColor: AppColors.background,
       builder: (_) => _FullChapterTextSheet(chapter: chapter),
+    );
+  }
+
+  Widget _chapterItem(
+    AppState appState,
+    QuranChapter chapter,
+    int index,
+  ) {
+    if (index == 0) return _ChapterHeader(chapter: chapter.summary);
+    if (index == 1) {
+      return _ChapterAudioBar(
+        chapter: chapter,
+        isLoading: _isChapterLoading,
+        isPlaying: _playbackMode == _QuranPlaybackMode.chapter && _isPlaying,
+        activeVerse:
+            _playbackMode == _QuranPlaybackMode.chapter ? _activeVerse : null,
+        onPlay: () => _toggleChapterAudio(chapter),
+        onOpenText: () => _showFullChapterText(chapter),
+      );
+    }
+    if (index == chapter.verses.length + 2) {
+      return const _AttributionFooter();
+    }
+    final verse = chapter.verses[index - 2];
+    final hafizProgress = appState.hafizProgressFor(
+      chapter.summary.number,
+      verse.numberInChapter,
+    );
+    return _VerseCard(
+      verse: verse,
+      isLoading: _loadingVerse == verse.numberInChapter,
+      isActive: _activeVerse == verse.numberInChapter,
+      isPlaying: _activeVerse == verse.numberInChapter && _isPlaying,
+      onPlay: () => _toggleAudio(verse),
+      masteryLabel: hafizProgress?.masteryLabel,
+      mastery: hafizProgress?.mastery,
+      onHafiz: () async {
+        await _audioPlayer.stop();
+        if (!mounted) return;
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => HafizModeScreen(
+              chapter: chapter.summary,
+              verse: verse,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _chapterSliver(
+    AppState appState,
+    QuranChapter chapter,
+    int start,
+    int end, {
+    Key? key,
+  }) {
+    return SliverPadding(
+      key: key,
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, localIndex) {
+            final index = start + localIndex;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _chapterItem(appState, chapter, index),
+            );
+          },
+          childCount: end - start,
+        ),
+      ),
+    );
+  }
+
+  Widget _chapterList(AppState appState, QuranChapter chapter) {
+    final itemCount = chapter.verses.length + 3;
+    final initialVerseIndex = widget.initialAyahNumber == null
+        ? -1
+        : chapter.verses.indexWhere(
+            (verse) => verse.numberInChapter == widget.initialAyahNumber,
+          );
+
+    if (initialVerseIndex < 0) {
+      return CustomScrollView(
+        slivers: [_chapterSliver(appState, chapter, 0, itemCount)],
+      );
+    }
+
+    // A centered pair of slivers starts at the requested ayah without relying
+    // on guessed pixel heights. Earlier ayahs and the chapter header remain
+    // available by scrolling upward.
+    final initialItemIndex = initialVerseIndex + 2;
+    return CustomScrollView(
+      center: _initialAyahSliverKey,
+      slivers: [
+        _chapterSliver(appState, chapter, 0, initialItemIndex),
+        _chapterSliver(
+          appState,
+          chapter,
+          initialItemIndex,
+          itemCount,
+          key: _initialAyahSliverKey,
+        ),
+      ],
     );
   }
 
@@ -317,63 +506,15 @@ class _QuranChapterScreenState extends State<QuranChapterScreen> {
               return _ErrorView(
                 message: snapshot.error.toString(),
                 onRetry: () => setState(
-                  () => _chapterFuture =
-                      widget.repository.fetchChapter(widget.chapter),
+                  () => _chapterFuture = widget.repository.fetchChapter(
+                    widget.chapter,
+                    localeCode: widget.localeCode,
+                  ),
                 ),
               );
             }
             final chapter = snapshot.data!;
-            return ListView.separated(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
-              itemCount: chapter.verses.length + 3,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                if (index == 0) return _ChapterHeader(chapter: chapter.summary);
-                if (index == 1) {
-                  return _ChapterAudioBar(
-                    chapter: chapter,
-                    isLoading: _isChapterLoading,
-                    isPlaying: _playbackMode == _QuranPlaybackMode.chapter &&
-                        _isPlaying,
-                    activeVerse: _playbackMode == _QuranPlaybackMode.chapter
-                        ? _activeVerse
-                        : null,
-                    onPlay: () => _toggleChapterAudio(chapter),
-                    onOpenText: () => _showFullChapterText(chapter),
-                  );
-                }
-                if (index == chapter.verses.length + 2) {
-                  return const _AttributionFooter();
-                }
-                final verse = chapter.verses[index - 2];
-                final hafizProgress = appState.hafizProgressFor(
-                  chapter.summary.number,
-                  verse.numberInChapter,
-                );
-                return _VerseCard(
-                  verse: verse,
-                  isLoading: _loadingVerse == verse.numberInChapter,
-                  isActive: _activeVerse == verse.numberInChapter,
-                  isPlaying:
-                      _activeVerse == verse.numberInChapter && _isPlaying,
-                  onPlay: () => _toggleAudio(verse),
-                  masteryLabel: hafizProgress?.masteryLabel,
-                  mastery: hafizProgress?.mastery,
-                  onHafiz: () async {
-                    await _audioPlayer.stop();
-                    if (!context.mounted) return;
-                    await Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => HafizModeScreen(
-                          chapter: chapter.summary,
-                          verse: verse,
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            );
+            return _chapterList(appState, chapter);
           },
         ),
       ),

@@ -47,6 +47,8 @@ class _LeagueScreenState extends State<LeagueScreen> {
       setState(() => _entries = entries);
     } catch (error) {
       if (!mounted) return;
+      await context.read<AppState>().handleBackendSessionError(error);
+      if (!mounted) return;
       setState(() => _error = readableBackendError(error));
     } finally {
       if (mounted) setState(() => _loading = false);

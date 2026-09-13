@@ -18,7 +18,8 @@ class AppColors {
   // Текст
   static const Color textDark = Color(0xFF18364D);
   static const Color textGrey = Color(0xFF62798B);
-  static const Color textLight = Color(0xFFA9BAC6);
+  // Muted copy still needs readable contrast on the ivory/white surfaces.
+  static const Color textLight = Color(0xFF62798B);
 
   // Статусы
   static const Color success = Color(0xFF35B77A);

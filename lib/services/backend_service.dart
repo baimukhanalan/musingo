@@ -151,8 +151,16 @@ class BackendService {
     try {
       final response = await _request('GET', '/api/auth/me');
       return _profileFromProgress(response);
-    } catch (_) {
-      await logout();
+    } catch (error) {
+      // A temporary offline/5xx startup must not destroy a valid credential.
+      // _send already clears definitely revoked 401 sessions.
+      if (error is BackendException &&
+          (error.code == 'expired_session' ||
+              error.code == 'invalid_session' ||
+              error.code == 'authentication_required' ||
+              error.code == 'password_changed')) {
+        await logout();
+      }
       return null;
     }
   }
@@ -619,6 +627,14 @@ class BackendService {
             message = error['message'] as String? ?? message;
           }
         } catch (_) {}
+        if (response.statusCode == 401 &&
+            (code == 'expired_session' ||
+                code == 'invalid_session' ||
+                code == 'authentication_required' ||
+                code == 'password_changed')) {
+          _token = null;
+          await _clearStoredToken();
+        }
         throw BackendException(response.statusCode, code, message);
       }
       return response;

@@ -67,9 +67,86 @@ void main() {
     offline.dispose();
   });
 
+  test('searches verse text in the locale-specific edition', () async {
+    final repository = QuranRepository(client: MockClient(_successfulApi));
+
+    final matches = await repository.searchAyahs(
+      'милость',
+      localeCode: 'ru',
+    );
+
+    expect(matches, hasLength(1));
+    expect(matches.single.surahNumber, 2);
+    expect(matches.single.ayahNumber, 40);
+    expect(matches.single.text, contains('милость'));
+    repository.dispose();
+  });
+
+  test('loads Kazakh translation for the Kazakh UI locale', () async {
+    final repository = QuranRepository(
+      client: MockClient(_successfulApi),
+      canonicalArabic: Future.value({
+        1: ['بِسْمِ ٱللَّهِ']
+      }),
+    );
+    final chapters = await repository.fetchChapters();
+
+    final chapter = await repository.fetchChapter(
+      chapters.first,
+      localeCode: 'kk',
+    );
+
+    expect(chapter.verses.single.translation, 'Аса қамқор Алланың атымен');
+    expect(chapter.verses.single.transliteration, 'Bismillah');
+    repository.dispose();
+  });
+
+  test('rejects a 114-item chapter list with the wrong order', () async {
+    final repository = QuranRepository(
+      client: MockClient((request) async {
+        final response = await _successfulApi(request);
+        final root = jsonDecode(response.body) as Map<String, dynamic>;
+        if (request.url.path.endsWith('/surah')) {
+          root['data'] = (root['data'] as List).reversed.toList();
+        }
+        return _jsonResponse(root);
+      }),
+    );
+
+    await expectLater(
+      repository.fetchChapters(),
+      throwsA(isA<QuranRepositoryException>()),
+    );
+    repository.dispose();
+  });
 }
 
 Future<http.Response> _successfulApi(http.Request request) async {
+  if (request.url.path.contains('/search/')) {
+    expect(request.url.path, contains('/all/ru.kuliev'));
+    return _jsonResponse({
+      'code': 200,
+      'status': 'OK',
+      'data': {
+        'count': 1,
+        'matches': [
+          {
+            'number': 47,
+            'text': 'Помните милость, которую Я оказал вам.',
+            'numberInSurah': 40,
+            'surah': {
+              'number': 2,
+              'name': 'سُورَةُ البَقَرَةِ',
+              'englishName': 'Al-Baqara',
+              'englishNameTranslation': 'The Cow',
+              'numberOfAyahs': 286,
+              'revelationType': 'Medinan',
+            },
+          },
+        ],
+      },
+    });
+  }
   if (request.url.path.endsWith('/surah')) {
     final data = List.generate(
       114,
@@ -86,13 +163,20 @@ Future<http.Response> _successfulApi(http.Request request) async {
   }
 
   if (request.url.path.contains('/surah/1/editions/')) {
+    final kazakh = request.url.path.contains('kk.khalifahaltai');
     return _jsonResponse({
       'code': 200,
       'status': 'OK',
       'data': [
         _edition('quran-uthmani', 'بِسْمِ ٱللَّهِ'),
-        _edition('ru.kuliev', 'Во имя Аллаха'),
-        _edition('ru.transliteration', 'Бисмиллях'),
+        _edition(
+          kazakh ? 'kk.khalifahaltai' : 'ru.kuliev',
+          kazakh ? 'Аса қамқор Алланың атымен' : 'Во имя Аллаха',
+        ),
+        _edition(
+          kazakh ? 'en.transliteration' : 'ru.transliteration',
+          kazakh ? 'Bismillah' : 'Бисмиллях',
+        ),
         _edition(
           'ar.alafasy',
           'بِسْمِ ٱللَّهِ',

@@ -64,7 +64,7 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
                       child: IconButton.filled(
                         key: const Key('lesson-video-play'),
                         onPressed:
-                            _opening ? null : () => _open(video.embedUrl),
+                            _opening ? null : () => _open(video.source.url),
                         icon: _opening
                             ? const SizedBox.square(
                                 dimension: 24,
@@ -86,6 +86,27 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
               ),
             ),
             const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.pistachio.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                state.tr(
+                  ru: 'Дополнительный урок эксперта · без XP',
+                  kk: 'Қосымша сарапшы сабағы · XP берілмейді',
+                  en: 'Optional expert lesson · no XP',
+                ),
+                style: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.navyDark,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
             Text(
               video.title,
               style: const TextStyle(

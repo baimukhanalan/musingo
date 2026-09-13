@@ -67,6 +67,9 @@ class AppState extends ChangeNotifier {
   static const _memoryEnginePrefix = 'memory_engine_';
   static const _hafizProgressPrefix = 'hafiz_progress_';
   static const _localeKey = 'locale';
+  static const _pendingSyncImportKey = 'pending_sync_import';
+  static const _pendingSyncUserKey = 'pending_sync_user';
+  static const _pendingSyncGuestKey = 'pending_sync_is_guest';
 
   /// За сколько восстанавливается одна жизнь и потолок жизней локального
   /// аккаунта. FAQ обещает восстановление, но механики не было — здесь она.
@@ -85,7 +88,7 @@ class AppState extends ChangeNotifier {
   bool _soundEnabled = true;
   AppLocale _locale = AppLocale.ru;
   NativeLanguage? _nativeLanguage;
-  final NotificationService _notificationService = NotificationService();
+  final NotificationService _notificationService;
   final HomeWidgetService _homeWidgetService = HomeWidgetService();
   bool _notificationsEnabled = false;
   int _reminderHour = 19;
@@ -112,6 +115,7 @@ class AppState extends ChangeNotifier {
   /// принципу «серверное новее не перетираем»).
   Map<String, dynamic>? _pendingSyncImport;
   bool _pendingImportIsGuest = false;
+  String? _pendingSyncUserId;
 
   UserModel? get user => _user;
   List<Course> get courses => _courses;
@@ -130,6 +134,25 @@ class AppState extends ChangeNotifier {
   String? get backendAuthToken => isBackendUser ? _backend?.authToken : null;
   String? get lastEmailDelivery => _backend?.lastEmailDelivery;
   bool get soundEnabled => _soundEnabled;
+
+  bool _isExpiredSession(Object error) =>
+      error is BackendException &&
+      (error.code == 'expired_session' ||
+          error.code == 'invalid_session' ||
+          error.code == 'authentication_required' ||
+          error.code == 'password_changed');
+
+  /// Clears a profile that can no longer authenticate. Screens that use their
+  /// own BackendService instance call this too, so a revoked session cannot
+  /// leave the rest of the app looking signed in.
+  Future<bool> handleBackendSessionError(Object error) async {
+    if (!_isExpiredSession(error)) return false;
+    final message = readableBackendError(error);
+    await logout();
+    _error = message;
+    notifyListeners();
+    return true;
+  }
 
   Future<EmailActionResult> requestPasswordReset(String email) async {
     final backend = _backend ??= await BackendService.create();
@@ -159,90 +182,159 @@ class AppState extends ChangeNotifier {
         'Импорт в синхронизированный аккаунт требует серверной проверки.',
       );
     }
-    if (_user == null) await loginAsGuest();
     final progress = snapshot['progress'];
     if (progress is! Map) {
       throw const FormatException('В файле отсутствует раздел прогресса.');
     }
+
+    // Сначала полностью разбираем и валидируем снимок. До конца
+    // этой фазы ни одно поле AppState не меняется.
+    List<dynamic> listField(String key) {
+      final value = progress[key];
+      if (value == null) return const [];
+      if (value is! List) {
+        throw FormatException('Поле $key должно быть списком.');
+      }
+      return value;
+    }
+
     final knownLessonIds = _courses
         .expand((course) => course.lessons)
         .map((lesson) => lesson.id)
         .toSet();
-    final currentCompleted = _courses
-        .expand((course) => course.lessons)
-        .where((lesson) => lesson.status == LessonStatus.completed)
-        .map((lesson) => lesson.id)
+    final importedCompleted = listField('completedLessonIds')
+        .whereType<String>()
+        .where(knownLessonIds.contains)
         .toSet();
-    final importedCompleted =
-        (progress['completedLessonIds'] as List? ?? const [])
-            .whereType<String>()
-            .where(knownLessonIds.contains)
-            .toSet();
-    _applyCourseProgress({...currentCompleted, ...importedCompleted});
 
-    var knowledgeCount = 0;
-    for (final raw in (progress['knowledgeStates'] as List? ?? const [])) {
+    final importedKnowledge = <KnowledgeState>[];
+    for (final raw in listField('knowledgeStates')) {
       if (raw is! Map || !knownLessonIds.contains(raw['lessonId'])) continue;
       try {
-        final imported = KnowledgeState.fromJson(
-          Map<String, dynamic>.from(raw),
+        importedKnowledge.add(
+          KnowledgeState.fromJson(Map<String, dynamic>.from(raw)),
         );
-        final existing = _knowledgeStates[imported.id];
-        if (existing == null ||
-            imported.lastReviewedAt.isAfter(existing.lastReviewedAt)) {
-          _knowledgeStates[imported.id] = imported;
-        }
-        knowledgeCount++;
       } catch (_) {
         // A malformed item is skipped without invalidating the whole snapshot.
       }
     }
 
-    var hafizCount = 0;
-    for (final raw in (progress['hafizProgress'] as List? ?? const [])) {
-      if (raw is! Map) continue;
-      try {
-        final imported = HafizProgress.fromJson(Map<String, dynamic>.from(raw));
-        final existing = _hafizProgress[imported.id];
-        if (existing == null ||
-            imported.lastReviewedAt.isAfter(existing.lastReviewedAt)) {
-          _hafizProgress[imported.id] = imported;
-        }
-        hafizCount++;
-      } catch (_) {
-        // Keep valid items even when one record is damaged.
+    final importedHafiz = <HafizProgress>[];
+    for (final raw in listField('hafizProgress')) {
+      if (raw is! Map) {
+        throw const FormatException('Некорректная запись Hafiz.');
       }
+      importedHafiz.add(
+        HafizProgress.fromJson(Map<String, dynamic>.from(raw)),
+      );
     }
 
+    var nextLearningGoal = _learningGoal;
+    var nextPlacementLevel = _placementLevel;
+    var nextLearningRecommendation = _learningRecommendation;
+    var nextLearningSkillProfile = _learningSkillProfile;
     final learning = snapshot['learningProfile'];
+    if (learning != null && learning is! Map) {
+      throw const FormatException('Некорректный учебный профиль.');
+    }
     if (learning is Map) {
-      _learningGoal =
-          LearningGoalDetails.fromStorage(learning['goal'] as String?) ??
-              _learningGoal;
-      _placementLevel =
-          ((learning['placementLevel'] as num?)?.toInt() ?? _placementLevel)
-              .clamp(1, 8)
-              .toInt();
+      final rawGoal = learning['goal'];
+      if (rawGoal != null && rawGoal is! String) {
+        throw const FormatException('Некорректная цель обучения.');
+      }
+      nextLearningGoal = LearningGoalDetails.fromStorage(rawGoal as String?) ??
+          nextLearningGoal;
+      final rawPlacement = learning['placementLevel'];
+      if (rawPlacement != null) {
+        if (rawPlacement is! num ||
+            !rawPlacement.isFinite ||
+            rawPlacement % 1 != 0 ||
+            rawPlacement < 1 ||
+            rawPlacement > 8) {
+          throw const FormatException('Некорректный уровень обучения.');
+        }
+        nextPlacementLevel = rawPlacement.toInt();
+      }
       final recommendation = learning['recommendation'];
+      if (recommendation != null && recommendation is! String) {
+        throw const FormatException('Некорректная рекомендация.');
+      }
       if (recommendation is String && recommendation.trim().isNotEmpty) {
-        _learningRecommendation = recommendation.trim().length <= 500
+        nextLearningRecommendation = recommendation.trim().length <= 500
             ? recommendation.trim()
             : recommendation.trim().substring(0, 500);
       }
       final scores = learning['skillScores'];
+      if (scores != null && scores is! Map) {
+        throw const FormatException('Некорректные оценки навыков.');
+      }
       if (scores is Map) {
-        _learningSkillProfile = LearningSkillProfile.fromJson(
+        nextLearningSkillProfile = LearningSkillProfile.fromJson(
           Map<String, dynamic>.from(scores),
         );
       }
     }
 
-    await _cacheCurrentState();
+    if (_user == null) await loginAsGuest();
+    final currentCompleted = _courses
+        .expand((course) => course.lessons)
+        .where((lesson) => lesson.status == LessonStatus.completed)
+        .map((lesson) => lesson.id)
+        .toSet();
+    final nextKnowledgeStates =
+        Map<String, KnowledgeState>.of(_knowledgeStates);
+    for (final imported in importedKnowledge) {
+      final existing = nextKnowledgeStates[imported.id];
+      if (existing == null ||
+          imported.lastReviewedAt.isAfter(existing.lastReviewedAt)) {
+        nextKnowledgeStates[imported.id] = imported;
+      }
+    }
+    final nextHafizProgress = Map<String, HafizProgress>.of(_hafizProgress);
+    for (final imported in importedHafiz) {
+      final existing = nextHafizProgress[imported.id];
+      if (existing == null ||
+          imported.lastReviewedAt.isAfter(existing.lastReviewedAt)) {
+        nextHafizProgress[imported.id] = imported;
+      }
+    }
+
+    final previousCourses = _courses;
+    final previousKnowledgeStates = _knowledgeStates;
+    final previousHafizProgress = _hafizProgress;
+    final previousLearningGoal = _learningGoal;
+    final previousPlacementLevel = _placementLevel;
+    final previousLearningRecommendation = _learningRecommendation;
+    final previousLearningSkillProfile = _learningSkillProfile;
+    _applyCourseProgress({...currentCompleted, ...importedCompleted});
+    _knowledgeStates = nextKnowledgeStates;
+    _hafizProgress = nextHafizProgress;
+    _learningGoal = nextLearningGoal;
+    _placementLevel = nextPlacementLevel;
+    _learningRecommendation = nextLearningRecommendation;
+    _learningSkillProfile = nextLearningSkillProfile;
+    try {
+      await _cacheCurrentState();
+    } catch (_) {
+      _courses = previousCourses;
+      _knowledgeStates = previousKnowledgeStates;
+      _hafizProgress = previousHafizProgress;
+      _learningGoal = previousLearningGoal;
+      _placementLevel = previousPlacementLevel;
+      _learningRecommendation = previousLearningRecommendation;
+      _learningSkillProfile = previousLearningSkillProfile;
+      try {
+        await _cacheCurrentState();
+      } catch (_) {
+        // Best effort: SharedPreferences has no multi-key transaction.
+      }
+      rethrow;
+    }
     notifyListeners();
     return PortableImportResult(
       completedLessons: importedCompleted.length,
-      knowledgeItems: knowledgeCount,
-      hafizItems: hafizCount,
+      knowledgeItems: importedKnowledge.length,
+      hafizItems: importedHafiz.length,
     );
   }
 
@@ -371,7 +463,8 @@ class AppState extends ChangeNotifier {
     return null;
   }
 
-  AppState() {
+  AppState({NotificationService? notificationService})
+      : _notificationService = notificationService ?? NotificationService() {
     _init();
   }
 
@@ -562,6 +655,7 @@ class AppState extends ChangeNotifier {
       final profile = await _backend!.restoreSession();
       if (profile != null) {
         _applyBackendProfile(profile);
+        await _restorePendingSync(preferences, profile.user.id);
         await _cacheCurrentState();
       } else {
         await _loadUser();
@@ -576,10 +670,17 @@ class AppState extends ChangeNotifier {
         if (_notificationsEnabled &&
             _notificationPermission == NotificationPermissionState.granted) {
           await _scheduleLearningReminders();
+        } else if (_notificationsEnabled) {
+          // Разрешение могло быть отозвано в настройках ОС между запусками.
+          // Не показываем включённый тумблер, если доставлять напоминания уже
+          // невозможно.
+          _notificationsEnabled = false;
+          await preferences.setBool(_notificationsEnabledKey, false);
         }
       } catch (_) {
         _notificationPermission = NotificationPermissionState.unsupported;
         _notificationsEnabled = false;
+        await preferences.setBool(_notificationsEnabledKey, false);
       }
       if (_homeWidgetEnabled) {
         try {
@@ -688,6 +789,7 @@ class AppState extends ChangeNotifier {
     await _restoreCourseProgress();
     await _loadKnowledgeStates();
     await _loadHafizProgress();
+    _checkAchievements();
     await _saveUser();
     notifyListeners();
   }
@@ -848,7 +950,7 @@ class AppState extends ChangeNotifier {
             localState,
             importGuest: importGuest,
           );
-          _pendingSyncImport = null;
+          await _clearPendingSync();
         } catch (_) {
           // Сессия валидна, но импорт локального/гостевого прогресса не прошёл.
           // Сохраняем ИМЕННО этот слепок (а не пересобранный из серверного
@@ -856,6 +958,8 @@ class AppState extends ChangeNotifier {
           // повторит импорт с тем же importGuest и данные не потеряются.
           _pendingSyncImport = localState;
           _pendingImportIsGuest = importGuest;
+          _pendingSyncUserId = profile.user.id;
+          await _persistPendingSync();
         }
       }
       _applyBackendProfile(profile);
@@ -1129,6 +1233,11 @@ class AppState extends ChangeNotifier {
     }
     await _backend?.logout();
     final prefs = await SharedPreferences.getInstance();
+    await _clearPendingSync(preferences: prefs);
+    // Master notification state is device-persistent. Leaving it true here
+    // re-enabled reminders on the next launch, even though the user had signed
+    // out and the in-memory switch was off.
+    await prefs.setBool(_notificationsEnabledKey, false);
     if (currentUser?.id.startsWith('local_') == true) {
       await _saveLearningProfileForUser(prefs, currentUser!.id);
     }
@@ -1144,6 +1253,7 @@ class AppState extends ChangeNotifier {
     _courses = LessonData.getCourses();
     _knowledgeStates = {};
     _hafizProgress = {};
+    _checkAchievements();
     notifyListeners();
   }
 
@@ -1165,6 +1275,8 @@ class AppState extends ChangeNotifier {
       _notificationsEnabled = false;
       if (isBackendUser) await _backend!.deleteAccount();
       final preferences = await SharedPreferences.getInstance();
+      await _clearPendingSync(preferences: preferences);
+      await preferences.setBool(_notificationsEnabledKey, false);
       if (currentUser != null) {
         await _clearUserScopedData(preferences, currentUser.id);
         if (currentUser.id.startsWith('local_') &&
@@ -1182,6 +1294,7 @@ class AppState extends ChangeNotifier {
       _courses = LessonData.getCourses();
       _knowledgeStates = {};
       _hafizProgress = {};
+      _checkAchievements();
       return true;
     } catch (error) {
       _error = readableBackendError(error);
@@ -1354,10 +1467,16 @@ class AppState extends ChangeNotifier {
       }
       _notificationsEnabled = true;
     } else {
+      try {
+        await _notificationService.cancelAll(
+          authToken: _backend?.authToken ?? '',
+        );
+      } catch (_) {
+        _error = 'Не удалось отключить уведомления: подписка всё ещё активна.';
+        notifyListeners();
+        return false;
+      }
       _notificationsEnabled = false;
-      await _notificationService.cancelAll(
-        authToken: _backend?.authToken ?? '',
-      );
     }
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(
@@ -1594,7 +1713,9 @@ class AppState extends ChangeNotifier {
           'nextReviewAt': nextReviewAt,
         };
       } catch (error) {
-        _error = readableBackendError(error);
+        final message = readableBackendError(error);
+        if (_isExpiredSession(error)) await logout();
+        _error = message;
         notifyListeners();
         rethrow;
       }
@@ -1757,11 +1878,16 @@ class AppState extends ChangeNotifier {
 
   Future<void> recordLessonStep(String lessonId, int stepIndex) async {
     if (!isBackendUser) return;
-    final attempt = _lessonAttempts.putIfAbsent(
-      lessonId,
-      () => _backend!.startLessonAttempt(lessonId),
-    );
-    await _backend!.recordLessonStep(lessonId, stepIndex, await attempt);
+    try {
+      final attempt = _lessonAttempts.putIfAbsent(
+        lessonId,
+        () => _backend!.startLessonAttempt(lessonId),
+      );
+      await _backend!.recordLessonStep(lessonId, stepIndex, await attempt);
+    } catch (error) {
+      await handleBackendSessionError(error);
+      rethrow;
+    }
   }
 
   void addXp(int amount) {
@@ -1851,10 +1977,17 @@ class AppState extends ChangeNotifier {
   }
 
   void _checkAchievements() {
-    if (_user == null) return;
-    for (int i = 0; i < _achievements.length; i++) {
-      final a = _achievements[i];
-      if (a.isUnlocked) continue;
+    final previous = {for (final item in _achievements) item.id: item};
+    final rebuilt = Achievement.defaults();
+    if (_user == null) {
+      _achievements
+        ..clear()
+        ..addAll(rebuilt);
+      return;
+    }
+    final now = DateTime.now();
+    for (int i = 0; i < rebuilt.length; i++) {
+      final a = rebuilt[i];
       bool unlock = false;
       switch (a.category) {
         case AchievementCategory.lessons:
@@ -1876,10 +2009,16 @@ class AppState extends ChangeNotifier {
           break;
       }
       if (unlock) {
-        _achievements[i] =
-            a.copyWith(isUnlocked: true, unlockedAt: DateTime.now());
+        final old = previous[a.id];
+        rebuilt[i] = a.copyWith(
+          isUnlocked: true,
+          unlockedAt: old?.isUnlocked == true ? old!.unlockedAt : now,
+        );
       }
     }
+    _achievements
+      ..clear()
+      ..addAll(rebuilt);
   }
 
   Course? getCourse(CourseType type) {
@@ -2221,6 +2360,9 @@ class AppState extends ChangeNotifier {
     // Сначала добиваем незавершённый импорт локального/гостевого прогресса.
     // Отправляем сохранённый слепок, а не текущее состояние: после неудачного
     // входа память уже равна серверной, и пересбор потерял бы гостевые данные.
+    if (_pendingSyncImport != null && _pendingSyncUserId != _user?.id) {
+      await _clearPendingSync();
+    }
     final pendingImport = _pendingSyncImport;
     try {
       final profile = pendingImport != null
@@ -2229,13 +2371,56 @@ class AppState extends ChangeNotifier {
               importGuest: _pendingImportIsGuest,
             )
           : await _backend!.syncLearningData(_buildSyncState());
-      _pendingSyncImport = null;
+      await _clearPendingSync();
       _applyBackendProfile(profile);
       await _cacheCurrentState();
-    } catch (_) {
+    } catch (error) {
+      if (_isExpiredSession(error)) {
+        await handleBackendSessionError(error);
+      }
       // Local data stays available and is merged on the next successful sync;
       // отложенный импорт остаётся в _pendingSyncImport до следующей попытки.
     }
+  }
+
+  Future<void> _persistPendingSync() async {
+    final snapshot = _pendingSyncImport;
+    final userId = _pendingSyncUserId;
+    if (snapshot == null || userId == null || userId.isEmpty) return;
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_pendingSyncImportKey, jsonEncode(snapshot));
+    await preferences.setString(_pendingSyncUserKey, userId);
+    await preferences.setBool(_pendingSyncGuestKey, _pendingImportIsGuest);
+  }
+
+  Future<void> _restorePendingSync(
+    SharedPreferences preferences,
+    String userId,
+  ) async {
+    final targetUserId = preferences.getString(_pendingSyncUserKey);
+    final raw = preferences.getString(_pendingSyncImportKey);
+    if (targetUserId != userId || raw == null || raw.isEmpty) {
+      await _clearPendingSync(preferences: preferences);
+      return;
+    }
+    try {
+      _pendingSyncImport = Map<String, dynamic>.from(jsonDecode(raw) as Map);
+      _pendingImportIsGuest =
+          preferences.getBool(_pendingSyncGuestKey) ?? false;
+      _pendingSyncUserId = targetUserId;
+    } catch (_) {
+      await _clearPendingSync(preferences: preferences);
+    }
+  }
+
+  Future<void> _clearPendingSync({SharedPreferences? preferences}) async {
+    _pendingSyncImport = null;
+    _pendingImportIsGuest = false;
+    _pendingSyncUserId = null;
+    final prefs = preferences ?? await SharedPreferences.getInstance();
+    await prefs.remove(_pendingSyncImportKey);
+    await prefs.remove(_pendingSyncUserKey);
+    await prefs.remove(_pendingSyncGuestKey);
   }
 
   Future<void> _cacheCurrentState() async {

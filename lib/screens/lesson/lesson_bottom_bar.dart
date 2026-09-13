@@ -12,6 +12,7 @@ class _BottomBar extends StatelessWidget {
   final bool isCorrect;
   final String? feedbackText;
   final bool showHint;
+  final bool busy;
   final VoidCallback onCheck;
   final VoidCallback onContinue;
   final VoidCallback onHint;
@@ -28,6 +29,7 @@ class _BottomBar extends StatelessWidget {
     required this.isCorrect,
     required this.feedbackText,
     required this.showHint,
+    required this.busy,
     required this.onCheck,
     required this.onContinue,
     required this.onHint,
@@ -47,12 +49,14 @@ class _BottomBar extends StatelessWidget {
     // Резолвим целевой колбэк ровно по прежней логике гейтов: null → кнопка
     // залочена (PremiumButton отрисует disabled-состояние).
     final VoidCallback? resolvedAction =
-        answered ? onContinue : (_gateOpen ? onCheck : null);
-    final String actionLabel = answered
-        ? (reviewingMistakes
-            ? state.tr(ru: 'Закрепить', kk: 'Бекіту', en: 'Reinforce')
-            : state.tr(ru: 'Продолжить', kk: 'Жалғастыру', en: 'Continue'))
-        : _checkLabel(state);
+        busy ? null : (answered ? onContinue : (_gateOpen ? onCheck : null));
+    final String actionLabel = busy
+        ? state.tr(ru: 'Сохраняем…', kk: 'Сақталуда…', en: 'Saving…')
+        : answered
+            ? (reviewingMistakes
+                ? state.tr(ru: 'Закрепить', kk: 'Бекіту', en: 'Reinforce')
+                : state.tr(ru: 'Продолжить', kk: 'Жалғастыру', en: 'Continue'))
+            : _checkLabel(state);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -133,8 +137,8 @@ class _BottomBar extends StatelessWidget {
               if (!answered &&
                   !showHint &&
                   step.type == LessonStepType.question)
-                Expanded(
-                  flex: 1,
+                SizedBox(
+                  width: 56,
                   child: CustomButton(
                     text: '',
                     icon: Icons.lightbulb_rounded,
@@ -148,7 +152,6 @@ class _BottomBar extends StatelessWidget {
                   step.type == LessonStepType.question)
                 const SizedBox(width: 10),
               Expanded(
-                flex: 3,
                 child: PremiumButton(
                   key: const ValueKey('lesson_primary_action'),
                   label: actionLabel,

@@ -12,7 +12,14 @@ import '../widgets/premium_card.dart';
 import '../widgets/section_label.dart';
 
 class InstallAppScreen extends StatefulWidget {
-  const InstallAppScreen({super.key});
+  final Future<AppInstallResult> Function()? installAction;
+  final bool? installedOverride;
+
+  const InstallAppScreen({
+    super.key,
+    @visibleForTesting this.installAction,
+    @visibleForTesting this.installedOverride,
+  });
 
   @override
   State<InstallAppScreen> createState() => _InstallAppScreenState();
@@ -27,36 +34,53 @@ class _InstallAppScreenState extends State<InstallAppScreen> {
 
   Future<void> _install() async {
     setState(() => _installing = true);
-    final result = await AppInstallService.install();
-    if (!mounted) return;
-    setState(() {
-      _installing = false;
-      _showIosInstructions = result == AppInstallResult.instructionsRequired;
-    });
+    try {
+      final result =
+          await (widget.installAction ?? AppInstallService.install)();
+      if (!mounted) return;
+      setState(() {
+        _showIosInstructions = result == AppInstallResult.instructionsRequired;
+      });
 
-    final state = context.read<AppState>();
-    if (result == AppInstallResult.installed) {
+      final state = context.read<AppState>();
+      if (result == AppInstallResult.installed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(state.tr(
+                ru: 'Muslingo добавлен на устройство',
+                kk: 'Muslingo құрылғыға қосылды',
+                en: 'Muslingo added to your device')),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      } else if (result == AppInstallResult.unavailable) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              state.tr(
+                  ru: 'Открой меню браузера и выбери «Установить приложение» или «На экран Домой».',
+                  kk: 'Браузер мәзірін ашып, «Қолданбаны орнату» немесе «Негізгі экранға» дегенді таңда.',
+                  en: 'Open the browser menu and choose "Install app" or "Add to Home Screen".'),
+            ),
+            backgroundColor: AppColors.navy,
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      final state = context.read<AppState>();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(state.tr(
-              ru: 'Muslingo добавлен на устройство',
-              kk: 'Muslingo құрылғыға қосылды',
-              en: 'Muslingo added to your device')),
-          backgroundColor: AppColors.success,
+            ru: 'Не удалось открыть установку. Попробуй ещё раз или используй меню браузера.',
+            kk: 'Орнатуды ашу мүмкін болмады. Қайталап көріңіз немесе браузер мәзірін пайдаланыңыз.',
+            en: 'Could not open the installer. Try again or use the browser menu.',
+          )),
+          backgroundColor: AppColors.error,
         ),
       );
-    } else if (result == AppInstallResult.unavailable) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            state.tr(
-                ru: 'Открой меню браузера и выбери «Установить приложение» или «На экран Домой».',
-                kk: 'Браузер мәзірін ашып, «Қолданбаны орнату» немесе «Негізгі экранға» дегенді таңда.',
-                en: 'Open the browser menu and choose "Install app" or "Add to Home Screen".'),
-          ),
-          backgroundColor: AppColors.navy,
-        ),
-      );
+    } finally {
+      if (mounted) setState(() => _installing = false);
     }
   }
 
@@ -83,7 +107,7 @@ class _InstallAppScreenState extends State<InstallAppScreen> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final installed = AppInstallService.isInstalled;
+    final installed = widget.installedOverride ?? AppInstallService.isInstalled;
     final iosInstructions =
         _showIosInstructions || AppInstallService.needsIosInstructions;
 
@@ -262,6 +286,7 @@ class _InstallAppScreenState extends State<InstallAppScreen> {
                     const SizedBox(height: 26),
                     if (!installed)
                       PremiumButton(
+                        key: const ValueKey('install-app-action'),
                         label: _installing
                             ? state.tr(
                                 ru: 'Подготовка...',

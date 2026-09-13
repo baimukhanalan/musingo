@@ -251,12 +251,14 @@ class _PlusNote extends StatelessWidget {
 class _BottomAction extends StatelessWidget {
   final int stage;
   final bool enabled;
+  final bool busy;
   final SpeechEvaluationResult? result;
   final VoidCallback onContinue;
 
   const _BottomAction({
     required this.stage,
     required this.enabled,
+    required this.busy,
     required this.result,
     required this.onContinue,
   });
@@ -272,15 +274,17 @@ class _BottomAction extends StatelessWidget {
       ),
       child: PremiumButton(
         label: stage == 5
-            ? result == null
-                ? state.tr(
-                    ru: 'Сначала запиши аят',
-                    kk: 'Алдымен аятты жаз',
-                    en: 'Record the verse first')
-                : state.tr(
-                    ru: 'Сохранить результат',
-                    kk: 'Нәтижені сақтау',
-                    en: 'Save the result')
+            ? busy
+                ? state.tr(ru: 'Сохраняем…', kk: 'Сақталуда…', en: 'Saving…')
+                : result == null
+                    ? state.tr(
+                        ru: 'Сначала запиши аят',
+                        kk: 'Алдымен аятты жаз',
+                        en: 'Record the verse first')
+                    : state.tr(
+                        ru: 'Сохранить результат',
+                        kk: 'Нәтижені сақтау',
+                        en: 'Save the result')
             : state.tr(ru: 'Продолжить', kk: 'Жалғастыру', en: 'Continue'),
         icon: stage == 5 ? Icons.save_rounded : Icons.arrow_forward_rounded,
         onPressed: enabled ? onContinue : null,

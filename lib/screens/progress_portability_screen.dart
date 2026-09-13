@@ -296,19 +296,31 @@ class _ProgressPortabilityScreenState extends State<ProgressPortabilityScreen> {
 
   Future<void> _export(AppState state) async {
     final json = _service.encodeSnapshot(state);
-    await Clipboard.setData(ClipboardData(text: json));
     if (!mounted) return;
     setState(() => _exportedJson = json);
+    var copied = true;
+    try {
+      await Clipboard.setData(ClipboardData(text: json));
+    } catch (_) {
+      copied = false;
+    }
+    if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(
         SnackBar(
           content: Text(state.tr(
-            ru: 'JSON скопирован. Предпросмотр открыт ниже.',
-            kk: 'JSON көшірілді. Алдын ала қарау төменде ашылды.',
-            en: 'JSON copied. The preview is open below.',
+            ru: copied
+                ? 'JSON скопирован. Предпросмотр открыт ниже.'
+                : 'Предпросмотр открыт ниже. Буфер обмена недоступен — скопируй JSON вручную.',
+            kk: copied
+                ? 'JSON көшірілді. Алдын ала қарау төменде ашылды.'
+                : 'Алдын ала қарау төменде ашылды. Алмасу буфері қолжетімсіз — JSON-ды қолмен көшір.',
+            en: copied
+                ? 'JSON copied. The preview is open below.'
+                : 'The preview is open below. Clipboard access failed, so copy the JSON manually.',
           )),
-          backgroundColor: AppColors.success,
+          backgroundColor: copied ? AppColors.success : AppColors.warning,
         ),
       );
   }

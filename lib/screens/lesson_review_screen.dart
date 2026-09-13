@@ -241,6 +241,7 @@ class _LessonReviewScreenState extends State<LessonReviewScreen> {
 
                 // Кнопки закреплены снизу.
                 PremiumButton(
+                  key: const ValueKey('lesson-review-continue'),
                   // Кнопку больше не блокируем сундуками: награда за урок уже
                   // начислена, а раскрытие ящиков — необязательный бонус-жест.
                   label: state.tr(
@@ -251,18 +252,19 @@ class _LessonReviewScreenState extends State<LessonReviewScreen> {
                 ).animate().fadeIn(delay: 700.ms),
                 const SizedBox(height: 12),
                 PremiumButton(
+                  key: const ValueKey('lesson-review-secondary'),
                   label: isGuest
                       ? state.tr(
-                          ru: 'Сохранить прогресс',
-                          kk: 'Прогресті сақтау',
-                          en: 'Save progress')
+                          ru: 'Создать аккаунт',
+                          kk: 'Аккаунт жасау',
+                          en: 'Create account')
                       : state.tr(
                           ru: 'Повторить урок',
                           kk: 'Сабақты қайталау',
                           en: 'Repeat lesson'),
                   variant: PremiumButtonVariant.navy,
                   icon: isGuest
-                      ? Icons.bookmark_added_rounded
+                      ? Icons.person_add_alt_1_rounded
                       : Icons.refresh_rounded,
                   onPressed: isGuest
                       ? () => Navigator.pushNamed(context, '/login')

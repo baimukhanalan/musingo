@@ -76,7 +76,9 @@ class LanguagePills extends StatelessWidget {
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: active ? AppColors.navyDark : Colors.transparent,
               borderRadius: BorderRadius.circular(30),

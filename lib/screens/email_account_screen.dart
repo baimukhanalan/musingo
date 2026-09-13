@@ -185,7 +185,8 @@ class VerifyEmailScreen extends StatefulWidget {
 
 class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   bool _loading = true;
-  String _message = 'Подтверждаем email...';
+  bool _confirmed = false;
+  bool _invalidLink = false;
 
   @override
   void initState() {
@@ -194,60 +195,107 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   }
 
   Future<void> _confirm() async {
+    final state = context.read<AppState>();
     if (widget.token.length < 40) {
       setState(() {
         _loading = false;
-        _message = 'Ссылка неполная или повреждена.';
+        _invalidLink = true;
       });
       return;
     }
     try {
-      await context.read<AppState>().confirmEmailVerification(widget.token);
+      await state.confirmEmailVerification(widget.token);
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _message = 'Email подтверждён. Аккаунт защищён.';
+        _confirmed = true;
       });
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _message = readableBackendError(error);
+        _invalidLink = error is BackendException &&
+            error.code == 'invalid_or_expired_token';
       });
     }
   }
 
   @override
-  Widget build(BuildContext context) => _EmailActionScaffold(
-        title: 'Подтверждение email',
-        subtitle: 'Одноразовая проверка принадлежности адреса.',
-        children: [
-          if (_loading) const Center(child: CircularProgressIndicator()),
-          Text(_message, key: const Key('verification-result-message')),
-          if (!_loading) ...[
-            const SizedBox(height: 16),
-            PremiumButton(
-              label: 'Продолжить',
-              onPressed: () => Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/home',
-                (route) => false,
-              ),
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final message = _loading
+        ? state.tr(
+            ru: 'Подтверждаем email...',
+            kk: 'Email расталып жатыр...',
+            en: 'Verifying your email...',
+          )
+        : _confirmed
+            ? state.tr(
+                ru: 'Email подтверждён. Аккаунт защищён.',
+                kk: 'Email расталды. Аккаунт қорғалған.',
+                en: 'Email verified. Your account is protected.',
+              )
+            : _invalidLink
+                ? state.tr(
+                    ru: 'Ссылка недействительна, просрочена или уже использована.',
+                    kk: 'Сілтеме жарамсыз, мерзімі өткен немесе бұрын қолданылған.',
+                    en: 'This link is invalid, expired, or has already been used.',
+                  )
+                : state.tr(
+                    ru: 'Не удалось подтвердить email. Попробуй ещё раз позже.',
+                    kk: 'Email растау мүмкін болмады. Кейінірек қайталап көріңіз.',
+                    en: 'Could not verify your email. Please try again later.',
+                  );
+    final canContinueHome = _confirmed && state.isBackendUser;
+
+    return _EmailActionScaffold(
+      title: state.tr(
+        ru: 'Подтверждение email',
+        kk: 'Email растау',
+        en: 'Email verification',
+      ),
+      subtitle: state.tr(
+        ru: 'Одноразовая проверка принадлежности адреса.',
+        kk: 'Email мекенжайын бір реттік тексеру.',
+        en: 'A one-time check that this email belongs to you.',
+      ),
+      backTooltip: state.tr(ru: 'Назад', kk: 'Артқа', en: 'Back'),
+      children: [
+        if (_loading) const Center(child: CircularProgressIndicator()),
+        Text(message, key: const Key('verification-result-message')),
+        if (!_loading) ...[
+          const SizedBox(height: 16),
+          PremiumButton(
+            label: canContinueHome
+                ? state.tr(ru: 'Продолжить', kk: 'Жалғастыру', en: 'Continue')
+                : state.tr(
+                    ru: 'Перейти ко входу',
+                    kk: 'Кіру бетіне өту',
+                    en: 'Go to login',
+                  ),
+            onPressed: () => Navigator.pushNamedAndRemoveUntil(
+              context,
+              canContinueHome ? '/home' : '/login',
+              (route) => false,
             ),
-          ],
+          ),
         ],
-      );
+      ],
+    );
+  }
 }
 
 class _EmailActionScaffold extends StatelessWidget {
   final String title;
   final String subtitle;
   final List<Widget> children;
+  final String backTooltip;
 
   const _EmailActionScaffold({
     required this.title,
     required this.subtitle,
     required this.children,
+    this.backTooltip = 'Назад',
   });
 
   @override
@@ -261,7 +309,7 @@ class _EmailActionScaffold extends StatelessWidget {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: IconButton(
-                    tooltip: 'Назад',
+                    tooltip: backTooltip,
                     onPressed: () => Navigator.maybePop(context),
                     icon: const Icon(Icons.arrow_back_ios_new_rounded),
                   ),

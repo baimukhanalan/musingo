@@ -3,11 +3,13 @@ part of '../lesson_screen.dart';
 class _AudioStep extends StatefulWidget {
   final LessonStep step;
   final bool simulatePlayback;
+  final Future<void> Function(LessonStep step)? playbackSimulator;
   final VoidCallback onListened;
 
   const _AudioStep({
     required this.step,
     required this.simulatePlayback,
+    this.playbackSimulator,
     required this.onListened,
   });
 
@@ -16,8 +18,9 @@ class _AudioStep extends StatefulWidget {
 }
 
 class _AudioStepState extends State<_AudioStep> {
-  late final FlutterTts _tts;
+  late final SpeechSynthesizer _tts;
   late final QuranAudioPlayer _audioPlayer;
+  StreamSubscription<QuranAudioPlaybackState>? _audioSubscription;
   bool _played = false;
   bool _speaking = false;
 
@@ -25,7 +28,12 @@ class _AudioStepState extends State<_AudioStep> {
   void initState() {
     super.initState();
     _audioPlayer = QuranAudioPlayer();
-    _tts = FlutterTts();
+    _audioSubscription = _audioPlayer.playbackStateStream.listen((playback) {
+      if (!mounted) return;
+      setState(() => _speaking = playback.playing);
+      if (playback.error != null) _showUnavailable();
+    });
+    _tts = SpeechSynthesizer();
     _tts.setCompletionHandler(() {
       if (mounted) setState(() => _speaking = false);
     });
@@ -36,6 +44,20 @@ class _AudioStepState extends State<_AudioStep> {
 
   Future<void> _toggleSpeech() async {
     HapticsService.tap();
+    if (widget.playbackSimulator != null) {
+      try {
+        await widget.playbackSimulator!(widget.step);
+        if (!mounted) return;
+        widget.onListened();
+        setState(() {
+          _played = true;
+          _speaking = false;
+        });
+      } catch (_) {
+        if (mounted) _showUnavailable();
+      }
+      return;
+    }
     if (widget.simulatePlayback) {
       widget.onListened();
       setState(() {
@@ -53,14 +75,12 @@ class _AudioStepState extends State<_AudioStep> {
 
     final ayahNumber = widget.step.quranGlobalAyahNumber;
     if (ayahNumber != null) {
-      widget.onListened();
       await _playQuranAyah(ayahNumber);
       return;
     }
 
     final text = widget.step.arabicText;
     if (text == null || text.isEmpty) return;
-    widget.onListened();
     try {
       await _tts.setLanguage('ar-SA');
       await _tts.setSpeechRate(0.38);
@@ -69,25 +89,21 @@ class _AudioStepState extends State<_AudioStep> {
       await _tts.awaitSpeakCompletion(true);
       if (mounted) {
         setState(() {
-          _played = true;
           _speaking = true;
         });
       }
-      await _tts.speak(text);
+      final result = await _tts.speak(text);
+      if (result != 1) throw StateError('Text-to-speech did not start.');
+      if (!mounted) return;
+      widget.onListened();
+      setState(() {
+        _played = true;
+        _speaking = false;
+      });
     } catch (_) {
       if (!mounted) return;
       setState(() => _speaking = false);
-      final state = context.read<AppState>();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(state.tr(
-            ru: 'Озвучивание недоступно на этом устройстве.',
-            kk: 'Бұл құрылғыда дыбыстау қолжетімсіз.',
-            en: 'Audio playback is unavailable on this device.',
-          )),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      _showUnavailable();
     }
   }
 
@@ -96,7 +112,6 @@ class _AudioStepState extends State<_AudioStep> {
 
     if (mounted) {
       setState(() {
-        _played = true;
         _speaking = true;
       });
     }
@@ -105,7 +120,12 @@ class _AudioStepState extends State<_AudioStep> {
     for (final source in sources) {
       try {
         await _audioPlayer.playUrl(source);
-        if (mounted) setState(() => _speaking = false);
+        if (mounted) {
+          widget.onListened();
+          setState(() {
+            _played = true;
+          });
+        }
         return;
       } catch (error) {
         lastError = error;
@@ -130,9 +150,26 @@ class _AudioStepState extends State<_AudioStep> {
     );
   }
 
+  void _showUnavailable() {
+    final state = context.read<AppState>();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(state.tr(
+          ru: 'Озвучивание недоступно на этом устройстве.',
+          kk: 'Бұл құрылғыда дыбыстау қолжетімсіз.',
+          en: 'Audio playback is unavailable on this device.',
+        )),
+        backgroundColor: AppColors.error,
+      ),
+    );
+  }
+
   @override
   void dispose() {
-    if (!widget.simulatePlayback) _tts.stop();
+    if (!widget.simulatePlayback && widget.playbackSimulator == null) {
+      _tts.stop();
+    }
+    _audioSubscription?.cancel();
     _audioPlayer.dispose();
     super.dispose();
   }

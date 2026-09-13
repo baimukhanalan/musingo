@@ -3,7 +3,6 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_tts/flutter_tts.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -15,6 +14,7 @@ import '../services/haptics_service.dart';
 import '../services/lesson_video_catalog.dart';
 import '../services/quran_audio_player.dart';
 import '../services/speech_evaluation_service.dart';
+import '../services/speech_synthesizer.dart';
 import '../utils/colors.dart';
 import '../utils/theme.dart';
 import '../widgets/cat_character.dart';
@@ -71,13 +71,15 @@ class LessonScreen extends StatefulWidget {
   final Lesson lesson;
   final Future<SpeechEvaluationResult> Function(LessonStep step)?
       speechSimulator;
-  final LessonVideoCatalog videoCatalog;
+  final Future<void> Function(LessonStep step)? audioPlaybackSimulator;
+  final LessonVideoCatalog? videoCatalog;
 
   const LessonScreen({
     super.key,
     required this.lesson,
     @visibleForTesting this.speechSimulator,
-    this.videoCatalog = const LessonVideoCatalog(),
+    @visibleForTesting this.audioPlaybackSimulator,
+    this.videoCatalog,
   });
 
   @override
@@ -108,6 +110,10 @@ class _LessonScreenState extends State<LessonScreen> {
   final Set<String> _weakStepIds = {};
   final Set<int> _reportedStepIndexes = {};
   List<LessonStep> _reviewSteps = [];
+  bool _advancing = false;
+  bool _exitDialogOpen = false;
+  bool _capturedStartingHearts = false;
+  int _startingHearts = 5;
 
   List<LessonStep> get _activeSteps =>
       _reviewingMistakes ? _reviewSteps : widget.lesson.steps;
@@ -149,7 +155,17 @@ class _LessonScreenState extends State<LessonScreen> {
     });
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_capturedStartingHearts) {
+      _startingHearts = context.read<AppState>().user?.hearts ?? 5;
+      _capturedStartingHearts = true;
+    }
+  }
+
   void _onCheck() {
+    if (_answered || _advancing) return;
     switch (_step.type) {
       case LessonStepType.question:
       case LessonStepType.listenChoice:
@@ -187,7 +203,7 @@ class _LessonScreenState extends State<LessonScreen> {
         _catMood = CatMood.success;
       } else {
         _catMood = CatMood.error;
-        _errors++;
+        _errors = (_errors + 1).clamp(0, 5);
         if (!_mistakeSteps.contains(_step)) _mistakeSteps.add(_step);
         _weakStepIds.add(_stepId(_step));
         context.read<AppState>().loseHeart();
@@ -196,58 +212,75 @@ class _LessonScreenState extends State<LessonScreen> {
   }
 
   Future<void> _nextStep() async {
-    if (!_reviewingMistakes && _reportedStepIndexes.add(_stepIndex)) {
-      _recordStepProgress(_stepIndex);
-    }
-    if (_stepIndex + 1 >= _activeSteps.length) {
-      if (!_reviewingMistakes && _mistakeSteps.isNotEmpty) {
-        HapticsService.reward();
-        setState(() {
-          _reviewSteps = List<LessonStep>.from(_mistakeSteps);
-          _mistakeSteps.clear();
-          _reviewingMistakes = true;
-          _stepIndex = 0;
-          _selectedAnswer = null;
-          _answered = false;
-          _lastAnswerCorrect = false;
-          _showHint = false;
-          _speakPassed = _isSpeakPassed(_step);
-          _audioReady = _isAudioReady(_step);
-          _matchingComplete = _isMatchingComplete(_step);
-          _orderPicks = const [];
-          _catMood = CatMood.support;
-        });
-        _scrollToStepStart();
+    if (_advancing) return;
+    setState(() => _advancing = true);
+    try {
+      if (!_reviewingMistakes && _reportedStepIndexes.add(_stepIndex)) {
+        try {
+          await context
+              .read<AppState>()
+              .recordLessonStep(widget.lesson.id, _stepIndex);
+        } catch (_) {
+          _reportedStepIndexes.remove(_stepIndex);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(context.read<AppState>().tr(
+                    ru: 'Шаг не сохранился. Проверь соединение и повтори.',
+                    kk: 'Қадам сақталмады. Байланысты тексеріп, қайтала.',
+                    en: 'The step was not saved. Check your connection and retry.',
+                  )),
+              backgroundColor: AppColors.error,
+            ),
+          );
+          return;
+        }
+      }
+      if (!mounted) return;
+      if (_stepIndex + 1 >= _activeSteps.length) {
+        // A review is complete only after the learner answers the repeated
+        // step cleanly. Mistakes made during review are queued for another
+        // pass instead of silently finishing the lesson.
+        if (_mistakeSteps.isNotEmpty) {
+          HapticsService.reward();
+          setState(() {
+            _reviewSteps = List<LessonStep>.from(_mistakeSteps);
+            _mistakeSteps.clear();
+            _reviewingMistakes = true;
+            _stepIndex = 0;
+            _selectedAnswer = null;
+            _answered = false;
+            _lastAnswerCorrect = false;
+            _showHint = false;
+            _speakPassed = _isSpeakPassed(_step);
+            _audioReady = _isAudioReady(_step);
+            _matchingComplete = _isMatchingComplete(_step);
+            _orderPicks = const [];
+            _catMood = CatMood.support;
+          });
+          _scrollToStepStart();
+          return;
+        }
+        await _finishLesson();
         return;
       }
-      _finishLesson();
-      return;
+      HapticsService.tap();
+      setState(() {
+        _stepIndex++;
+        _selectedAnswer = null;
+        _answered = false;
+        _lastAnswerCorrect = false;
+        _showHint = false;
+        _speakPassed = _isSpeakPassed(_step);
+        _audioReady = _isAudioReady(_step);
+        _matchingComplete = _isMatchingComplete(_step);
+        _orderPicks = const [];
+        _catMood = _stepIndex == 0 ? CatMood.greet : CatMood.support;
+      });
+      _scrollToStepStart();
+    } finally {
+      if (mounted) setState(() => _advancing = false);
     }
-    HapticsService.tap();
-    setState(() {
-      _stepIndex++;
-      _selectedAnswer = null;
-      _answered = false;
-      _lastAnswerCorrect = false;
-      _showHint = false;
-      _speakPassed = _isSpeakPassed(_step);
-      _audioReady = _isAudioReady(_step);
-      _matchingComplete = _isMatchingComplete(_step);
-      _orderPicks = const [];
-      _catMood = _stepIndex == 0 ? CatMood.greet : CatMood.support;
-    });
-    _scrollToStepStart();
-  }
-
-  void _recordStepProgress(int stepIndex) {
-    final state = context.read<AppState>();
-    unawaited(() async {
-      try {
-        await state.recordLessonStep(widget.lesson.id, stepIndex);
-      } catch (_) {
-        _reportedStepIndexes.remove(stepIndex);
-      }
-    }());
   }
 
   void _scrollToStepStart() {
@@ -270,7 +303,7 @@ class _LessonScreenState extends State<LessonScreen> {
     try {
       result = await state.completeLesson(
         widget.lesson.id,
-        _errors,
+        _errors.clamp(0, 5),
         weakStepIds: _weakStepIds,
       );
     } catch (_) {
@@ -296,7 +329,9 @@ class _LessonScreenState extends State<LessonScreen> {
         'xpEarned': result['xpEarned'] ?? 25,
         'streakBonus': result['streakBonus'] ?? 0,
         // Премиум жизни не теряет — не показываем ему списание.
-        'heartsLost': isPremium ? 0 : _errors,
+        'heartsLost': isPremium
+            ? 0
+            : (_startingHearts - (state.user?.hearts ?? 0)).clamp(0, 5),
         'newStreak': result['newStreak'] ?? 0,
         'energyEarned': result['energyEarned'] ?? 0,
         'weakKnowledgeCount': result['weakKnowledgeCount'] ?? 0,
@@ -310,97 +345,128 @@ class _LessonScreenState extends State<LessonScreen> {
     final state = context.watch<AppState>();
     final hearts = state.user?.hearts ?? 5;
     final isPremium = state.user?.isPremium ?? false;
-    final compactHeight = MediaQuery.sizeOf(context).height < 900;
-    final lessonVideos = widget.videoCatalog.forLesson(widget.lesson.id);
+    final viewportHeight = MediaQuery.sizeOf(context).height;
+    final compactHeight = viewportHeight < 900;
+    final veryCompactHeight = viewportHeight < 600;
+    final lessonVideos =
+        (widget.videoCatalog ?? LessonVideoCatalog.curated).forLesson(
+      widget.lesson.id,
+      languageCode: widget.videoCatalog == null
+          ? state.nativeLanguage?.code ?? 'ru'
+          : null,
+    );
+    final bottomBar = _BottomBar(
+      step: _step,
+      answered: _answered,
+      selectedAnswer: _selectedAnswer,
+      speakPassed: _speakPassed,
+      audioReady: _audioReady,
+      matchingComplete: _matchingComplete,
+      orderComplete: _orderComplete,
+      reviewingMistakes: _reviewingMistakes,
+      isCorrect: _answered && _lastAnswerCorrect,
+      feedbackText: _feedbackText(state),
+      showHint: _showHint,
+      busy: _advancing,
+      onCheck: _onCheck,
+      onContinue: _nextStep,
+      onHint: () => setState(() => _showHint = true),
+    );
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: PremiumBackground(
-        child: SafeArea(
-          child: Column(
-            children: [
-              _TopBar(
-                  progress: _progress,
-                  currentStep: _stepIndex + 1,
-                  totalSteps: _activeSteps.length,
-                  hearts: hearts,
-                  isPremium: isPremium,
-                  onClose: () => _showExitDialog(context)),
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: _contentScrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    children: [
-                      SizedBox(height: compactHeight ? 2 : 8),
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 400),
-                        layoutBuilder: semanticSwitcherLayout,
-                        child: CatCharacter(
-                          key: ValueKey(_catMood),
-                          mood: _catMood,
-                          size: compactHeight ? 96 : 132,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _showExitDialog(context);
+      },
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: PremiumBackground(
+          child: SafeArea(
+            child: Column(
+              children: [
+                _TopBar(
+                    progress: _progress,
+                    currentStep: _stepIndex + 1,
+                    totalSteps: _activeSteps.length,
+                    hearts: hearts,
+                    isPremium: isPremium,
+                    onClose: () => _showExitDialog(context)),
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: _contentScrollController,
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Column(
+                            children: [
+                              SizedBox(height: compactHeight ? 2 : 8),
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 400),
+                                layoutBuilder: semanticSwitcherLayout,
+                                child: CatCharacter(
+                                  key: ValueKey(_catMood),
+                                  mood: _catMood,
+                                  size: veryCompactHeight
+                                      ? 68
+                                      : compactHeight
+                                          ? 96
+                                          : 132,
+                                ),
+                              ),
+                              SizedBox(height: compactHeight ? 4 : 12),
+                              _StepGuide(
+                                step: _step,
+                                currentStep: _stepIndex + 1,
+                                totalSteps: _activeSteps.length,
+                                reviewingMistakes: _reviewingMistakes,
+                              ),
+                              if (!_reviewingMistakes &&
+                                  _stepIndex == 0 &&
+                                  lessonVideos.isNotEmpty) ...[
+                                SizedBox(height: compactHeight ? 10 : 16),
+                                for (final video in lessonVideos) ...[
+                                  LessonVideoCard(video: video),
+                                  const SizedBox(height: 12),
+                                ],
+                              ],
+                              SizedBox(height: compactHeight ? 10 : 16),
+                              TweenAnimationBuilder<double>(
+                                key: ValueKey(
+                                  '${widget.lesson.id}_${_stepIndex}_$_reviewingMistakes',
+                                ),
+                                tween: Tween(begin: 0, end: 1),
+                                duration:
+                                    MediaQuery.of(context).disableAnimations
+                                        ? Duration.zero
+                                        : const Duration(milliseconds: 280),
+                                curve: Curves.easeOutCubic,
+                                child: _buildStepContent(),
+                                builder: (context, value, child) {
+                                  return Opacity(
+                                    opacity: value,
+                                    child: Transform.translate(
+                                      offset: Offset(18 * (1 - value), 0),
+                                      child: child,
+                                    ),
+                                  );
+                                },
+                              ),
+                              SizedBox(height: compactHeight ? 8 : 28),
+                            ],
+                          ),
                         ),
-                      ),
-                      SizedBox(height: compactHeight ? 4 : 12),
-                      _StepGuide(
-                        step: _step,
-                        currentStep: _stepIndex + 1,
-                        totalSteps: _activeSteps.length,
-                        reviewingMistakes: _reviewingMistakes,
-                      ),
-                      if (!_reviewingMistakes &&
-                          _stepIndex == 0 &&
-                          lessonVideos.isNotEmpty) ...[
-                        SizedBox(height: compactHeight ? 10 : 16),
-                        for (final video in lessonVideos) ...[
-                          LessonVideoCard(video: video),
-                          const SizedBox(height: 12),
-                        ],
                       ],
-                      SizedBox(height: compactHeight ? 10 : 16),
-                      TweenAnimationBuilder<double>(
-                        key: ValueKey(
-                          '${widget.lesson.id}_${_stepIndex}_$_reviewingMistakes',
-                        ),
-                        tween: Tween(begin: 0, end: 1),
-                        duration: MediaQuery.of(context).disableAnimations
-                            ? Duration.zero
-                            : const Duration(milliseconds: 280),
-                        curve: Curves.easeOutCubic,
-                        child: _buildStepContent(),
-                        builder: (context, value, child) {
-                          return Opacity(
-                            opacity: value,
-                            child: Transform.translate(
-                              offset: Offset(18 * (1 - value), 0),
-                              child: child,
-                            ),
-                          );
-                        },
-                      ),
-                      SizedBox(height: compactHeight ? 96 : 28),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-              _BottomBar(
-                step: _step,
-                answered: _answered,
-                selectedAnswer: _selectedAnswer,
-                speakPassed: _speakPassed,
-                audioReady: _audioReady,
-                matchingComplete: _matchingComplete,
-                orderComplete: _orderComplete,
-                reviewingMistakes: _reviewingMistakes,
-                isCorrect: _answered && _lastAnswerCorrect,
-                feedbackText: _feedbackText(state),
-                showHint: _showHint,
-                onCheck: _onCheck,
-                onContinue: _nextStep,
-                onHint: () => setState(() => _showHint = true),
-              ),
-            ],
+                // Keep the primary action in a dedicated, always-visible region.
+                // The lesson body remains independently scrollable on short
+                // phones and landscape viewports, so reaching a long answer never
+                // pushes the action itself beyond the viewport.
+                bottomBar,
+              ],
+            ),
           ),
         ),
       ),
@@ -444,6 +510,7 @@ class _LessonScreenState extends State<LessonScreen> {
         return _AudioStep(
           step: _step,
           simulatePlayback: widget.speechSimulator != null,
+          playbackSimulator: widget.audioPlaybackSimulator,
           onListened: () {
             if (!_audioReady) setState(() => _audioReady = true);
           },
@@ -471,6 +538,7 @@ class _LessonScreenState extends State<LessonScreen> {
               'listen_${widget.lesson.id}_${_stepIndex}_$_reviewingMistakes'),
           step: _step,
           simulatePlayback: widget.speechSimulator != null,
+          playbackSimulator: widget.audioPlaybackSimulator,
           selectedAnswer: _selectedAnswer,
           answered: _answered,
           onSelect: _answered
@@ -509,7 +577,7 @@ class _LessonScreenState extends State<LessonScreen> {
             HapticsService.wrong();
             setState(() {
               _catMood = CatMood.error;
-              _errors++;
+              _errors = (_errors + 1).clamp(0, 5);
               if (!_mistakeSteps.contains(_step)) _mistakeSteps.add(_step);
               _weakStepIds.add(_stepId(_step));
             });
@@ -555,14 +623,16 @@ class _LessonScreenState extends State<LessonScreen> {
           // открываем гейт, но засчитываем ошибку в разбор (errors++, шаг в
           // список ошибок и слабых), чтобы прогресс не блокировался.
           onSkip: () {
+            if (_speakPassed) return;
             HapticsService.speechFailed();
             setState(() {
               _speakPassed = true;
-              _errors++;
+              _errors = (_errors + 1).clamp(0, 5);
               if (!_mistakeSteps.contains(_step)) _mistakeSteps.add(_step);
               _weakStepIds.add(_stepId(_step));
               _catMood = CatMood.support;
             });
+            context.read<AppState>().loseHeart();
           },
         );
     }
@@ -573,52 +643,59 @@ class _LessonScreenState extends State<LessonScreen> {
     return step.id ?? '${widget.lesson.id}:$index';
   }
 
-  void _showExitDialog(BuildContext context) {
+  Future<void> _showExitDialog(BuildContext context) async {
+    if (_exitDialogOpen) return;
+    _exitDialogOpen = true;
     final state = context.read<AppState>();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-            state.tr(
-                ru: 'Выйти из урока?',
-                kk: 'Сабақтан шығасың ба?',
-                en: 'Exit the lesson?'),
-            style: const TextStyle(
-                fontFamily: 'Nunito', fontWeight: FontWeight.w800)),
-        content: Text(
-            state.tr(
-                ru: 'Прогресс этого урока не сохранится',
-                kk: 'Бұл сабақтың прогресі сақталмайды',
-                en: 'This lesson\'s progress will not be saved'),
-            style: const TextStyle(fontFamily: 'Nunito')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(state.tr(ru: 'Остаться', kk: 'Қалу', en: 'Stay'),
-                style: const TextStyle(
-                    fontFamily: 'Nunito',
-                    color: AppColors.pistachio,
-                    fontWeight: FontWeight.w700)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              final navigator = Navigator.of(context);
-              if (navigator.canPop()) {
-                navigator.pop();
-              } else {
-                navigator.pushReplacementNamed('/home');
-              }
-            },
-            child: Text(state.tr(ru: 'Выйти', kk: 'Шығу', en: 'Exit'),
-                style: const TextStyle(
-                    fontFamily: 'Nunito',
-                    color: AppColors.error,
-                    fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+              state.tr(
+                  ru: 'Выйти из урока?',
+                  kk: 'Сабақтан шығасың ба?',
+                  en: 'Exit the lesson?'),
+              style: const TextStyle(
+                  fontFamily: 'Nunito', fontWeight: FontWeight.w800)),
+          content: Text(
+              state.tr(
+                  ru: 'Прогресс этого урока не сохранится',
+                  kk: 'Бұл сабақтың прогресі сақталмайды',
+                  en: 'This lesson\'s progress will not be saved'),
+              style: const TextStyle(fontFamily: 'Nunito')),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(state.tr(ru: 'Остаться', kk: 'Қалу', en: 'Stay'),
+                  style: const TextStyle(
+                      fontFamily: 'Nunito',
+                      color: AppColors.pistachio,
+                      fontWeight: FontWeight.w700)),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                final navigator = Navigator.of(context);
+                if (navigator.canPop()) {
+                  navigator.pop();
+                } else {
+                  navigator.pushReplacementNamed('/home');
+                }
+              },
+              child: Text(state.tr(ru: 'Выйти', kk: 'Шығу', en: 'Exit'),
+                  style: const TextStyle(
+                      fontFamily: 'Nunito',
+                      color: AppColors.error,
+                      fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      _exitDialogOpen = false;
+    }
   }
 }

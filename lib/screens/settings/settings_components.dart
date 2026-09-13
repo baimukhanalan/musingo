@@ -100,6 +100,7 @@ class _SettingsRow extends StatelessWidget {
   final bool danger;
 
   const _SettingsRow({
+    super.key,
     required this.icon,
     required this.label,
     this.subtitle,

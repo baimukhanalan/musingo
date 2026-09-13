@@ -182,4 +182,46 @@ void main() {
     ]);
     service.dispose();
   });
+
+  test('temporary offline restore keeps the stored session for retry',
+      () async {
+    SharedPreferences.setMockInitialValues({
+      'muslingo_auth_token': 'still-valid-token',
+    });
+    final service = await BackendService.create(
+      client: MockClient((_) async => throw Exception('offline')),
+    );
+
+    expect(await service.restoreSession(), isNull);
+    expect(service.authToken, 'still-valid-token');
+    expect(
+      (await SharedPreferences.getInstance()).getString('muslingo_auth_token'),
+      'still-valid-token',
+    );
+    service.dispose();
+  });
+
+  test('revoked restore clears the stored session', () async {
+    SharedPreferences.setMockInitialValues({
+      'muslingo_auth_token': 'revoked-token',
+    });
+    final service = await BackendService.create(
+      client: MockClient((_) async => http.Response(
+            jsonEncode({
+              'error': 'expired_session',
+              'message': 'Session expired.',
+            }),
+            401,
+            headers: {'content-type': 'application/json'},
+          )),
+    );
+
+    expect(await service.restoreSession(), isNull);
+    expect(service.authToken, isNull);
+    expect(
+      (await SharedPreferences.getInstance()).getString('muslingo_auth_token'),
+      isNull,
+    );
+    service.dispose();
+  });
 }

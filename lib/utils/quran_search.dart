@@ -1,5 +1,17 @@
 import '../models/quran.dart';
 
+({int surah, int ayah})? parseQuranReference(String query) {
+  final match = RegExp(
+    r'^\s*(?:сура|сүре|surah)?\s*(\d{1,3})\s*[:.,/\s]\s*(?:аят|verse|ayah)?\s*(\d{1,3})\s*$',
+    caseSensitive: false,
+  ).firstMatch(query);
+  if (match == null) return null;
+  final surah = int.parse(match.group(1)!);
+  final ayah = int.parse(match.group(2)!);
+  if (surah < 1 || surah > 114 || ayah < 1) return null;
+  return (surah: surah, ayah: ayah);
+}
+
 const quranRussianNames = <String>[
   'Аль-Фатиха',
   'Аль-Бакара',

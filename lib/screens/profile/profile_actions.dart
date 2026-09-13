@@ -143,15 +143,15 @@ class _GuestSaveProgressCard extends StatelessWidget {
                       const SizedBox(height: 3),
                       Text(
                         state.tr(
-                            ru: 'Создай аккаунт — данные синхронизируются в '
-                                'облако, и ты не потеряешь их при смене или '
-                                'очистке устройства.',
-                            kk: 'Аккаунт жаса — деректер бұлтқа синхрондалады, '
-                                'құрылғыны ауыстырғанда немесе тазалағанда '
-                                'жоғалмайды.',
-                            en: 'Create an account — your data syncs to the '
-                                'cloud so you won\'t lose it if you switch or '
-                                'wipe your device.'),
+                            ru: 'Аккаунт включит облачную синхронизацию для '
+                                'нового прогресса. Гостевые завершения и '
+                                'награды останутся на этом устройстве.',
+                            kk: 'Аккаунт жаңа прогресс үшін бұлттық '
+                                'синхрондауды қосады. Қонақ ретінде аяқталған '
+                                'сабақтар мен сыйлықтар осы құрылғыда қалады.',
+                            en: 'An account enables cloud sync for new '
+                                'progress. Guest completions and rewards stay '
+                                'on this device.'),
                         style: const TextStyle(
                           fontFamily: 'Nunito',
                           fontSize: 12.5,

@@ -43,7 +43,7 @@ class CustomButton extends StatelessWidget {
             children: [
               if (icon != null) ...[
                 Icon(icon, size: 20, color: isOutlined ? bgColor : fgColor),
-                const SizedBox(width: 8),
+                if (text.isNotEmpty) const SizedBox(width: 8),
               ],
               Text(
                 text,
@@ -66,6 +66,7 @@ class CustomButton extends StatelessWidget {
           child: OutlinedButton(
             onPressed: isLoading ? null : onPressed,
             style: OutlinedButton.styleFrom(
+              padding: text.isEmpty ? EdgeInsets.zero : null,
               side: BorderSide(color: bgColor, width: 2.5),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14)),

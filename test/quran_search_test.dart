@@ -31,4 +31,12 @@ void main() {
     expect(quranChapterMatches(ikhlas, '112'), isTrue);
     expect(quranChapterMatches(fatiha, 'Бакара'), isFalse);
   });
+
+  test('parses common surah and ayah reference formats', () {
+    expect(parseQuranReference('2:255'), (surah: 2, ayah: 255));
+    expect(parseQuranReference('сура 2 аят 255'), (surah: 2, ayah: 255));
+    expect(parseQuranReference('112/3'), (surah: 112, ayah: 3));
+    expect(parseQuranReference('115:1'), isNull);
+    expect(parseQuranReference('2:0'), isNull);
+  });
 }

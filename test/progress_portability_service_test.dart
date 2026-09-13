@@ -113,6 +113,87 @@ void main() {
     );
     state.dispose();
   });
+
+  test('rejects malformed skill scores before changing lesson progress',
+      () async {
+    final state = AppState();
+    await _waitUntilInitialized(state);
+    await state.loginAsGuest();
+    final snapshot = <String, dynamic>{
+      'format': ProgressPortabilityService.format,
+      'schemaVersion': ProgressPortabilityService.schemaVersion,
+      'learningProfile': <String, dynamic>{
+        'skillScores': <String, dynamic>{'letters': 'not-a-number'},
+      },
+      'progress': <String, dynamic>{
+        'completedLessonIds': <String>['r1'],
+        'knowledgeStates': <dynamic>[],
+        'hafizProgress': <dynamic>[],
+      },
+    };
+
+    expect(
+      () => const ProgressPortabilityService()
+          .decodeAndPreview(jsonEncode(snapshot), state),
+      throwsFormatException,
+    );
+    await expectLater(
+      state.importPortableProgress(snapshot),
+      throwsFormatException,
+    );
+    expect(
+      state.getCourse(CourseType.rules)!.lessons.first.status,
+      LessonStatus.available,
+    );
+    expect(state.learningSkillProfile, isNull);
+
+    state.dispose();
+  });
+
+  test('rejects invalid Hafiz records atomically', () async {
+    final state = AppState();
+    await _waitUntilInitialized(state);
+    await state.loginAsGuest();
+    final snapshot = <String, dynamic>{
+      'format': ProgressPortabilityService.format,
+      'schemaVersion': ProgressPortabilityService.schemaVersion,
+      'progress': <String, dynamic>{
+        'completedLessonIds': <String>['r1'],
+        'knowledgeStates': <dynamic>[],
+        'hafizProgress': <dynamic>[
+          <String, dynamic>{
+            'surahNumber': 999,
+            'surahName': 'Invalid',
+            'verseNumber': -1,
+            'globalVerseNumber': 1,
+            'attempts': 1,
+            'repetitions': 0,
+            'bestScore': 90,
+            'mastery': 0.9,
+            'lastReviewedAt': '2026-09-10T00:00:00.000Z',
+            'nextReviewAt': '2026-09-11T00:00:00.000Z',
+          },
+        ],
+      },
+    };
+
+    expect(
+      () => const ProgressPortabilityService()
+          .decodeAndPreview(jsonEncode(snapshot), state),
+      throwsFormatException,
+    );
+    await expectLater(
+      state.importPortableProgress(snapshot),
+      throwsFormatException,
+    );
+    expect(
+      state.getCourse(CourseType.rules)!.lessons.first.status,
+      LessonStatus.available,
+    );
+    expect(state.hafizProgress, isEmpty);
+
+    state.dispose();
+  });
 }
 
 Future<void> _waitUntilInitialized(AppState state) async {

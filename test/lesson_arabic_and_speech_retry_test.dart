@@ -198,6 +198,16 @@ void main() {
     expect(attempts, 2);
     expect(find.textContaining('Пропустить'), findsOneWidget);
 
+    expect(state.user?.hearts, 5);
+    final skip = find.byKey(const ValueKey('lesson_speech_skip'));
+    await tester.ensureVisible(skip);
+    await tester.pump();
+    await tester.tap(skip);
+    await tester.pump();
+
+    expect(state.user?.hearts, 4);
+    expect(find.textContaining('Шаг пропущен'), findsOneWidget);
+
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(seconds: 1));
   });

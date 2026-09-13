@@ -6,10 +6,12 @@ import 'package:web/web.dart' as web;
 class QuranAudioPlaybackState {
   final bool playing;
   final bool completed;
+  final Object? error;
 
   const QuranAudioPlaybackState({
     required this.playing,
     this.completed = false,
+    this.error,
   });
 }
 
@@ -53,7 +55,12 @@ class QuranAudioPlayer {
       );
     }).toJS;
     audio.onerror = ((web.Event _) {
-      _stateController.add(const QuranAudioPlaybackState(playing: false));
+      _stateController.add(
+        QuranAudioPlaybackState(
+          playing: false,
+          error: StateError('Browser audio stream failed.'),
+        ),
+      );
     }).toJS;
     return audio;
   }

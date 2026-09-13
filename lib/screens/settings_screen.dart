@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/app_state.dart';
 import '../services/app_install_service.dart';
 import '../services/notification_service.dart';
+import '../utils/app_locale.dart';
 import '../utils/colors.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_card.dart';
@@ -41,19 +42,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 10),
               _SettingsCard(children: [
                 _SettingsRow(
+                  key: const ValueKey('settings-app-language'),
                   icon: Icons.language_rounded,
                   label: state.tr(
                       ru: 'Язык приложения',
                       kk: 'Қолданба тілі',
                       en: 'App language'),
                   color: AppColors.pistachio,
+                  trailing: Text(_appLocaleName(state.locale),
+                      style: const TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textGrey)),
+                  onTap: () => _showAppLanguagePicker(context),
+                ),
+                _SettingsRow(
+                  key: const ValueKey('settings-hint-language'),
+                  icon: Icons.translate_rounded,
+                  label: state.tr(
+                    ru: 'Язык объяснений',
+                    kk: 'Түсіндіру тілі',
+                    en: 'Explanation language',
+                  ),
+                  subtitle: state.tr(
+                    ru: 'Подсказки и учебные видео',
+                    kk: 'Көмекші мәтіндер мен оқу видеолары',
+                    en: 'Hints and learning videos',
+                  ),
+                  color: AppColors.sky,
                   trailing: Text(state.nativeLanguage?.label ?? 'Русский',
                       style: const TextStyle(
                           fontFamily: 'Nunito',
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
                           color: AppColors.textGrey)),
-                  onTap: () => _showLanguagePicker(context),
+                  onTap: () => _showHintLanguagePicker(context),
                 ),
               ]),
               const SizedBox(height: 22),
@@ -194,7 +218,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     trailing: Switch(
                       value: state.lockScreenPreviewEnabled,
                       onChanged: state.notificationsEnabled
-                          ? state.setLockScreenPreviewEnabled
+                          ? (enabled) =>
+                              _toggleLockScreenPreview(context, enabled)
                           : null,
                       activeThumbColor: AppColors.navy,
                     ),
@@ -382,14 +407,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _toggleNotifications(BuildContext context, bool enabled) async {
     final state = context.read<AppState>();
     final success = await state.setNotificationsEnabled(enabled);
-    if (!context.mounted || success || !enabled) return;
+    if (!context.mounted || success) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           state.tr(
-              ru: 'Разреши уведомления в настройках браузера или телефона.',
-              kk: 'Браузер немесе телефон баптауларында хабарламаларға рұқсат бер.',
-              en: 'Allow notifications in your browser or phone settings.'),
+              ru: enabled
+                  ? 'Разреши уведомления в настройках браузера или телефона.'
+                  : 'Не удалось отключить уведомления. Подписка осталась активной.',
+              kk: enabled
+                  ? 'Браузер немесе телефон баптауларында хабарламаларға рұқсат бер.'
+                  : 'Хабарламаларды өшіру мүмкін болмады. Жазылым белсенді қалды.',
+              en: enabled
+                  ? 'Allow notifications in your browser or phone settings.'
+                  : 'Could not turn off notifications. The subscription is still active.'),
         ),
         backgroundColor: AppColors.error,
       ),
@@ -402,13 +433,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   ) async {
     final state = context.read<AppState>();
     final success = await state.setDailyAyahNotificationsEnabled(enabled);
-    if (!context.mounted || success || !enabled) return;
+    if (!context.mounted || success) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(state.tr(
-          ru: 'Разреши уведомления, чтобы получать аят дня.',
-          kk: 'Күн аятын алу үшін хабарламаларға рұқсат бер.',
-          en: 'Allow notifications to receive the ayah of the day.',
+          ru: enabled
+              ? 'Разреши уведомления, чтобы получать аят дня.'
+              : 'Не удалось отключить аят дня. Настройка возвращена.',
+          kk: enabled
+              ? 'Күн аятын алу үшін хабарламаларға рұқсат бер.'
+              : 'Күн аятын өшіру мүмкін болмады. Баптау қалпына келтірілді.',
+          en: enabled
+              ? 'Allow notifications to receive the ayah of the day.'
+              : 'Could not turn off the daily ayah. The setting was restored.',
         )),
         backgroundColor: AppColors.error,
       ),
@@ -431,9 +468,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       confirmText: state.tr(ru: 'Сохранить', kk: 'Сақтау', en: 'Save'),
     );
     if (selected == null || !context.mounted) return;
-    await context
+    final success = await context
         .read<AppState>()
         .setReminderTime(selected.hour, selected.minute);
+    if (!context.mounted || success) return;
+    _showSchedulingFailure(
+      context,
+      state.tr(
+        ru: 'Новое время не сохранено. Не удалось перепланировать уведомление.',
+        kk: 'Жаңа уақыт сақталмады. Хабарламаны қайта жоспарлау мүмкін болмады.',
+        en: 'The new time was not saved because the notification could not be rescheduled.',
+      ),
+    );
   }
 
   Future<void> _pickDailyAyahTime(BuildContext context) async {
@@ -452,9 +498,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
       confirmText: state.tr(ru: 'Сохранить', kk: 'Сақтау', en: 'Save'),
     );
     if (selected == null || !context.mounted) return;
-    await context
+    final success = await context
         .read<AppState>()
         .setDailyAyahTime(selected.hour, selected.minute);
+    if (!context.mounted || success) return;
+    _showSchedulingFailure(
+      context,
+      state.tr(
+        ru: 'Новое время аята не сохранено. Попробуй ещё раз.',
+        kk: 'Аяттың жаңа уақыты сақталмады. Қайталап көріңіз.',
+        en: 'The new ayah time was not saved. Try again.',
+      ),
+    );
+  }
+
+  Future<void> _toggleLockScreenPreview(
+    BuildContext context,
+    bool enabled,
+  ) async {
+    final state = context.read<AppState>();
+    final success = await state.setLockScreenPreviewEnabled(enabled);
+    if (!context.mounted || success) return;
+    _showSchedulingFailure(
+      context,
+      state.tr(
+        ru: 'Настройка экрана блокировки не сохранена и возвращена обратно.',
+        kk: 'Құлып экранының баптауы сақталмай, кері қайтарылды.',
+        en: 'The Lock Screen setting was not saved and has been restored.',
+      ),
+    );
+  }
+
+  void _showSchedulingFailure(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: AppColors.error),
+    );
   }
 
   Future<void> _toggleHomeWidget(
@@ -614,7 +692,79 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _showLanguagePicker(BuildContext context) async {
+  String _appLocaleName(AppLocale locale) {
+    switch (locale) {
+      case AppLocale.ru:
+        return 'Русский';
+      case AppLocale.kk:
+        return 'Қазақша';
+      case AppLocale.en:
+        return 'English';
+    }
+  }
+
+  Future<void> _showAppLanguagePicker(BuildContext context) async {
+    final state = context.read<AppState>();
+    final selected = await showModalBottomSheet<AppLocale>(
+      context: context,
+      backgroundColor: AppColors.white,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 0, 4, 16),
+                child: Text(
+                  state.tr(
+                    ru: 'Выбери язык приложения',
+                    kk: 'Қолданба тілін таңда',
+                    en: 'Choose the app language',
+                  ),
+                  style: const TextStyle(
+                    fontFamily: 'Nunito',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.navyDark,
+                  ),
+                ),
+              ),
+              _SettingsCard(
+                children: [
+                  for (final locale in AppLocale.values)
+                    _SettingsRow(
+                      key: ValueKey('settings-app-locale-${locale.code}'),
+                      icon: locale == state.locale
+                          ? Icons.check_circle_rounded
+                          : Icons.language_rounded,
+                      label: _appLocaleName(locale),
+                      color: locale == state.locale
+                          ? AppColors.pistachio
+                          : AppColors.textGrey,
+                      trailing: locale == state.locale
+                          ? const Icon(Icons.check_rounded,
+                              color: AppColors.pistachio, size: 22)
+                          : const SizedBox.shrink(),
+                      onTap: () => Navigator.pop(sheetContext, locale),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (selected == null || !context.mounted) return;
+    await context.read<AppState>().setLocale(selected);
+  }
+
+  Future<void> _showHintLanguagePicker(BuildContext context) async {
     final state = context.read<AppState>();
     final selected = await showModalBottomSheet<NativeLanguage>(
       context: context,

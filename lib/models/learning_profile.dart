@@ -46,9 +46,26 @@ class LearningSkillProfile {
       };
 
   factory LearningSkillProfile.fromJson(Map<String, dynamic> json) {
+    final scores = <LearningSkill, int>{};
+    for (final skill in LearningSkill.values) {
+      final raw = json[skill.name];
+      if (raw == null) {
+        scores[skill] = 0;
+        continue;
+      }
+      if (raw is! num ||
+          !raw.isFinite ||
+          raw % 1 != 0 ||
+          raw < 0 ||
+          raw > 100) {
+        throw FormatException(
+          'Некорректная оценка навыка ${skill.name}.',
+        );
+      }
+      scores[skill] = raw.toInt();
+    }
     return LearningSkillProfile({
-      for (final skill in LearningSkill.values)
-        skill: ((json[skill.name] as num?)?.toInt() ?? 0).clamp(0, 100),
+      for (final entry in scores.entries) entry.key: entry.value,
     });
   }
 }

@@ -63,19 +63,40 @@ class QuranRepository {
     }
   }
 
-  Future<QuranChapter> fetchChapter(QuranChapterSummary summary) async {
+  Future<QuranChapter> fetchChapter(
+    QuranChapterSummary summary, {
+    String localeCode = 'ru',
+  }) async {
     final preferences = await SharedPreferences.getInstance();
-    final cacheKey = '$_chapterCachePrefix${summary.number}';
+    final normalizedLocale =
+        const {'ru', 'kk', 'en'}.contains(localeCode) ? localeCode : 'ru';
+    final translationEdition = normalizedLocale == 'kk'
+        ? 'kk.khalifahaltai'
+        : normalizedLocale == 'en'
+            ? 'en.sahih'
+            : 'ru.kuliev';
+    final transliterationEdition =
+        normalizedLocale == 'ru' ? 'ru.transliteration' : 'en.transliteration';
+    final cacheKey = '$_chapterCachePrefix${summary.number}_$normalizedLocale';
     final canonicalArabic = await _loadCanonicalArabic();
 
     try {
       final body = await _get(
         '/surah/${summary.number}/editions/'
-        'quran-uthmani,ru.kuliev,ru.transliteration,ar.alafasy',
+        'quran-uthmani,$translationEdition,$transliterationEdition,ar.alafasy',
       );
-      final chapter = _decodeChapter(summary, body, canonicalArabic);
+      final chapter = _decodeChapter(
+        summary,
+        body,
+        canonicalArabic,
+        translationEdition: translationEdition,
+        transliterationEdition: transliterationEdition,
+      );
       await preferences.setString(cacheKey, _encodeCachedChapter(chapter));
-      await _touchChapterCache(preferences, summary.number);
+      await _touchChapterCache(
+        preferences,
+        '${summary.number}_$normalizedLocale',
+      );
       return chapter;
     } catch (error) {
       final cached = preferences.getString(cacheKey);
@@ -87,6 +108,42 @@ class QuranRepository {
         'Сура не загрузилась. Проверьте интернет и повторите.',
       );
     }
+  }
+
+  Future<List<QuranSearchMatch>> searchAyahs(
+    String query, {
+    required String localeCode,
+    int limit = 30,
+  }) async {
+    final trimmed = query.trim();
+    if (trimmed.length < 2) return const [];
+    final hasArabic = RegExp(r'[\u0600-\u06ff]').hasMatch(trimmed);
+    final edition = hasArabic
+        ? 'quran-uthmani'
+        : localeCode == 'kk'
+            ? 'kk.khalifahaltai'
+            : localeCode == 'en'
+                ? 'en.sahih'
+                : 'ru.kuliev';
+    final body = await _get(
+      '/search/${Uri.encodeComponent(trimmed)}/all/$edition?limit=$limit',
+    );
+    final root = jsonDecode(body) as Map<String, dynamic>;
+    final data = root['data'];
+    if (root['code'] != 200 || data is! Map<String, dynamic>) {
+      throw const QuranRepositoryException('Поиск вернул неверные данные.');
+    }
+    final matches = data['matches'];
+    if (matches is! List) return const [];
+    return matches.cast<Map<String, dynamic>>().map((match) {
+      final surah = match['surah'] as Map<String, dynamic>;
+      return QuranSearchMatch(
+        surahNumber: surah['number'] as int,
+        ayahNumber: match['numberInSurah'] as int,
+        surahName: surah['englishName'] as String,
+        text: match['text'] as String,
+      );
+    }).toList(growable: false);
   }
 
   Future<String> _get(String path) async {
@@ -125,14 +182,27 @@ class QuranRepository {
         'Ожидалось 114 сур, получено ${chapters.length}.',
       );
     }
+    for (var index = 0; index < chapters.length; index++) {
+      final chapter = chapters[index];
+      if (chapter.number != index + 1 ||
+          chapter.ayahCount < 1 ||
+          chapter.arabicName.trim().isEmpty ||
+          chapter.latinName.trim().isEmpty) {
+        throw const QuranRepositoryException(
+          'Список сур повреждён: номера или порядок не совпадают.',
+        );
+      }
+    }
     return chapters;
   }
 
   QuranChapter _decodeChapter(
     QuranChapterSummary summary,
     String body,
-    Map<int, List<String>> canonicalArabic,
-  ) {
+    Map<int, List<String>> canonicalArabic, {
+    String translationEdition = 'ru.kuliev',
+    String transliterationEdition = 'ru.transliteration',
+  }) {
     final root = jsonDecode(body) as Map<String, dynamic>;
     final editions = (root['data'] as List).cast<Map<String, dynamic>>();
     Map<String, dynamic> edition(String identifier) => editions.firstWhere(
@@ -142,8 +212,8 @@ class QuranRepository {
         );
 
     final arabic = edition('quran-uthmani');
-    final translation = edition('ru.kuliev');
-    final transliteration = edition('ru.transliteration');
+    final translation = edition(translationEdition);
+    final transliteration = edition(transliterationEdition);
     final audio = edition('ar.alafasy');
     final arabicAyahs = (arabic['ayahs'] as List).cast<Map<String, dynamic>>();
     final translatedAyahs =
@@ -313,12 +383,11 @@ class QuranRepository {
 
   Future<void> _touchChapterCache(
     SharedPreferences preferences,
-    int chapterNumber,
+    String cacheId,
   ) async {
     final lru = preferences.getStringList(_chapterCacheLruKey) ?? <String>[];
-    final value = '$chapterNumber';
-    lru.remove(value);
-    lru.insert(0, value);
+    lru.remove(cacheId);
+    lru.insert(0, cacheId);
     while (lru.length > _maxCachedChapters) {
       final removed = lru.removeLast();
       await preferences.remove('$_chapterCachePrefix$removed');

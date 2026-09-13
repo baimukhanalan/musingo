@@ -18,7 +18,7 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="description" content="Muslingo — персональный AI-тренер по Корану, арабскому языку и основам ислама. Учись каждый день короткими интерактивными уроками.">
   <meta name="theme-color" content="#155B88">
   <meta property="og:title" content="Muslingo — учи Коран каждый день">
@@ -285,7 +285,7 @@
             const worker = await registration();
             const subscription = await worker.pushManager.getSubscription();
             if (!subscription) return true;
-            await fetch('/api/push/unsubscribe', {
+            const response = await fetch('/api/push/unsubscribe', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -299,6 +299,7 @@
                 installationId: installationId(),
               }),
             });
+            if (!response.ok) return false;
             return subscription.unsubscribe();
           } catch (error) {
             console.warn('Muslingo push unsubscribe failed', error);
@@ -355,6 +356,23 @@
       document.addEventListener('flutter-first-frame', removeSplash, { once: true });
       // Страховка: если событие не пришло, всё равно убираем лоадер.
       window.setTimeout(removeSplash, 12000);
+    })();
+  </script>
+  <script>
+    // Flutter may inject its own flt-viewport meta after startup. Keep browser
+    // pinch zoom available for low-vision users even after that runtime node
+    // appears or is replaced.
+    (() => {
+      const allowViewportZoom = () => {
+        document.querySelectorAll('meta[name="viewport"], meta[name="flt-viewport"]')
+          .forEach((meta) => meta.setAttribute(
+            'content',
+            'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover',
+          ));
+      };
+      new MutationObserver(allowViewportZoom)
+        .observe(document.documentElement, { childList: true, subtree: true });
+      allowViewportZoom();
     })();
   </script>
 

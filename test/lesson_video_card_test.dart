@@ -56,7 +56,7 @@ void main() {
     await tester.tap(find.byKey(const Key('lesson-video-play')));
     await tester.pump();
 
-    expect(opened, [Uri.parse(video.embedUrl)]);
+    expect(opened, [Uri.parse(video.source.url)]);
 
     semantics.dispose();
     await tester.pumpWidget(const SizedBox.shrink());

@@ -72,6 +72,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
       });
     } catch (error) {
       if (!mounted) return;
+      await context.read<AppState>().handleBackendSessionError(error);
+      if (!mounted) return;
       // Фолбэк на локальный код — экран остаётся рабочим и оффлайн.
       setState(() {
         _loadError = readableBackendError(error);
@@ -101,6 +103,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
       );
     } catch (error) {
       if (!mounted) return;
+      await state.handleBackendSessionError(error);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(readableBackendError(error))),
       );
@@ -124,6 +128,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 en: '${friend.displayName} removed from friends'))),
       );
     } catch (error) {
+      if (!mounted) return;
+      await state.handleBackendSessionError(error);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(readableBackendError(error))),

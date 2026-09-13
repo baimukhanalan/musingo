@@ -10,6 +10,7 @@ import '../services/quran_audio_player.dart';
 import '../services/quran_repository.dart';
 import '../utils/colors.dart';
 import '../utils/quran_search.dart';
+import '../utils/theme.dart';
 import '../widgets/cat_character.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_card.dart';
@@ -81,6 +82,8 @@ class _QuranScreenState extends State<QuranScreen> {
   late final QuranRepository _repository;
   late Future<List<QuranChapterSummary>> _chaptersFuture;
   final _searchController = TextEditingController();
+  Timer? _searchDebounce;
+  Future<List<QuranSearchMatch>>? _ayahSearchFuture;
   String _query = '';
   QuranSection _section = QuranSection.surahs;
 
@@ -93,9 +96,29 @@ class _QuranScreenState extends State<QuranScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     _repository.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged(String value, String localeCode) {
+    _searchDebounce?.cancel();
+    final trimmed = value.trim();
+    setState(() {
+      _query = value;
+      _ayahSearchFuture = null;
+    });
+    if (trimmed.length < 2 || parseQuranReference(trimmed) != null) return;
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted || _query.trim() != trimmed) return;
+      setState(() {
+        _ayahSearchFuture = _repository.searchAyahs(
+          trimmed,
+          localeCode: localeCode,
+        );
+      });
+    });
   }
 
   Future<void> _refresh() async {
@@ -124,9 +147,11 @@ class _QuranScreenState extends State<QuranScreen> {
     }
     if (_section == section) return;
     _searchController.clear();
+    _searchDebounce?.cancel();
     setState(() {
       _section = section;
       _query = '';
+      _ayahSearchFuture = null;
     });
   }
 
@@ -166,6 +191,7 @@ class _QuranScreenState extends State<QuranScreen> {
 
               final chapters = snapshot.data ?? const <QuranChapterSummary>[];
               final normalizedQuery = _query.trim();
+              final reference = parseQuranReference(normalizedQuery);
               final filtered = normalizedQuery.isEmpty
                   ? chapters
                   : chapters
@@ -182,6 +208,8 @@ class _QuranScreenState extends State<QuranScreen> {
               final contentCount = _section == QuranSection.surahs
                   ? filtered.length
                   : visibleJuz.length;
+              final showAyahSearch = normalizedQuery.length >= 2;
+              final extraCount = showAyahSearch ? 1 : 0;
 
               return RefreshIndicator(
                 onRefresh: _refresh,
@@ -190,12 +218,13 @@ class _QuranScreenState extends State<QuranScreen> {
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
                   padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
-                  itemCount: contentCount + 2,
+                  itemCount: contentCount + 2 + extraCount,
                   itemBuilder: (context, index) {
                     if (index == 0) {
                       return _QuranHeader(
                         controller: _searchController,
-                        onChanged: (value) => setState(() => _query = value),
+                        onChanged: (value) =>
+                            _onSearchChanged(value, appState.locale.code),
                         memorizedCount: appState.memorizedVerseCount,
                         dueCount: appState.hafizDueCount,
                         onSources: _openSources,
@@ -203,7 +232,24 @@ class _QuranScreenState extends State<QuranScreen> {
                         onSectionSelected: _selectSection,
                       );
                     }
-                    if (index == contentCount + 1) {
+                    if (showAyahSearch && index == contentCount + 1) {
+                      return _AyahSearchPanel(
+                        chapters: chapters,
+                        reference: reference,
+                        searchFuture: _ayahSearchFuture,
+                        onOpen: (chapter, ayah) => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => QuranChapterScreen(
+                              chapter: chapter,
+                              repository: _repository,
+                              initialAyahNumber: ayah,
+                              localeCode: appState.locale.code,
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                    if (index == contentCount + 1 + extraCount) {
                       return const _AttributionFooter();
                     }
                     if (_section == QuranSection.juz) {
@@ -217,6 +263,8 @@ class _QuranScreenState extends State<QuranScreen> {
                             builder: (_) => QuranChapterScreen(
                               chapter: chapter,
                               repository: _repository,
+                              initialAyahNumber: entry.ayahNumber,
+                              localeCode: appState.locale.code,
                             ),
                           ),
                         ),
@@ -235,6 +283,7 @@ class _QuranScreenState extends State<QuranScreen> {
                           builder: (_) => QuranChapterScreen(
                             chapter: chapter,
                             repository: _repository,
+                            localeCode: appState.locale.code,
                           ),
                         ),
                       ),
@@ -481,6 +530,202 @@ class _SearchField extends StatelessWidget {
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: const BorderSide(color: AppColors.sky, width: 1.5),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AyahSearchPanel extends StatelessWidget {
+  final List<QuranChapterSummary> chapters;
+  final ({int surah, int ayah})? reference;
+  final Future<List<QuranSearchMatch>>? searchFuture;
+  final void Function(QuranChapterSummary chapter, int ayah) onOpen;
+
+  const _AyahSearchPanel({
+    required this.chapters,
+    required this.reference,
+    required this.searchFuture,
+    required this.onOpen,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final direct = reference;
+    if (direct != null) {
+      QuranChapterSummary? chapter;
+      for (final item in chapters) {
+        if (item.number == direct.surah) {
+          chapter = item;
+          break;
+        }
+      }
+      if (chapter == null || direct.ayah > chapter.ayahCount) {
+        return _searchMessage(
+          state.tr(
+            ru: 'Такого аята нет. Проверь номер суры и аята.',
+            kk: 'Мұндай аят жоқ. Сүре мен аят нөмірін тексеріңіз.',
+            en: 'That verse does not exist. Check the surah and verse number.',
+          ),
+        );
+      }
+      final resolvedChapter = chapter;
+      return _AyahSearchTile(
+        chapter: resolvedChapter,
+        ayahNumber: direct.ayah,
+        text: state.tr(
+          ru: 'Открыть точную ссылку ${direct.surah}:${direct.ayah}',
+          kk: '${direct.surah}:${direct.ayah} нақты сілтемесін ашу',
+          en: 'Open exact reference ${direct.surah}:${direct.ayah}',
+        ),
+        onTap: () => onOpen(resolvedChapter, direct.ayah),
+      );
+    }
+
+    final future = searchFuture;
+    if (future == null) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Center(child: CircularProgressIndicator(color: AppColors.sky)),
+      );
+    }
+    return FutureBuilder<List<QuranSearchMatch>>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child:
+                Center(child: CircularProgressIndicator(color: AppColors.sky)),
+          );
+        }
+        if (snapshot.hasError) {
+          return _searchMessage(
+            state.tr(
+              ru: 'Поиск аятов временно недоступен. Проверь интернет.',
+              kk: 'Аяттарды іздеу уақытша қолжетімсіз. Интернетті тексеріңіз.',
+              en: 'Verse search is temporarily unavailable. Check your connection.',
+            ),
+          );
+        }
+        final matches = snapshot.data ?? const <QuranSearchMatch>[];
+        if (matches.isEmpty) {
+          return _searchMessage(
+            state.tr(
+              ru: 'В аятах совпадений не найдено.',
+              kk: 'Аяттардан сәйкестік табылмады.',
+              en: 'No matching verses found.',
+            ),
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 8, 4, 10),
+              child: Text(
+                state.tr(
+                  ru: 'НАЙДЕНО В АЯТАХ',
+                  kk: 'АЯТТАРДАН ТАБЫЛДЫ',
+                  en: 'FOUND IN VERSES',
+                ),
+                style: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textGrey,
+                ),
+              ),
+            ),
+            for (final match in matches)
+              Builder(builder: (context) {
+                final chapter = chapters.firstWhere(
+                  (item) => item.number == match.surahNumber,
+                );
+                return _AyahSearchTile(
+                  chapter: chapter,
+                  ayahNumber: match.ayahNumber,
+                  text: match.text,
+                  onTap: () => onOpen(chapter, match.ayahNumber),
+                );
+              }),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _searchMessage(String message) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
+        child: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontFamily: 'Nunito',
+            fontWeight: FontWeight.w700,
+            color: AppColors.textGrey,
+          ),
+        ),
+      );
+}
+
+class _AyahSearchTile extends StatelessWidget {
+  final QuranChapterSummary chapter;
+  final int ayahNumber;
+  final String text;
+  final VoidCallback onTap;
+
+  const _AyahSearchTile({
+    required this.chapter,
+    required this.ayahNumber,
+    required this.text,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          key: ValueKey('quran-search-${chapter.number}-$ayahNumber'),
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${quranDisplayName(chapter, state.locale.code)} · $ayahNumber',
+                  style: const TextStyle(
+                    fontFamily: 'Nunito',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.navy,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  text,
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Nunito',
+                    fontFamilyFallback: AppTheme.fontFallback,
+                    fontSize: 14,
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textDark,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

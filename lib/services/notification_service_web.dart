@@ -86,7 +86,10 @@ class NotificationPlatform {
 
   Future<void> cancelAll({String authToken = ''}) async {
     if (!supportsBackgroundScheduling) return;
-    await _pushUnsubscribe(authToken.toJS).toDart;
+    final unsubscribed = (await _pushUnsubscribe(authToken.toJS).toDart).toDart;
+    if (!unsubscribed) {
+      throw StateError('Web Push subscription is still active.');
+    }
   }
 
   Future<bool> showTest(ReminderMessage message) async {

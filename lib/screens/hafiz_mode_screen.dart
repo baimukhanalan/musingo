@@ -46,6 +46,9 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
   bool _samplePlayed = false;
   bool _audioLoading = false;
   bool _audioPlaying = false;
+  List<String> _sampleSources = const [];
+  int _sampleSourceIndex = 0;
+  bool _recoveringSampleAudio = false;
   int _guidedRepetitions = 0;
   int _chunkIndex = 0;
   final Set<int> _practicedChunks = {};
@@ -57,6 +60,7 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
   bool _gradingRequested = false;
   bool _speechAvailable = false;
   bool _switchingToAudioFallback = false;
+  bool _finishing = false;
   String _transcript = '';
   String? _speechError;
   Uint8List? _audioBytes;
@@ -91,6 +95,10 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
     _speechEvaluation = SpeechEvaluationService();
     _audioSubscription = _audioPlayer.playbackStateStream.listen((state) {
       if (!mounted) return;
+      if (state.error != null) {
+        unawaited(_recoverSampleAfterStreamError());
+        return;
+      }
       setState(() {
         _audioPlaying = state.playing;
         if (state.completed) _audioLoading = false;
@@ -139,14 +147,15 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
       _audioLoading = true;
       _speechError = null;
     });
-    final sources = [
+    _sampleSources = [
       widget.verse.audioUrl,
       if (widget.verse.audioFallbackUrl != null) widget.verse.audioFallbackUrl!,
     ];
     Object? lastError;
-    for (final source in sources) {
+    for (var index = 0; index < _sampleSources.length; index++) {
+      _sampleSourceIndex = index;
       try {
-        await _audioPlayer.playUrl(source);
+        await _audioPlayer.playUrl(_sampleSources[index]);
         lastError = null;
         if (mounted) {
           setState(() {
@@ -170,6 +179,42 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
     }
   }
 
+  Future<void> _recoverSampleAfterStreamError() async {
+    if (_recoveringSampleAudio || !mounted) return;
+    _recoveringSampleAudio = true;
+    setState(() {
+      _audioPlaying = false;
+      _audioLoading = true;
+      _samplePlayed = false;
+    });
+    try {
+      final fallbackIndex = _sampleSourceIndex + 1;
+      if (fallbackIndex < _sampleSources.length) {
+        _sampleSourceIndex = fallbackIndex;
+        await _audioPlayer.stop();
+        await _audioPlayer.playUrl(_sampleSources[fallbackIndex]);
+        if (!mounted) return;
+        setState(() {
+          _samplePlayed = true;
+          _audioLoading = false;
+        });
+        return;
+      }
+    } catch (_) {
+      // The shared error state below offers a retry from the beginning.
+    } finally {
+      _recoveringSampleAudio = false;
+    }
+    if (!mounted) return;
+    setState(() => _audioLoading = false);
+    final state = context.read<AppState>();
+    _showMessage(state.tr(
+      ru: 'Воспроизведение прервалось. Нажми, чтобы попробовать снова.',
+      kk: 'Ойнату үзілді. Қайта көру үшін бас.',
+      en: 'Playback was interrupted. Tap to try again.',
+    ));
+  }
+
   bool get _canContinue {
     switch (_stage) {
       case 0:
@@ -183,7 +228,7 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
       case 4:
         return _confidence != null;
       case 5:
-        return _result != null;
+        return _result != null && !_finishing;
       default:
         return false;
     }
@@ -348,6 +393,7 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
         ),
         transcript: _transcript,
         audioBytes: _audioBytes,
+        audioProcessorConsent: _voiceConsent,
         lessonId:
             'hafiz:${widget.chapter.number}:${widget.verse.numberInChapter}',
       );
@@ -371,19 +417,33 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
   }
 
   Future<void> _finish({int? fallbackScore}) async {
+    if (_finishing) return;
     final score = _result?.score ?? fallbackScore;
     if (score == null) return;
-    final progress = await context.read<AppState>().recordHafizAttempt(
-          surahNumber: widget.chapter.number,
-          surahName: widget.chapter.latinName,
-          verseNumber: widget.verse.numberInChapter,
-          globalVerseNumber: widget.verse.globalNumber,
-          score: score,
-          repetitions: _guidedRepetitions + _practicedChunks.length,
-        );
-    if (!mounted || progress == null) return;
-    await _showResult(progress, score);
-    if (mounted) Navigator.pop(context);
+    setState(() => _finishing = true);
+    try {
+      final progress = await context.read<AppState>().recordHafizAttempt(
+            surahNumber: widget.chapter.number,
+            surahName: widget.chapter.latinName,
+            verseNumber: widget.verse.numberInChapter,
+            globalVerseNumber: widget.verse.globalNumber,
+            score: score,
+            repetitions: _guidedRepetitions + _practicedChunks.length,
+          );
+      if (!mounted || progress == null) return;
+      await _showResult(progress, score);
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      if (mounted) {
+        _showMessage(context.read<AppState>().tr(
+              ru: 'Не удалось сохранить результат. Попробуй ещё раз.',
+              kk: 'Нәтижені сақтау мүмкін болмады. Қайтадан көр.',
+              en: 'Could not save the result. Try again.',
+            ));
+      }
+    } finally {
+      if (mounted) setState(() => _finishing = false);
+    }
   }
 
   Future<void> _showResult(HafizProgress progress, int score) {
@@ -534,6 +594,7 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
               _BottomAction(
                 stage: _stage,
                 enabled: _canContinue,
+                busy: _finishing,
                 result: _result,
                 onContinue: _stage == 5 ? () => _finish() : _continue,
               ),
@@ -546,15 +607,29 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
 
   Widget _buildStage() {
     final state = context.read<AppState>();
+    final compactViewport = MediaQuery.sizeOf(context).height < 700;
     switch (_stage) {
       case 0:
         return Column(
-            children: [_VerseText(verse: widget.verse), _audioButton()]);
+          children: compactViewport
+              ? [
+                  _audioButton(),
+                  const SizedBox(height: 12),
+                  _VerseText(verse: widget.verse),
+                ]
+              : [_VerseText(verse: widget.verse), _audioButton()],
+        );
       case 1:
         return Column(
           children: [
-            _VerseText(verse: widget.verse),
-            _audioButton(),
+            if (compactViewport) ...[
+              _audioButton(),
+              const SizedBox(height: 12),
+              _VerseText(verse: widget.verse),
+            ] else ...[
+              _VerseText(verse: widget.verse),
+              _audioButton(),
+            ],
             const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: _guidedRepetitions >= 3

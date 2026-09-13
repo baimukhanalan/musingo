@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import '../models/hafiz_progress.dart';
+import '../models/learning_profile.dart';
 import '../models/lesson.dart';
 import 'app_state.dart';
 
@@ -106,21 +108,27 @@ class ProgressPortabilityService {
     if (progress is! Map) {
       throw const FormatException('В файле отсутствует раздел прогресса.');
     }
+    _validateLearningProfile(snapshot['learningProfile']);
+    final hafizItems = _list(progress, 'hafizProgress');
+    for (final raw in hafizItems) {
+      if (raw is! Map) {
+        throw const FormatException('Некорректная запись Hafiz.');
+      }
+      HafizProgress.fromJson(Map<String, dynamic>.from(raw));
+    }
     final knownLessonIds = state.courses
         .expand((course) => course.lessons)
         .map((lesson) => lesson.id)
         .toSet();
-    final completed = (progress['completedLessonIds'] as List? ?? const [])
+    final completed = _list(progress, 'completedLessonIds')
         .whereType<String>()
         .where(knownLessonIds.contains)
         .toSet();
-    final knowledge = (progress['knowledgeStates'] as List? ?? const [])
+    final knowledge = _list(progress, 'knowledgeStates')
         .whereType<Map>()
         .where((item) => knownLessonIds.contains(item['lessonId']))
         .length;
-    final hafiz = (progress['hafizProgress'] as List? ?? const [])
-        .whereType<Map>()
-        .length;
+    final hafiz = hafizItems.length;
     if (completed.isEmpty && knowledge == 0 && hafiz == 0) {
       throw const FormatException(
           'В файле нет совместимого учебного прогресса.');
@@ -131,6 +139,41 @@ class ProgressPortabilityService {
       knowledgeItems: knowledge,
       hafizItems: hafiz,
     );
+  }
+
+  static List<dynamic> _list(Map progress, String key) {
+    final value = progress[key];
+    if (value == null) return const [];
+    if (value is! List) {
+      throw FormatException('Поле $key должно быть списком.');
+    }
+    return value;
+  }
+
+  static void _validateLearningProfile(Object? raw) {
+    if (raw == null) return;
+    if (raw is! Map) {
+      throw const FormatException('Некорректный учебный профиль.');
+    }
+    final goal = raw['goal'];
+    final recommendation = raw['recommendation'];
+    final placement = raw['placementLevel'];
+    if (goal != null && goal is! String ||
+        recommendation != null && recommendation is! String ||
+        placement != null &&
+            (placement is! num ||
+                !placement.isFinite ||
+                placement % 1 != 0 ||
+                placement < 1 ||
+                placement > 8)) {
+      throw const FormatException('Некорректный учебный профиль.');
+    }
+    final scores = raw['skillScores'];
+    if (scores == null) return;
+    if (scores is! Map) {
+      throw const FormatException('Некорректные оценки навыков.');
+    }
+    LearningSkillProfile.fromJson(Map<String, dynamic>.from(scores));
   }
 }
 
