@@ -373,6 +373,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onTap: () => _confirmDelete(context),
                 ),
               ]),
+              const SizedBox(height: 26),
+              Semantics(
+                label: 'by Alan Baimukhan',
+                child: const Center(
+                  child: _CreatorCredit(),
+                ),
+              ),
             ],
           ),
         ),
@@ -819,6 +826,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (selected == null || !context.mounted) return;
     await context.read<AppState>().setNativeLanguage(selected);
+  }
+}
+
+class _CreatorCredit extends StatelessWidget {
+  const _CreatorCredit();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey('settings-creator-credit'),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.white.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: const Text(
+        'by Alan Baimukhan',
+        style: TextStyle(
+          fontFamily: 'Nunito',
+          fontSize: 12.5,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.25,
+          color: AppColors.textGrey,
+        ),
+      ),
+    );
   }
 }
 
