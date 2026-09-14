@@ -18,6 +18,34 @@ int curriculumCorrectAnswerIndex(CurriculumModule module) =>
     module.sequence % 4;
 
 @visibleForTesting
+int curriculumCorrectAnswerIndexFor(CurriculumModule module, int salt) =>
+    (module.sequence + salt) % 4;
+
+@visibleForTesting
+int curriculumAssessmentScore(int mistakes) =>
+    (100 - (mistakes * 20)).clamp(0, 100);
+
+@visibleForTesting
+bool curriculumAssessmentPassed(int mistakes) =>
+    curriculumAssessmentScore(mistakes) >= 80;
+
+class CurriculumChallenge {
+  final String level;
+  final String prompt;
+  final List<String> options;
+  final int correctIndex;
+  final String explanation;
+
+  const CurriculumChallenge({
+    required this.level,
+    required this.prompt,
+    required this.options,
+    required this.correctIndex,
+    required this.explanation,
+  });
+}
+
+@visibleForTesting
 String curriculumSourceSummary(String source) {
   final first = source.split(';').first.trim();
   if (first.length <= 115) return first;
@@ -29,6 +57,7 @@ List<String> curriculumChallengeOptions({
   required CurriculumModule module,
   required List<CurriculumModule> allModules,
   required String Function(CurriculumModule) valueOf,
+  int salt = 0,
 }) {
   final correct = valueOf(module);
   final peers = allModules
@@ -57,8 +86,84 @@ List<String> curriculumChallengeOptions({
     throw StateError('Could not build four unique options for ${module.id}.');
   }
   final options = values.toList(growable: true);
-  options.insert(curriculumCorrectAnswerIndex(module), correct);
+  options.insert(curriculumCorrectAnswerIndexFor(module, salt), correct);
   return options;
+}
+
+@visibleForTesting
+List<CurriculumChallenge> buildCurriculumChallenges({
+  required CurriculumModule module,
+  required List<CurriculumModule> allModules,
+}) {
+  List<String> options(
+    int salt,
+    String Function(CurriculumModule) valueOf,
+  ) =>
+      curriculumChallengeOptions(
+        module: module,
+        allModules: allModules,
+        valueOf: valueOf,
+        salt: salt,
+      );
+
+  String evidencePlan(CurriculumModule item) =>
+      'Опора: ${curriculumSourceSummary(item.sourceLocator)}\n'
+      'Доказательство результата: ${item.objective}';
+  String transferPlan(CurriculumModule item) =>
+      '1. Учесть: ${item.prerequisite}\n'
+      '2. Проверить: ${curriculumSourceSummary(item.sourceLocator)}\n'
+      '3. Показать навык: ${item.objective}';
+  String auditDecision(CurriculumModule item) =>
+      '${item.title}\nСверить источник, затем подтвердить навык: ${item.objective}';
+
+  return [
+    CurriculumChallenge(
+      level: 'ПОНИМАНИЕ',
+      prompt:
+          'Ученик изучил «${module.title}». Какой наблюдаемый результат действительно доказывает понимание?',
+      options: options(0, (item) => item.objective),
+      correctIndex: curriculumCorrectAnswerIndexFor(module, 0),
+      explanation:
+          'Результат должен совпадать с заявленной целью модуля, а не только быть похожим по теме.',
+    ),
+    CurriculumChallenge(
+      level: 'РАБОТА С ДОКАЗАТЕЛЬСТВОМ',
+      prompt:
+          'Нужно проверить вывод по модулю, не полагаясь на память. Какая опора относится именно к этой теме?',
+      options:
+          options(1, (item) => curriculumSourceSummary(item.sourceLocator)),
+      correctIndex: curriculumCorrectAnswerIndexFor(module, 1),
+      explanation:
+          'Сильный ответ связывает вывод с источником, указанным в материале этого модуля.',
+    ),
+    CurriculumChallenge(
+      level: 'АНАЛИЗ',
+      prompt:
+          'В четырёх планах одна цепочка не содержит подмены темы или источника. Найди её.',
+      options: options(2, evidencePlan),
+      correctIndex: curriculumCorrectAnswerIndexFor(module, 2),
+      explanation:
+          'Проверь два звена отдельно: источник должен относиться к теме, а результат — следовать из цели.',
+    ),
+    CurriculumChallenge(
+      level: 'ПЕРЕНОС',
+      prompt:
+          'Какой порядок действий позволит применить материал и обосновать результат наставнику?',
+      options: options(3, transferPlan),
+      correctIndex: curriculumCorrectAnswerIndexFor(module, 3),
+      explanation:
+          'Надёжная цепочка начинается с входного условия, проходит через проверяемую опору и заканчивается демонстрацией навыка.',
+    ),
+    CurriculumChallenge(
+      level: 'ИТОГОВАЯ АТТЕСТАЦИЯ',
+      prompt:
+          'Ученик допустил ошибку и должен проверить рассуждение заново. Какой маршрут относится к текущему модулю целиком?',
+      options: options(4, auditDecision),
+      correctIndex: curriculumCorrectAnswerIndexFor(module, 4),
+      explanation:
+          'Название, источник и проверяемый навык должны образовывать одну непротиворечивую цепочку.',
+    ),
+  ];
 }
 
 class CurriculumModuleScreen extends StatefulWidget {
@@ -84,10 +189,12 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
   bool _saving = false;
   bool _finished = false;
   int _step = 0;
-  int _mistakes = 0;
   int? _selectedAnswer;
   bool _answerRevealed = false;
-  final List<bool> _practiceChecks = [false, false, false];
+  int _quizIndex = 0;
+  int _finalMistakes = 0;
+  bool _assessmentFailed = false;
+  final List<int> _practiceOrder = [];
 
   String get _learnerId =>
       context.read<AppState>().user?.id ?? 'anonymous-learner';
@@ -123,19 +230,17 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
     });
   }
 
-  List<String> get _objectiveOptions => curriculumChallengeOptions(
+  List<CurriculumChallenge> get _challenges => buildCurriculumChallenges(
         module: widget.module,
         allModules: _allModules,
-        valueOf: (module) => module.objective,
       );
 
-  List<String> get _sourceOptions => curriculumChallengeOptions(
-        module: widget.module,
-        allModules: _allModules,
-        valueOf: (module) => curriculumSourceSummary(module.sourceLocator),
-      );
+  List<CurriculumChallenge> get _activeChallenges =>
+      _step == 2 ? _challenges.take(2).toList() : _challenges.skip(2).toList();
 
-  int get _correctIndex => curriculumCorrectAnswerIndex(widget.module);
+  CurriculumChallenge get _activeChallenge => _activeChallenges[_quizIndex];
+
+  int get _correctIndex => _activeChallenge.correctIndex;
 
   Future<void> _advance() async {
     if (_saving) return;
@@ -145,7 +250,9 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
         final correct = _selectedAnswer == _correctIndex;
         setState(() {
           _answerRevealed = true;
-          if (!correct) _mistakes++;
+          if (!correct) {
+            if (_step == 4) _finalMistakes++;
+          }
         });
         return;
       }
@@ -156,9 +263,21 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
         });
         return;
       }
+      if (_quizIndex + 1 < _activeChallenges.length) {
+        setState(() {
+          _quizIndex++;
+          _selectedAnswer = null;
+          _answerRevealed = false;
+        });
+        return;
+      }
     }
-    if (_step == 3 && !_practiceChecks.every((value) => value)) return;
+    if (_step == 3 && !_practiceComplete) return;
     if (_step == _stepCount - 1) {
+      if (!curriculumAssessmentPassed(_finalMistakes)) {
+        setState(() => _assessmentFailed = true);
+        return;
+      }
       await _complete();
       return;
     }
@@ -168,6 +287,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
       _step = next;
       _selectedAnswer = null;
       _answerRevealed = false;
+      _quizIndex = 0;
     });
     try {
       _progress = await CurriculumProgressService.recordStep(
@@ -184,7 +304,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
 
   Future<void> _complete() async {
     setState(() => _saving = true);
-    final mastery = (100 - (_mistakes * 10)).clamp(70, 100);
+    final mastery = curriculumAssessmentScore(_finalMistakes);
     try {
       _progress = await CurriculumProgressService.complete(
         learnerId: _learnerId,
@@ -203,12 +323,35 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
     setState(() {
       _finished = false;
       _step = 0;
-      _mistakes = 0;
+      _finalMistakes = 0;
+      _quizIndex = 0;
+      _assessmentFailed = false;
       _selectedAnswer = null;
       _answerRevealed = false;
-      for (var index = 0; index < _practiceChecks.length; index++) {
-        _practiceChecks[index] = false;
-      }
+      _practiceOrder.clear();
+    });
+  }
+
+  bool get _practiceComplete =>
+      _practiceOrder.length == 3 &&
+      _practiceOrder[0] == 0 &&
+      _practiceOrder[1] == 1 &&
+      _practiceOrder[2] == 2;
+
+  void _selectPracticeStep(int value) {
+    if (_practiceOrder.contains(value) || _practiceOrder.length == 3) return;
+    setState(() => _practiceOrder.add(value));
+  }
+
+  void _resetPractice() => setState(_practiceOrder.clear);
+
+  void _retryAssessment() {
+    setState(() {
+      _assessmentFailed = false;
+      _finalMistakes = 0;
+      _quizIndex = 0;
+      _selectedAnswer = null;
+      _answerRevealed = false;
     });
   }
 
@@ -335,14 +478,32 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
               ],
             ),
             const SizedBox(height: 7),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(9),
-              child: LinearProgressIndicator(
-                minHeight: 8,
-                value: (_step + 1) / _stepCount,
-                backgroundColor: AppColors.border,
-                color: AppColors.sky,
-              ),
+            Row(
+              children: [
+                for (var index = 0; index < _stepCount; index++) ...[
+                  Expanded(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 240),
+                      height: index == _step ? 8 : 5,
+                      decoration: BoxDecoration(
+                        color:
+                            index <= _step ? AppColors.sky : AppColors.border,
+                        borderRadius: BorderRadius.circular(99),
+                        boxShadow: index == _step
+                            ? [
+                                BoxShadow(
+                                  color: AppColors.sky.withValues(alpha: 0.28),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                )
+                              ]
+                            : null,
+                      ),
+                    ),
+                  ),
+                  if (index + 1 < _stepCount) const SizedBox(width: 6),
+                ],
+              ],
             ),
           ],
         ),
@@ -355,37 +516,11 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
       case 1:
         return _evidenceStage(state);
       case 2:
-        return _quizStage(
-          state,
-          title: state.tr(
-            ru: 'Активное воспроизведение',
-            kk: 'Белсенді еске түсіру',
-            en: 'Active recall',
-          ),
-          prompt: state.tr(
-            ru: 'Какой результат относится именно к этому модулю?',
-            kk: 'Осы модульге қай нәтиже сәйкес келеді?',
-            en: 'Which outcome belongs to this module?',
-          ),
-          options: _objectiveOptions,
-        );
+        return _quizStage(state, isFinal: false);
       case 3:
         return _practiceStage(state);
       default:
-        return _quizStage(
-          state,
-          title: state.tr(
-            ru: 'Проверка мастерства',
-            kk: 'Меңгеруді тексеру',
-            en: 'Mastery check',
-          ),
-          prompt: state.tr(
-            ru: 'Какой источник закреплён за этим модулем?',
-            kk: 'Осы модульге қай дереккөз бекітілген?',
-            en: 'Which source is assigned to this module?',
-          ),
-          options: _sourceOptions,
-        );
+        return _quizStage(state, isFinal: true);
     }
   }
 
@@ -445,9 +580,9 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
             Icons.timer_outlined,
             state.tr(ru: 'Формат', kk: 'Формат', en: 'Format'),
             state.tr(
-              ru: '5 этапов · теория, источник, практика и 2 проверки',
-              kk: '5 кезең · теория, дереккөз, тәжірибе және 2 тексеру',
-              en: '5 stages · concept, source, practice, and 2 checks',
+              ru: '5 этапов · 5 задач · аттестация от 80%',
+              kk: '5 кезең · 5 тапсырма · аттестация 80%-дан',
+              en: '5 stages · 5 challenges · 80% pass mark',
             ),
           ),
         ],
@@ -463,9 +598,9 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
                 kk: 'ДЕРЕККӨЗБЕН ЖҰМЫС',
                 en: 'SOURCE WORK'),
             title: state.tr(
-              ru: 'Не запоминай без опоры',
-              kk: 'Дәлелсіз жаттама',
-              en: 'Learn with evidence',
+              ru: 'Собери карту доказательств',
+              kk: 'Дәлелдер картасын құр',
+              en: 'Build an evidence map',
             ),
             subtitle: state.tr(
               ru: 'Отделяй первоисточник, объяснение и границы автоматической проверки.',
@@ -480,7 +615,17 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
                 ru: 'Источник модуля',
                 kk: 'Модуль дереккөзі',
                 en: 'Module source'),
-            widget.module.sourceLocator,
+            curriculumSourceSummary(widget.module.sourceLocator),
+          ),
+          const SizedBox(height: 12),
+          _sourceCard(
+            Icons.flag_rounded,
+            state.tr(
+                ru: 'Что нужно доказать',
+                kk: 'Нені дәлелдеу керек',
+                en: 'What you must prove'),
+            widget.module.objective,
+            color: AppColors.goldLight.withValues(alpha: 0.55),
           ),
           const SizedBox(height: 12),
           _sourceCard(
@@ -491,6 +636,19 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
                 en: 'Mentor expertise'),
             widget.module.speakerDomain,
           ),
+          if (widget.module.videoNeed.trim().isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _sourceCard(
+              Icons.ondemand_video_rounded,
+              state.tr(
+                ru: 'Видео-практика',
+                kk: 'Видео тәжірибе',
+                en: 'Video practice',
+              ),
+              widget.module.videoNeed,
+              color: AppColors.pistachio.withValues(alpha: 0.12),
+            ),
+          ],
           const SizedBox(height: 12),
           _sourceCard(
             Icons.verified_user_rounded,
@@ -504,51 +662,52 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
         ],
       );
 
-  Widget _quizStage(
-    AppState state, {
-    required String title,
-    required String prompt,
-    required List<String> options,
-  }) =>
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _stageHeading(
-            icon: _step == 2 ? Icons.psychology_rounded : Icons.school_rounded,
-            eyebrow: _step == 2
-                ? state.tr(ru: 'БЕЗ ПОДСКАЗКИ', kk: 'КӨМЕКСІЗ', en: 'NO HINTS')
-                : state.tr(ru: 'ФИНАЛ', kk: 'ФИНАЛ', en: 'FINAL'),
-            title: title,
-            subtitle: prompt,
-          ),
-          const SizedBox(height: 18),
-          for (var index = 0; index < options.length; index++)
-            _answerCard(index, options[index]),
-          if (_answerRevealed) ...[
-            const SizedBox(height: 6),
-            _feedbackCard(state, _selectedAnswer == _correctIndex),
-          ],
+  Widget _quizStage(AppState state, {required bool isFinal}) {
+    final challenge = _activeChallenge;
+    final total = _activeChallenges.length;
+    if (_assessmentFailed) {
+      return _assessmentRetry(state);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _stageHeading(
+          icon: _step == 2 ? Icons.psychology_rounded : Icons.school_rounded,
+          eyebrow: '${challenge.level} · ${_quizIndex + 1}/$total',
+          title: isFinal
+              ? state.tr(
+                  ru: 'Итоговая аттестация',
+                  kk: 'Қорытынды аттестация',
+                  en: 'Final assessment')
+              : state.tr(
+                  ru: 'Лаборатория понимания',
+                  kk: 'Түсіну зертханасы',
+                  en: 'Understanding lab'),
+          subtitle: challenge.prompt,
+        ),
+        if (isFinal) ...[
+          const SizedBox(height: 12),
+          _assessmentRule(state),
         ],
-      );
+        const SizedBox(height: 18),
+        for (var index = 0; index < challenge.options.length; index++)
+          _answerCard(index, challenge.options[index]),
+        if (_answerRevealed) ...[
+          const SizedBox(height: 6),
+          _feedbackCard(state, _selectedAnswer == _correctIndex),
+        ],
+      ],
+    );
+  }
 
   Widget _practiceStage(AppState state) {
     final labels = [
-      state.tr(
-        ru: 'Я могу объяснить цель своими словами',
-        kk: 'Мақсатты өз сөзіммен түсіндіре аламын',
-        en: 'I can explain the outcome in my own words',
-      ),
-      state.tr(
-        ru: 'Я знаю, где проверить первоисточник',
-        kk: 'Негізгі дереккөзді қайдан тексеруді білемін',
-        en: 'I know where to verify the primary source',
-      ),
-      state.tr(
-        ru: 'Я понимаю границу и когда спросить наставника',
-        kk: 'Шегін және ұстаздан қашан сұрауды түсінемін',
-        en: 'I know the boundary and when to ask a mentor',
-      ),
+      '${state.tr(ru: 'Учесть входное условие', kk: 'Бастапқы шартты ескеру', en: 'Check the prerequisite')}\n${widget.module.prerequisite}',
+      '${state.tr(ru: 'Проверить по опоре', kk: 'Дереккөзбен тексеру', en: 'Verify with evidence')}\n${curriculumSourceSummary(widget.module.sourceLocator)}',
+      '${state.tr(ru: 'Продемонстрировать результат', kk: 'Нәтижені көрсету', en: 'Demonstrate the outcome')}\n${widget.module.objective}',
     ];
+    final displayOrder = [1, 2, 0];
+    final attempted = _practiceOrder.length == 3;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -557,32 +716,50 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
           eyebrow: state.tr(
               ru: 'ПЕРЕНОС В ПРАКТИКУ', kk: 'ТӘЖІРИБЕ', en: 'TRANSFER'),
           title: state.tr(
-            ru: 'Собери понимание',
-            kk: 'Түсінікті жинақта',
-            en: 'Build understanding',
+            ru: 'Построй цепочку решения',
+            kk: 'Шешім тізбегін құр',
+            en: 'Build the reasoning chain',
           ),
           subtitle: state.tr(
-            ru: 'Отметь каждый пункт только после короткого объяснения вслух.',
-            kk: 'Әр тармақты дауыстап қысқаша түсіндіргеннен кейін белгіле.',
-            en: 'Check each item only after explaining it aloud.',
+            ru: 'Выбери три шага в правильном порядке: от условия к доказательству результата.',
+            kk: 'Үш қадамды дұрыс ретпен таңда: шарттан нәтижені дәлелдеуге дейін.',
+            en: 'Select the three steps in order, from prerequisite to proof.',
           ),
         ),
         const SizedBox(height: 18),
-        for (var index = 0; index < labels.length; index++)
+        if (_practiceOrder.isNotEmpty) ...[
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (var index = 0; index < _practiceOrder.length; index++)
+                _pill('${index + 1}', AppColors.goldLight),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+        for (final index in displayOrder)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: Material(
-              color: AppColors.white,
+              color: _practiceOrder.contains(index)
+                  ? AppColors.skyLight
+                  : AppColors.white,
               borderRadius: BorderRadius.circular(18),
-              child: CheckboxListTile(
+              child: ListTile(
                 key: ValueKey('curriculum-practice-$index'),
-                value: _practiceChecks[index],
-                onChanged: (value) => setState(
-                  () => _practiceChecks[index] = value ?? false,
-                ),
-                controlAffinity: ListTileControlAffinity.leading,
+                onTap: attempted ? null : () => _selectPracticeStep(index),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18),
+                ),
+                leading: CircleAvatar(
+                  backgroundColor: AppColors.navy,
+                  foregroundColor: AppColors.white,
+                  child: Text(
+                    _practiceOrder.contains(index)
+                        ? '${_practiceOrder.indexOf(index) + 1}'
+                        : '?',
+                  ),
                 ),
                 title: Text(
                   labels[index],
@@ -595,9 +772,54 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
               ),
             ),
           ),
+        if (attempted && !_practiceComplete) ...[
+          _practiceFeedback(state, correct: false),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            key: const ValueKey('curriculum-practice-reset'),
+            onPressed: _resetPractice,
+            icon: const Icon(Icons.refresh_rounded),
+            label: Text(state.tr(
+              ru: 'Собрать цепочку заново',
+              kk: 'Тізбекті қайта құру',
+              en: 'Rebuild the chain',
+            )),
+          ),
+        ] else if (_practiceComplete)
+          _practiceFeedback(state, correct: true),
       ],
     );
   }
+
+  Widget _practiceFeedback(AppState state, {required bool correct}) =>
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: correct
+              ? AppColors.success.withValues(alpha: 0.12)
+              : AppColors.errorLight,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(
+          correct
+              ? state.tr(
+                  ru:
+                      'Цепочка обоснована: условие → источник → демонстрация навыка.',
+                  kk: 'Тізбек негізделді: шарт → дереккөз → дағдыны көрсету.',
+                  en:
+                      'Reasoning confirmed: prerequisite → evidence → demonstration.')
+              : state.tr(
+                  ru: 'В цепочке нарушена логика. Сначала проверь условие, затем опору и только потом результат.',
+                  kk: 'Тізбектің логикасы бұзылған. Алдымен шартты, кейін дереккөзді, соңында нәтижені тексер.',
+                  en: 'The chain is broken. Check the prerequisite, then evidence, then the outcome.'),
+          style: const TextStyle(
+            fontFamily: 'Nunito',
+            fontWeight: FontWeight.w800,
+            color: AppColors.textDark,
+          ),
+        ),
+      );
 
   Widget _stageHeading({
     required IconData icon,
@@ -835,37 +1057,146 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
               : AppColors.errorLight,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Text(
-          correct
-              ? state.tr(
-                  ru: 'Верно. Ты связал модуль с его точным результатом и источником.',
-                  kk: 'Дұрыс. Модульді нақты нәтижесімен және дереккөзімен байланыстырдың.',
-                  en: 'Correct. You connected the module to its exact outcome and source.',
-                )
-              : state.tr(
-                  ru: 'Пока нет. Вернись к формулировке выше и попробуй ещё раз.',
-                  kk: 'Әзірге дұрыс емес. Жоғарыдағы тұжырымға оралып, қайталап көр.',
-                  en: 'Not yet. Revisit the wording above and try again.',
-                ),
-          style: const TextStyle(
-            fontFamily: 'Nunito',
-            fontWeight: FontWeight.w800,
-            color: AppColors.textDark,
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              correct
+                  ? state.tr(
+                      ru: 'Логика верна',
+                      kk: 'Логика дұрыс',
+                      en: 'Reasoning confirmed')
+                  : state.tr(
+                      ru: 'В рассуждении есть разрыв',
+                      kk: 'Ойлау тізбегінде үзіліс бар',
+                      en: 'There is a gap in the reasoning'),
+              style: const TextStyle(
+                fontFamily: 'Nunito',
+                fontWeight: FontWeight.w900,
+                color: AppColors.navyDark,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _activeChallenge.explanation,
+              style: const TextStyle(
+                fontFamily: 'Nunito',
+                fontWeight: FontWeight.w700,
+                height: 1.35,
+                color: AppColors.textDark,
+              ),
+            ),
+          ],
         ),
+      );
+
+  Widget _assessmentRule(AppState state) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.navyDark,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.workspace_premium_rounded,
+                color: AppColors.gold, size: 20),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                state.tr(
+                  ru: 'Порог мастерства: 80%. Ошибки нужно разобрать и исправить.',
+                  kk: 'Меңгеру шегі: 80%. Қателерді талдап, түзету керек.',
+                  en: 'Mastery threshold: 80%. Mistakes must be reviewed and corrected.',
+                ),
+                style: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _assessmentRetry(AppState state) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _stageHeading(
+            icon: Icons.insights_rounded,
+            eyebrow: state.tr(
+              ru: 'РАЗБОР РЕЗУЛЬТАТА',
+              kk: 'НӘТИЖЕНІ ТАЛДАУ',
+              en: 'RESULT REVIEW',
+            ),
+            title: state.tr(
+              ru: 'Понимание ещё не устойчиво',
+              kk: 'Түсінік әлі тұрақты емес',
+              en: 'Understanding is not stable yet',
+            ),
+            subtitle: state.tr(
+              ru: 'Набрано меньше 80%. Пересобери связи между условием, источником и результатом — затем пройди новый вариант.',
+              kk: '80%-дан төмен. Шарт, дереккөз және нәтиже байланысын қайта құр да, жаңа нұсқаны өт.',
+              en: 'Below 80%. Rebuild the prerequisite-evidence-outcome chain, then take a fresh attempt.',
+            ),
+          ),
+          const SizedBox(height: 18),
+          PremiumCard(
+            color: AppColors.navyDark,
+            child: Row(
+              children: [
+                const Icon(Icons.analytics_rounded,
+                    color: AppColors.gold, size: 34),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    '${curriculumAssessmentScore(_finalMistakes)}% · '
+                    '${state.tr(ru: 'нужно 80%', kk: '80% қажет', en: '80% required')}',
+                    style: const TextStyle(
+                      fontFamily: 'Nunito',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          PremiumButton(
+            key: const ValueKey('curriculum-assessment-retry'),
+            label: state.tr(
+              ru: 'Повторить аттестацию',
+              kk: 'Аттестацияны қайталау',
+              en: 'Retry assessment',
+            ),
+            icon: Icons.refresh_rounded,
+            onPressed: _retryAssessment,
+          ),
+        ],
       );
 
   Widget _bottomAction(AppState state) {
     final needsAnswer = (_step == 2 || _step == 4) && _selectedAnswer == null;
-    final needsPractice =
-        _step == 3 && !_practiceChecks.every((value) => value);
+    final needsPractice = _step == 3 && !_practiceComplete;
     final isWrongRetry = _answerRevealed && _selectedAnswer != _correctIndex;
     String label;
-    if ((_step == 2 || _step == 4) && !_answerRevealed) {
+    if (_assessmentFailed) {
+      return const SizedBox.shrink();
+    } else if ((_step == 2 || _step == 4) && !_answerRevealed) {
       label = state.tr(ru: 'Проверить', kk: 'Тексеру', en: 'Check');
     } else if (isWrongRetry) {
       label = state.tr(
           ru: 'Попробовать ещё раз', kk: 'Қайталап көру', en: 'Try again');
+    } else if ((_step == 2 || _step == 4) &&
+        _quizIndex + 1 < _activeChallenges.length) {
+      label = state.tr(
+        ru: 'Следующая задача',
+        kk: 'Келесі тапсырма',
+        en: 'Next challenge',
+      );
     } else if (_step == _stepCount - 1) {
       label = state.tr(
           ru: 'Завершить модуль', kk: 'Модульді аяқтау', en: 'Complete module');
@@ -892,7 +1223,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
 
   Widget _completionView(AppState state) {
     final score = _progress.masteryByModuleId[widget.module.id] ??
-        (100 - (_mistakes * 10)).clamp(70, 100);
+        curriculumAssessmentScore(_finalMistakes);
     final next = _nextModule;
     return SingleChildScrollView(
       key: const ValueKey('curriculum-complete'),

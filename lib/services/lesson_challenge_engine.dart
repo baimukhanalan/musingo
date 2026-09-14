@@ -1,6 +1,6 @@
 import '../models/lesson.dart';
 
-/// Makes every lesson finish with a two-part retrieval challenge while keeping
+/// Makes every lesson finish with a multi-part reasoning challenge while keeping
 /// the existing lesson step order and interaction algorithm intact.
 class LessonChallengeEngine {
   const LessonChallengeEngine._();
@@ -15,12 +15,19 @@ class LessonChallengeEngine {
     }
     if (questionIndexes.isEmpty) return lesson;
 
-    final first = lesson.steps[questionIndexes.first];
     final targetIndex = questionIndexes.last;
-    final second = questionIndexes.length > 1
-        ? lesson.steps[targetIndex]
-        : _factFromMatching(lesson) ?? first;
-    final challenge = _buildChallenge(lesson, first, second);
+    final facts = <LessonStep>[
+      lesson.steps[questionIndexes.first],
+      if (questionIndexes.length > 2)
+        lesson.steps[questionIndexes[questionIndexes.length ~/ 2]],
+      if (questionIndexes.length > 1) lesson.steps[targetIndex],
+    ];
+    final matchingFact = _factFromMatching(lesson);
+    if (facts.length < 3 && matchingFact != null) facts.add(matchingFact);
+    while (facts.length < 2) {
+      facts.add(facts.first);
+    }
+    final challenge = _buildChallenge(lesson, facts.take(3).toList());
     final steps = List<LessonStep>.of(lesson.steps)..[targetIndex] = challenge;
     return lesson.copyWith(steps: List.unmodifiable(steps));
   }
@@ -62,31 +69,47 @@ class LessonChallengeEngine {
 
   static LessonStep _buildChallenge(
     Lesson lesson,
-    LessonStep first,
-    LessonStep second,
+    List<LessonStep> facts,
   ) {
-    final firstCorrect = _correctAnswer(first);
-    final secondCorrect = _correctAnswer(second);
-    final firstDistractor = _closestDistractor(first, firstCorrect);
-    final secondDistractor = _closestDistractor(second, secondCorrect);
-    final sources =
-        <String>{...first.sourceRefs, ...second.sourceRefs}.toList();
+    final correct = facts.map(_correctAnswer).toList(growable: false);
+    final distractors = [
+      for (var index = 0; index < facts.length; index++)
+        _closestDistractor(facts[index], correct[index]),
+    ];
+    final sources = <String>{
+      for (final fact in facts) ...fact.sourceRefs,
+    }.toList();
+    final prompts = [
+      for (var index = 0; index < facts.length; index++)
+        '${index + 1}. ${facts[index].question}',
+    ].join('\n');
+    String answerWithErrorAt(int? errorIndex) => [
+          for (var index = 0; index < facts.length; index++)
+            '${index + 1} — ${index == errorIndex ? distractors[index] : correct[index]}',
+        ].join('\n');
+    final options = <String>[
+      answerWithErrorAt(null),
+      answerWithErrorAt(0),
+      answerWithErrorAt(facts.length > 1 ? 1 : 0),
+      facts.length > 2
+          ? answerWithErrorAt(2)
+          : [
+              '1 — ${distractors[0]}',
+              '2 — ${distractors[1]}',
+            ].join('\n'),
+    ];
+    final correctIndex = lesson.order % options.length;
+    final correctOption = options.removeAt(0);
+    options.insert(correctIndex, correctOption);
 
-    return second.copyWith(
+    return facts.last.copyWith(
       id: '${lesson.id}_logic_challenge',
-      question:
-          'Два вывода одновременно. Выбери единственную пару без ошибки.\n\n'
-          '1. ${first.question}\n'
-          '2. ${second.question}',
-      answers: [
-        '1 — $firstCorrect\n2 — $secondCorrect',
-        '1 — $firstCorrect\n2 — $secondDistractor',
-        '1 — $firstDistractor\n2 — $secondCorrect',
-        '1 — $firstDistractor\n2 — $secondDistractor',
-      ],
-      correctAnswerIndex: 0,
-      explanation: 'Проверь оба вывода отдельно: один верный пункт ещё не '
-          'делает верной всю пару.',
+      question: '${facts.length == 3 ? 'Три' : 'Два'} вывода одновременно. '
+          'Выбери единственную цепочку без ошибки.\n\n$prompts',
+      answers: options,
+      correctAnswerIndex: correctIndex,
+      explanation: 'Проверь каждое звено отдельно и только потом оцени всю '
+          'цепочку: один верный вывод не делает верным весь ответ.',
       sourceRefs: sources,
     );
   }
@@ -97,8 +120,13 @@ class LessonChallengeEngine {
   static String _closestDistractor(LessonStep step, String correct) {
     final distractors = <String>[
       for (var index = 0; index < step.answers!.length; index++)
-        if (index != step.correctAnswerIndex) step.answers![index].trim(),
+        if (index != step.correctAnswerIndex &&
+            step.answers![index].trim() != correct)
+          step.answers![index].trim(),
     ];
+    if (distractors.isEmpty) {
+      return '$correct — но без проверки остальных звеньев';
+    }
     distractors.sort((a, b) {
       final aDistance = (a.length - correct.length).abs();
       final bDistance = (b.length - correct.length).abs();

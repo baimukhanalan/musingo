@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:muslingo/services/app_state.dart';
+import 'package:muslingo/services/lesson_video_catalog.dart';
 import 'package:muslingo/widgets/lesson_video_card.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +14,19 @@ void main() {
   setUp(() {
     SharedPreferences.resetStatic();
     SharedPreferences.setMockInitialValues({});
+  });
+
+  test('every curated video has two source-grounded four-option checks', () {
+    for (final video in LessonVideoCatalog.curated.entries) {
+      final challenges = buildLessonVideoChallenges(video);
+      expect(challenges, hasLength(2), reason: video.id);
+      for (final challenge in challenges) {
+        expect(challenge.options, hasLength(4), reason: video.id);
+        expect(challenge.options.toSet(), hasLength(4), reason: video.id);
+        expect(challenge.correctIndex, inInclusiveRange(0, 3),
+            reason: video.id);
+      }
+    }
   });
 
   testWidgets('does not autoplay and opens only after an accessible tap',
@@ -52,6 +66,35 @@ void main() {
     expect(find.byKey(const Key('lesson-video-transcript')), findsOneWidget);
     expect(find.text(video.transcript), findsOneWidget);
     expect(find.textContaining(video.speaker.name), findsOneWidget);
+
+    final challenges = buildLessonVideoChallenges(video, catalog: const []);
+    expect(challenges, hasLength(2));
+    expect(
+        challenges.every((item) => item.options.toSet().length == 4), isTrue);
+
+    await tester
+        .ensureVisible(find.byKey(const Key('lesson-video-check-start')));
+    await tester.tap(find.byKey(const Key('lesson-video-check-start')));
+    await tester.pump();
+    for (final challenge in challenges) {
+      await tester.ensureVisible(
+        find.byKey(
+            ValueKey('lesson-video-check-answer-${challenge.correctIndex}')),
+      );
+      await tester.tap(find.byKey(
+          ValueKey('lesson-video-check-answer-${challenge.correctIndex}')));
+      await tester.pump();
+      await tester
+          .ensureVisible(find.byKey(const Key('lesson-video-check-submit')));
+      await tester.tap(find.byKey(const Key('lesson-video-check-submit')));
+      await tester.pump();
+      await tester
+          .ensureVisible(find.byKey(const Key('lesson-video-check-submit')));
+      await tester.tap(find.byKey(const Key('lesson-video-check-submit')));
+      await tester.pump();
+    }
+    expect(
+        find.byKey(const Key('lesson-video-check-mastered')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('lesson-video-play')));
     await tester.pump();

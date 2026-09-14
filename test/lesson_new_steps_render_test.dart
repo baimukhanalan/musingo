@@ -244,10 +244,11 @@ void main() {
     await pumpLesson(tester, state, lessonWith(challenge));
 
     expect(tester.takeException(), isNull);
-    expect(find.textContaining('Два вывода одновременно'), findsOneWidget);
+    expect(find.textContaining('вывода одновременно'), findsOneWidget);
     expect(challenge.answers, hasLength(4));
 
-    final correct = find.text(challenge.answers!.first);
+    final correct =
+        find.text(challenge.answers![challenge.correctAnswerIndex!]);
     await tester.ensureVisible(correct);
     await tester.tap(correct);
     await tester.pump();

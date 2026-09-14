@@ -104,8 +104,15 @@ void main() {
     expect(speechRecognitionLanguageCode(phrase, 'kk'), 'kk');
   });
 
-  test('all 570 modules build two unambiguous four-option challenges',
-      () async {
+  test('final assessment requires at least 80 percent', () {
+    expect(curriculumAssessmentScore(0), 100);
+    expect(curriculumAssessmentScore(1), 80);
+    expect(curriculumAssessmentPassed(1), isTrue);
+    expect(curriculumAssessmentScore(2), 60);
+    expect(curriculumAssessmentPassed(2), isFalse);
+  });
+
+  test('all 570 modules build five unambiguous reasoning challenges', () async {
     CurriculumRepository.clearCacheForTesting();
     final modules = await CurriculumRepository.load();
     for (final module in modules) {
@@ -130,6 +137,17 @@ void main() {
         curriculumSourceSummary(module.sourceLocator),
         reason: module.id,
       );
+      final challenges = buildCurriculumChallenges(
+        module: module,
+        allModules: modules,
+      );
+      expect(challenges, hasLength(5), reason: module.id);
+      for (final challenge in challenges) {
+        expect(challenge.options, hasLength(4), reason: module.id);
+        expect(challenge.options.toSet(), hasLength(4), reason: module.id);
+        expect(challenge.correctIndex, inInclusiveRange(0, 3));
+        expect(challenge.explanation, isNotEmpty, reason: module.id);
+      }
     }
   });
 
@@ -172,35 +190,54 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Этап 3 из 5'), findsOneWidget);
 
-    final correctIndex = module.sequence % 4;
-    await tester.tap(
-      find.byKey(ValueKey('curriculum-answer-$correctIndex')),
+    final challenges = buildCurriculumChallenges(
+      module: module,
+      allModules: modules,
     );
-    await tester.pump();
-    await tester.tap(find.text('Проверить'));
-    await tester.pump();
-    expect(find.textContaining('Верно.'), findsOneWidget);
-    await tester.tap(find.text('Продолжить'));
-    await tester.pumpAndSettle();
+    for (final challenge in challenges.take(2)) {
+      await tester.tap(
+        find.byKey(ValueKey('curriculum-answer-${challenge.correctIndex}')),
+      );
+      await tester.pump();
+      await tester.tap(find.text('Проверить'));
+      await tester.pump();
+      expect(find.text('Логика верна'), findsOneWidget);
+      await tester.tap(find.text(
+          challenge == challenges.first ? 'Следующая задача' : 'Продолжить'));
+      await tester.pumpAndSettle();
+    }
 
     for (var index = 0; index < 3; index++) {
+      await tester.ensureVisible(
+        find.byKey(ValueKey('curriculum-practice-$index')),
+      );
       await tester.tap(
         find.byKey(ValueKey('curriculum-practice-$index')),
       );
+      await tester.pump();
     }
     await tester.pump();
     await tester.tap(find.text('Продолжить'));
     await tester.pumpAndSettle();
     expect(find.text('Этап 5 из 5'), findsOneWidget);
 
-    await tester.tap(
-      find.byKey(ValueKey('curriculum-answer-$correctIndex')),
-    );
-    await tester.pump();
-    await tester.tap(find.text('Проверить'));
-    await tester.pump();
-    await tester.tap(find.text('Завершить модуль'));
-    await tester.pumpAndSettle();
+    final finalChallenges = challenges.skip(2).toList();
+    for (var index = 0; index < finalChallenges.length; index++) {
+      final challenge = finalChallenges[index];
+      await tester.ensureVisible(
+        find.byKey(ValueKey('curriculum-answer-${challenge.correctIndex}')),
+      );
+      await tester.tap(
+        find.byKey(ValueKey('curriculum-answer-${challenge.correctIndex}')),
+      );
+      await tester.pump();
+      await tester.tap(find.text('Проверить'));
+      await tester.pump();
+      await tester.tap(find.text(index + 1 < finalChallenges.length
+          ? 'Следующая задача'
+          : 'Завершить модуль'));
+      await tester.pumpAndSettle();
+    }
     expect(find.byKey(const ValueKey('curriculum-complete')), findsOneWidget);
     expect(find.text('1/570'), findsOneWidget);
 

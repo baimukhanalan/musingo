@@ -375,13 +375,13 @@ void main() {
       final challenge = questions.last;
       expect(challenge.id, '${lesson.id}_logic_challenge', reason: lesson.id);
       expect(challenge.answers, hasLength(4), reason: lesson.id);
-      expect(challenge.correctAnswerIndex, 0, reason: lesson.id);
+      expect(challenge.correctAnswerIndex, lesson.order % 4, reason: lesson.id);
       expect(challenge.question, contains('1.'), reason: lesson.id);
       expect(challenge.question, contains('2.'), reason: lesson.id);
       expect(challenge.answers!.toSet(), hasLength(4), reason: lesson.id);
       expect(
         challenge.explanation,
-        'Проверь оба вывода отдельно: один верный пункт ещё не делает верной всю пару.',
+        'Проверь каждое звено отдельно и только потом оцени всю цепочку: один верный вывод не делает верным весь ответ.',
         reason: lesson.id,
       );
     }
