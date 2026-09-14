@@ -76,7 +76,12 @@ export async function callGroq({ system, user, temperature = 0.4, maxTokens = 70
   return content;
 }
 
-export async function callGroqTranscription({ audio, mimeType, prompt = '' }) {
+export async function callGroqTranscription({
+  audio,
+  mimeType,
+  prompt = '',
+  language = 'ar',
+}) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
     throw new ApiError(
@@ -94,7 +99,7 @@ export async function callGroqTranscription({ audio, mimeType, prompt = '' }) {
   form.append('file', new Blob([audio], { type: mimeType }), `speech.${extension}`);
   form.append('model', 'whisper-large-v3-turbo');
   form.append('response_format', 'json');
-  form.append('language', 'ar');
+  form.append('language', language === 'kk' ? 'kk' : 'ar');
   if (prompt) form.append('prompt', String(prompt).slice(0, 400));
 
   const controller = new AbortController();

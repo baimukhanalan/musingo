@@ -767,9 +767,9 @@ class _HafizModeScreenState extends State<HafizModeScreen> {
             const SizedBox(height: 12),
             _PlusNote(
               text: state.tr(
-                  ru: 'Постепенное автоскрытие по расписанию — в Muslingo+',
-                  kk: 'Кесте бойынша біртіндеп авто-жасыру — Muslingo+ ішінде',
-                  en: 'Gradual scheduled auto-hiding — in Muslingo+'),
+                  ru: 'Постепенное автоскрытие доступно бесплатно',
+                  kk: 'Біртіндеп авто-жасыру тегін қолжетімді',
+                  en: 'Gradual auto-hiding is available for free'),
             ),
           ],
         );

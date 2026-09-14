@@ -52,6 +52,7 @@ flutter:
   assets:
     - assets/images/
     - assets/data/
+    - docs/content/approved-570-curriculum-plan.json
 
   fonts:
     - family: Nunito

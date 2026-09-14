@@ -12,7 +12,6 @@ import 'screens/login_screen.dart';
 import 'screens/main_tab_screen.dart';
 import 'screens/lesson_screen.dart';
 import 'screens/lesson_review_screen.dart';
-import 'screens/premium_screen.dart';
 import 'screens/friends_screen.dart';
 import 'screens/league_screen.dart';
 import 'screens/achievements_screen.dart';
@@ -26,7 +25,10 @@ import 'screens/onboarding_screen.dart';
 import 'screens/coach_screen.dart';
 import 'screens/rules_screen.dart';
 import 'screens/academy_screen.dart';
+import 'screens/continuous_audio_screen.dart';
+import 'screens/curriculum_library_screen.dart';
 import 'models/lesson.dart';
+import 'models/curriculum_module.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -205,7 +207,7 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
               );
         break;
       case '/premium':
-        page = const PremiumScreen();
+        page = const AcademyScreen();
         break;
       case '/friends':
         page = const FriendsScreen();
@@ -245,6 +247,22 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
         break;
       case '/academy':
         page = const AcademyScreen();
+        break;
+      case '/curriculum':
+        page = const CurriculumLibraryScreen();
+        break;
+      case '/curriculum-module':
+        final arguments = settings.arguments;
+        page = arguments is CurriculumModule
+            ? CurriculumModuleScreen(module: arguments)
+            : const CurriculumLibraryScreen();
+        break;
+      case '/audio-session':
+        page = ContinuousAudioScreen(
+          startModule: settings.arguments is CurriculumModule
+              ? settings.arguments as CurriculumModule
+              : null,
+        );
         break;
       case '/help':
         page = const HelpScreen();

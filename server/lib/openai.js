@@ -63,7 +63,12 @@ export async function callOpenAIText({ system, user, maxTokens = 700 }) {
   return content.trim();
 }
 
-export async function callOpenAITranscription({ audio, mimeType, prompt = '' }) {
+export async function callOpenAITranscription({
+  audio,
+  mimeType,
+  prompt = '',
+  language = 'ar',
+}) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new ApiError(
@@ -84,7 +89,7 @@ export async function callOpenAITranscription({ audio, mimeType, prompt = '' }) 
   form.append('file', new Blob([audio], { type: mimeType }), `speech.${extension}`);
   form.append('model', OPENAI_TRANSCRIPTION_MODEL);
   form.append('response_format', 'json');
-  form.append('language', 'ar');
+  form.append('language', language === 'kk' ? 'kk' : 'ar');
   if (prompt) form.append('prompt', String(prompt).slice(0, 400));
 
   const controller = new AbortController();

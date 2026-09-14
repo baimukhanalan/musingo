@@ -1,5 +1,14 @@
 part of '../lesson_screen.dart';
 
+String speechRecognitionLanguageCode(LessonStep step, String appLocaleCode) {
+  if (step.speechMode == SpeechMode.quran ||
+      step.speechMode == SpeechMode.arabic ||
+      step.quranGlobalAyahNumber != null) {
+    return 'ar';
+  }
+  return appLocaleCode == 'kk' ? 'kk' : appLocaleCode;
+}
+
 class _SpeakStep extends StatefulWidget {
   final LessonStep step;
   final Future<SpeechEvaluationResult> Function(LessonStep step)?
@@ -175,11 +184,13 @@ class _SpeakStepState extends State<_SpeakStep> {
     }
 
     final locales = await _speech.locales();
-    final arabicLocales = locales.where(
-      (locale) => locale.localeId.toLowerCase().startsWith('ar'),
+    final preferredLanguage =
+        speechRecognitionLanguageCode(widget.step, state.locale.code);
+    final preferredLocales = locales.where(
+      (locale) => locale.localeId.toLowerCase().startsWith(preferredLanguage),
     );
     final localeId =
-        arabicLocales.isEmpty ? null : arabicLocales.first.localeId;
+        preferredLocales.isEmpty ? null : preferredLocales.first.localeId;
     setState(() {
       _initializing = false;
       _recording = true;
@@ -429,6 +440,8 @@ class _SpeakStepState extends State<_SpeakStep> {
         transcript: _recognizedWords,
         audioBytes: _recordedAudio,
         audioProcessorConsent: _audioProcessorConsent,
+        recognitionLanguage:
+            speechRecognitionLanguageCode(widget.step, state.locale.code),
       );
       if (!mounted) return;
       _applySpeechResult(result);

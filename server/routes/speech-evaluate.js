@@ -30,12 +30,12 @@ export function clampInput(value, max = SPEECH_MAX_INPUT) {
 export function normalizeSpeech(value) {
   return String(value ?? '')
     .toLowerCase()
-    .normalize('NFKD')
+    .normalize('NFC')
     .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '')
     .replace(/[یى]/g, 'ي')
     .replace(/ک/g, 'ك')
     .replace(/ё/g, 'е')
-    .replace(/[^\u0600-\u06ffa-zа-яе0-9]+/gu, '');
+    .replace(/[^\u0600-\u06ffa-zа-яёәғқңөұүһі0-9]+/gu, '');
 }
 
 export function normalizeArabicVowelHints(value) {
@@ -60,9 +60,10 @@ export function normalizePhonetic(value) {
     з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o',
     п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'kh', ц: 'ts',
     ч: 'ch', ш: 'sh', щ: 'sh', ы: 'y', э: 'e', ю: 'yu', я: 'ya',
-    ъ: '', ь: '',
+    ъ: '', ь: '', ә: 'a', ғ: 'gh', қ: 'q', ң: 'ng', ө: 'o', ұ: 'u',
+    ү: 'u', һ: 'h', і: 'i',
   };
-  return Array.from(String(value ?? '').toLowerCase().normalize('NFKD'))
+  return Array.from(String(value ?? '').toLowerCase().normalize('NFC'))
     .map((character) => cyrillicToLatin[character] ?? character)
     .join('')
     .replace(/[^a-z0-9]+/g, '');
@@ -101,7 +102,12 @@ export async function evaluateSpeechBody(body, { transcribe = transcribeSpeech }
           },
         };
       }
-      transcript = clampInput(await transcribe({ ...recording, prompt: target }));
+      const language = body.language === 'kk' ? 'kk' : 'ar';
+      transcript = clampInput(await transcribe({
+        ...recording,
+        prompt: target,
+        language,
+      }));
       transcribedAudio = true;
     }
   }

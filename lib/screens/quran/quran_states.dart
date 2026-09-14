@@ -108,9 +108,9 @@ class _AttributionFooter extends StatelessWidget {
                 Expanded(
                   child: Text(
                     state.tr(
-                        ru: '114 сур · аудио офлайн — в Muslingo+',
-                        kk: '114 сүре · аудио офлайн — Muslingo+ ішінде',
-                        en: '114 surahs · offline audio — in Muslingo+'),
+                        ru: '114 сур · аудио доступно бесплатно',
+                        kk: '114 сүре · аудио тегін қолжетімді',
+                        en: '114 surahs · audio available for free'),
                     style: const TextStyle(
                       fontFamily: 'Nunito',
                       fontSize: 13,

@@ -7,6 +7,7 @@ import '../services/app_state.dart';
 import '../services/haptics_service.dart';
 import '../utils/colors.dart';
 import '../widgets/premium_background.dart';
+import '../widgets/premium_card.dart';
 import '../widgets/section_label.dart';
 
 /// Академия — готовые учебные маршруты из уже существующих уроков. Каждая
@@ -31,6 +32,8 @@ class AcademyScreen extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(18, 4, 18, 28),
                   children: [
                     const _AcademyIntro(),
+                    const SizedBox(height: 14),
+                    const _OpenCurriculumActions(),
                     const SizedBox(height: 20),
                     SectionLabel(
                         text: state.tr(
@@ -73,6 +76,81 @@ class AcademyScreen extends StatelessWidget {
       }
     }
     return null;
+  }
+}
+
+class _OpenCurriculumActions extends StatelessWidget {
+  const _OpenCurriculumActions();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    return PremiumCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        children: [
+          Material(
+            type: MaterialType.transparency,
+            child: ListTile(
+              key: const ValueKey('academy-open-570'),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+              leading: const CircleAvatar(
+                backgroundColor: AppColors.skyLight,
+                child: Icon(Icons.library_books_rounded, color: AppColors.navy),
+              ),
+              title: Text(
+                state.tr(
+                  ru: 'Все 570 модулей',
+                  kk: 'Барлық 570 модуль',
+                  en: 'All 570 modules',
+                ),
+                style: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              subtitle: Text(state.tr(
+                ru: 'Открыты бесплатно',
+                kk: 'Тегін ашық',
+                en: 'Open for free',
+              )),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.pushNamed(context, '/curriculum'),
+            ),
+          ),
+          const Divider(height: 1),
+          Material(
+            type: MaterialType.transparency,
+            child: ListTile(
+              key: const ValueKey('academy-open-audio-mode'),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+              leading: const CircleAvatar(
+                backgroundColor: AppColors.skyLight,
+                child: Icon(Icons.headphones_rounded, color: AppColors.navy),
+              ),
+              title: Text(
+                state.tr(
+                  ru: 'Непрерывный аудиорежим',
+                  kk: 'Үздіксіз аудиорежим',
+                  en: 'Continuous audio mode',
+                ),
+                style: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              subtitle: Text(state.tr(
+                ru: '5, 10, 15 или 30 минут',
+                kk: '5, 10, 15 немесе 30 минут',
+                en: '5, 10, 15 or 30 minutes',
+              )),
+              trailing: const Icon(Icons.play_arrow_rounded),
+              onTap: () => Navigator.pushNamed(context, '/audio-session'),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

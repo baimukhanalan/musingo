@@ -75,12 +75,14 @@ class SpeechEvaluationService {
     Uint8List? audioBytes,
     String? lessonId,
     bool audioProcessorConsent = false,
+    String? recognitionLanguage,
   }) async {
     final target = step.effectiveSpeechTarget;
     final phoneticTarget = step.transliteration?.trim() ?? '';
     final isQuranSpeech = step.speechMode == SpeechMode.quran ||
         step.quranGlobalAyahNumber != null;
-    final language = isQuranSpeech ? 'quran-ar' : 'arabic';
+    final language =
+        isQuranSpeech ? 'ar' : (recognitionLanguage == 'kk' ? 'kk' : 'ar');
     try {
       if (!hasRemoteEvaluator) {
         return evaluateLocally(
@@ -187,7 +189,8 @@ class SpeechEvaluationService {
       .replaceAll(RegExp(r'[یى]'), 'ي')
       .replaceAll('ک', 'ك')
       .replaceAll('ё', 'е')
-      .replaceAll(RegExp(r'[^\u0600-\u06FFa-zа-яе0-9]+', unicode: true), '');
+      .replaceAll(
+          RegExp(r'[^\u0600-\u06FFa-zа-яёәғқңөұүһі0-9]+', unicode: true), '');
 
   String _normalizeArabicVowelHints(String value) => value
       .toLowerCase()
@@ -235,6 +238,15 @@ class SpeechEvaluationService {
       'э': 'e',
       'ю': 'yu',
       'я': 'ya',
+      'ә': 'a',
+      'ғ': 'gh',
+      'қ': 'q',
+      'ң': 'ng',
+      'ө': 'o',
+      'ұ': 'u',
+      'ү': 'u',
+      'һ': 'h',
+      'і': 'i',
       'ъ': '',
       'ь': '',
     };

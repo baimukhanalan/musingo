@@ -97,12 +97,6 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 _AchievementsGrid(achievements: state.achievements),
-                if (!user.isPremium) ...[
-                  const SizedBox(height: 22),
-                  _PremiumUpsell(
-                    onTap: () => Navigator.pushNamed(context, '/premium'),
-                  ),
-                ],
                 const SizedBox(height: 22),
                 _MenuSection(
                   items: [

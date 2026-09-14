@@ -129,4 +129,19 @@ void main() {
     expect(result.passed, isFalse);
     service.dispose();
   });
+
+  test('Kazakh letters survive normalization and phonetic comparison', () {
+    final service = SpeechEvaluationService();
+    expect(
+      service.normalizeSpeech('Әділдік, Құран, көңіл және үміт'),
+      'әділдікқұранкөңілжәнеүміт',
+    );
+    final result = service.evaluateLocally(
+      transcript: 'қайырлы күн',
+      target: 'Қайырлы күн',
+      passScore: 75,
+    );
+    expect(result.passed, isTrue);
+    service.dispose();
+  });
 }

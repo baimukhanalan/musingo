@@ -210,7 +210,7 @@ class _ReviewCard extends StatelessWidget {
   }
 }
 
-/// Small Muslingo+ upsell note.
+/// Small informational note for the free memorization workflow.
 class _PlusNote extends StatelessWidget {
   final String text;
 

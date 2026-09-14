@@ -23,9 +23,9 @@ class HelpScreen extends StatelessWidget {
             kk: 'Жандар қалай жұмыс істейді?',
             en: 'How do lives work?'),
         'a': state.tr(
-            ru: 'У тебя 5 жизней. Каждая ошибка забирает одну. Без жизней нужно ждать восстановления или купить muslingo+.',
-            kk: 'Сенде 5 жан бар. Әр қате біреуін алады. Жансыз қалғанда қалпына келуін күту немесе muslingo+ сатып алу керек.',
-            en: 'You have 5 lives. Each mistake takes one. With no lives, wait for them to recover or get muslingo+.')
+            ru: 'У тебя 5 жизней. Каждая ошибка забирает одну. Жизни восстанавливаются со временем или за заработанную в уроках энергию.',
+            kk: 'Сенде 5 жан бар. Әр қате біреуін алады. Жандар уақыт өте немесе сабақта жиналған энергиямен қалпына келеді.',
+            en: 'You have 5 lives. Each mistake takes one. Lives recover over time or with energy earned in lessons.')
       },
       {
         'q': state.tr(
@@ -49,13 +49,13 @@ class HelpScreen extends StatelessWidget {
       },
       {
         'q': state.tr(
-            ru: 'Когда появится Muslingo+?',
-            kk: 'Muslingo+ қашан шығады?',
-            en: 'When will Muslingo+ arrive?'),
+            ru: 'Приложение бесплатное?',
+            kk: 'Қосымша тегін бе?',
+            en: 'Is the app free?'),
         'a': state.tr(
-            ru: 'Подписка откроется после подключения безопасной оплаты через App Store и Google Play.',
-            kk: 'Жазылым App Store және Google Play арқылы қауіпсіз төлем қосылғаннан кейін ашылады.',
-            en: 'The subscription will open once secure payments through the App Store and Google Play are connected.')
+            ru: 'Да. Все опубликованные уроки и 570 модулей доступны бесплатно.',
+            kk: 'Иә. Барлық жарияланған сабақ пен 570 модуль тегін қолжетімді.',
+            en: 'Yes. All published lessons and 570 modules are available for free.')
       },
     ];
 

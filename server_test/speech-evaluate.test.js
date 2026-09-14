@@ -68,6 +68,13 @@ test('speech scoring accepts a full target followed by an ASR repetition', () =>
   assert.equal(scoreSpeech(spoken, target), 100);
 });
 
+test('Kazakh normalization preserves native letters', () => {
+  assert.equal(
+    normalizeSpeech('Әділдік, Құран, көңіл және үміт'),
+    'әділдікқұранкөңілжәнеүміт',
+  );
+});
+
 test('speech scoring does not use substring acceptance for one-letter targets', () => {
   assert.ok(scoreSpeech(normalizeSpeech('سلام'), normalizeSpeech('ل')) < 60);
 });
@@ -240,6 +247,32 @@ test('OpenAI transcription sends audio as multipart form data', async () => {
       prompt: 'بسم الله',
     });
     assert.equal(transcript, 'بسم الله');
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousKey;
+  }
+});
+
+test('OpenAI transcription forwards the Kazakh language hint', async () => {
+  const previousKey = process.env.OPENAI_API_KEY;
+  const previousFetch = globalThis.fetch;
+  process.env.OPENAI_API_KEY = 'test-only-key';
+  globalThis.fetch = async (_url, options) => {
+    assert.equal(options.body.get('language'), 'kk');
+    return new Response(JSON.stringify({ text: 'Қайырлы күн' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+  try {
+    const transcript = await callOpenAITranscription({
+      audio: Buffer.from('recorded voice'),
+      mimeType: 'audio/webm',
+      prompt: 'Қайырлы күн',
+      language: 'kk',
+    });
+    assert.equal(transcript, 'Қайырлы күн');
   } finally {
     globalThis.fetch = previousFetch;
     if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
