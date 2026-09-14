@@ -1,5 +1,6 @@
 import 'knowledge_state.dart';
 import 'learning_profile.dart';
+import 'mentor_profile.dart';
 
 enum CoachRole { user, coach }
 
@@ -118,6 +119,8 @@ class CoachContext {
   final int learnedAyats;
   final int learnedDuas;
   final DateTime? lastStudyAt;
+  final MentorProfile mentorProfile;
+  final List<Map<String, String>> conversationHistory;
 
   const CoachContext({
     required this.goal,
@@ -154,5 +157,7 @@ class CoachContext {
     this.learnedAyats = 0,
     this.learnedDuas = 0,
     this.lastStudyAt,
+    this.mentorProfile = const MentorProfile(),
+    this.conversationHistory = const [],
   });
 }

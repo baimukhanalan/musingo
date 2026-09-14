@@ -13,7 +13,8 @@ class HomeWidgetPlatform {
 
   bool get isSupported => Platform.isAndroid || Platform.isIOS;
 
-  Future<void> update({required String localeCode}) async {
+  Future<void> update(
+      {required String localeCode, String coachLine = ''}) async {
     if (!isSupported) return;
     if (Platform.isIOS) await HomeWidget.setAppGroupId(_appGroupId);
 
@@ -35,6 +36,7 @@ class HomeWidgetPlatform {
         'title': title,
         'arabic': ayah.arabic,
         'translation': ayah.secondaryTextFor(locale),
+        'coachLine': coachLine.trim(),
       });
     }
 

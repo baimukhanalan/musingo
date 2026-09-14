@@ -6,8 +6,8 @@ class HomeWidgetService {
 
   bool get isSupported => _platform.isSupported;
 
-  Future<void> update({required String localeCode}) =>
-      _platform.update(localeCode: localeCode);
+  Future<void> update({required String localeCode, String coachLine = ''}) =>
+      _platform.update(localeCode: localeCode, coachLine: coachLine);
 
   Future<void> clear() => _platform.clear();
 

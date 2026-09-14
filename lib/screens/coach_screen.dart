@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/coach.dart';
@@ -38,7 +41,7 @@ class _CoachScreenState extends State<CoachScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _addGreeting());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _restoreConversation());
   }
 
   @override
@@ -55,31 +58,109 @@ class _CoachScreenState extends State<CoachScreen> {
     final lesson = state.recommendedLesson;
     final lessonTitle = lesson?.title ??
         state.tr(ru: 'короткий урок', kk: 'қысқа сабақ', en: 'a short lesson');
+    final preferredName = state.mentorProfile.preferredName.trim();
+    final birthday = state.mentorProfile.isBirthday(DateTime.now());
+    final discovery = state.mentorProfile.memoryEnabled &&
+            state.mentorProfile.proactiveQuestionsEnabled &&
+            state.mentorProfile.motivation.isEmpty
+        ? state.tr(
+            ru: '\n\nЧтобы мои советы стали точнее: что для тебя самое важное в обучении сейчас? Отвечать необязательно.',
+            kk: '\n\nКеңесім дәлірек болуы үшін: қазір оқуда сен үшін ең маңыздысы не? Жауап беру міндетті емес.',
+            en: '\n\nTo make my guidance more useful: what matters most to you in learning right now? You do not have to answer.',
+          )
+        : '';
     setState(() {
       _messages.add(CoachMessage(
         id: 'greeting',
         role: CoachRole.coach,
-        text: state.dueReviewCount > 0
-            ? state.tr(
-                ru: 'У тебя ${state.dueReviewCount} назначенных повторений. '
-                    'Сначала закрепим их, затем вернёмся к новому материалу.',
-                kk: 'Сенде ${state.dueReviewCount} тағайындалған қайталау бар. '
-                    'Алдымен соларды бекітейік, содан кейін жаңа материалға ораламыз.',
-                en: 'You have ${state.dueReviewCount} scheduled reviews. '
-                    'Let\'s reinforce them first, then return to new material.')
-            : state.tr(
-                ru: 'Сегодня подходящий следующий шаг — '
-                    '«$lessonTitle». Я отвечаю по твоему '
-                    'прогрессу и показываю источники для религиозных материалов.',
-                kk: 'Бүгінгі қолайлы келесі қадам — '
-                    '«$lessonTitle». Мен сенің прогресіңе қарай жауап беремін '
-                    'және діни материалдар үшін дереккөздерді көрсетемін.',
-                en: 'A good next step today is '
-                    '“$lessonTitle”. I answer based on your progress '
-                    'and show sources for religious materials.'),
+        text: (birthday
+                ? state.tr(
+                    ru: '${preferredName.isEmpty ? '' : '$preferredName, '}с днём рождения! 🎉 Я рядом без обязательного плана: можем сделать лёгкое повторение или просто поговорить.',
+                    kk: '${preferredName.isEmpty ? '' : '$preferredName, '}туған күніңмен! 🎉 Бүгін міндетті жоспарсыз: жеңіл қайталау жасаймыз немесе жай сөйлесеміз.',
+                    en: '${preferredName.isEmpty ? '' : '$preferredName, '}happy birthday! 🎉 No pressure today: we can do a light review or simply talk.')
+                : state.dueReviewCount > 0
+                    ? state.tr(
+                        ru: 'У тебя ${state.dueReviewCount} назначенных повторений. '
+                            'Сначала закрепим их, затем вернёмся к новому материалу.',
+                        kk: 'Сенде ${state.dueReviewCount} тағайындалған қайталау бар. '
+                            'Алдымен соларды бекітейік, содан кейін жаңа материалға ораламыз.',
+                        en: 'You have ${state.dueReviewCount} scheduled reviews. '
+                            'Let\'s reinforce them first, then return to new material.')
+                    : state.tr(
+                        ru: 'Сегодня подходящий следующий шаг — '
+                            '«$lessonTitle». Я отвечаю по твоему '
+                            'прогрессу и показываю источники для религиозных материалов.',
+                        kk: 'Бүгінгі қолайлы келесі қадам — '
+                            '«$lessonTitle». Мен сенің прогресіңе қарай жауап беремін '
+                            'және діни материалдар үшін дереккөздерді көрсетемін.',
+                        en: 'A good next step today is '
+                            '“$lessonTitle”. I answer based on your progress '
+                            'and show sources for religious materials.')) +
+            discovery,
         createdAt: DateTime.now(),
       ));
     });
+    _persistConversation();
+  }
+
+  String _conversationKey(AppState state) =>
+      'coach_conversation_v1_${state.user?.id ?? 'guest'}';
+
+  Future<void> _restoreConversation() async {
+    if (!mounted) return;
+    final state = context.read<AppState>();
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_conversationKey(state));
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          final restored = decoded
+              .whereType<Map>()
+              .map((item) {
+                final map = Map<String, dynamic>.from(item);
+                return CoachMessage(
+                  id: map['id']?.toString() ??
+                      'saved_${DateTime.now().microsecondsSinceEpoch}',
+                  role:
+                      map['role'] == 'user' ? CoachRole.user : CoachRole.coach,
+                  text: map['text']?.toString() ?? '',
+                  createdAt:
+                      DateTime.tryParse(map['createdAt']?.toString() ?? '') ??
+                          DateTime.now(),
+                );
+              })
+              .where((item) => item.text.trim().isNotEmpty)
+              .take(30)
+              .toList();
+          if (mounted && restored.isNotEmpty) {
+            setState(() => _messages.addAll(restored));
+          }
+        }
+      } catch (_) {
+        await prefs.remove(_conversationKey(state));
+      }
+    }
+    _addGreeting();
+    _scrollToBottom();
+  }
+
+  Future<void> _persistConversation() async {
+    if (!mounted) return;
+    final state = context.read<AppState>();
+    final prefs = await SharedPreferences.getInstance();
+    final items = _messages.reversed
+        .take(30)
+        .toList()
+        .reversed
+        .map((message) => {
+              'id': message.id,
+              'role': message.role.name,
+              'text': message.text,
+              'createdAt': message.createdAt.toIso8601String(),
+            })
+        .toList();
+    await prefs.setString(_conversationKey(state), jsonEncode(items));
   }
 
   CoachContext _contextFrom(AppState state) {
@@ -145,7 +226,7 @@ class _CoachScreenState extends State<CoachScreen> {
       memoryAccuracy: memoryAccuracy,
       completedLessonTitles: completedTitles,
       knownSurahs: knownSurahs,
-      availableMinutes: 6,
+      availableMinutes: state.mentorProfile.preferredSessionMinutes,
       hearts: state.user?.hearts ?? 5,
       energy: state.user?.energy ?? 0,
       lessonAttempts: state.user?.lessonAttempts ?? 0,
@@ -153,6 +234,16 @@ class _CoachScreenState extends State<CoachScreen> {
       learnedAyats: state.user?.learnedAyats ?? 0,
       learnedDuas: state.user?.learnedDuas ?? 0,
       lastStudyAt: state.user?.lastStudyDate,
+      mentorProfile: state.mentorProfile,
+      conversationHistory: _messages.reversed
+          .take(10)
+          .toList()
+          .reversed
+          .map((message) => {
+                'role': message.role.name,
+                'text': message.text,
+              })
+          .toList(growable: false),
     );
   }
 
@@ -173,6 +264,9 @@ class _CoachScreenState extends State<CoachScreen> {
     _scrollToBottom();
 
     final state = context.read<AppState>();
+    final memory = _explicitMemory(question, state);
+    if (memory != null) await state.rememberForCoach(memory);
+
     final coachContext = _contextFrom(state);
     // Индикатор «печатает…» держится, пока ждём ответ (сеть или локальный
     // движок). Backend передаём только если он сконфигурирован — иначе
@@ -210,7 +304,17 @@ class _CoachScreenState extends State<CoachScreen> {
         lessonId: response.lessonId,
       ));
     });
+    await _persistConversation();
     _scrollToBottom();
+  }
+
+  String? _explicitMemory(String question, AppState state) {
+    if (!state.mentorProfile.memoryEnabled) return null;
+    final match = RegExp(
+      r'^(?:запомни(?:,|\s+что)?|есіңде сақта(?:,|\s+)?|remember(?:,|\s+that)?)\s+(.+)$',
+      caseSensitive: false,
+    ).firstMatch(question.trim());
+    return match?.group(1)?.trim();
   }
 
   String _displayText(CoachResponse response, AppState state) {

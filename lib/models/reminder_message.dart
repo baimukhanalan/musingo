@@ -22,6 +22,12 @@ List<ReminderMessage> buildReminders({
   String? learningGoal,
   DateTime? now,
   AppLocale locale = AppLocale.ru,
+  bool personalized = true,
+  bool isBirthday = false,
+  String currentFocus = '',
+  String nextLessonTitle = '',
+  int preferredMinutes = 6,
+  String tone = 'gentle',
 }) {
   // Запоминаем язык последнего планирования, чтобы парный вечерний нудж
   // (buildStreakReminder, вызывается из планировщика уже без контекста экрана)
@@ -46,6 +52,61 @@ List<ReminderMessage> buildReminders({
   }
 
   final messages = <ReminderMessage>[];
+
+  if (personalized && isBirthday) {
+    messages.add(ReminderMessage(
+      switch (locale) {
+        AppLocale.kk => 'Туған күніңмен, {name}! 🎉',
+        AppLocale.en => 'Happy birthday, {name}! 🎉',
+        AppLocale.ru => 'С днём рождения, {name}! 🎉',
+      },
+      switch (locale) {
+        AppLocale.kk =>
+          'Айн саған тыныштық пен берекелі жыл тілейді. Бүгін сабақ міндет емес — бұл жай ғана жылы құттықтау.',
+        AppLocale.en =>
+          'Ayn wishes you a peaceful and meaningful year. No lesson pressure today—this is simply a warm hello.',
+        AppLocale.ru =>
+          'Айн желает тебе спокойного и наполненного смыслом года. Сегодня без давления — просто тёплое поздравление.',
+      },
+    ));
+  }
+
+  if (personalized && nextLessonTitle.trim().isNotEmpty) {
+    final focus = currentFocus.trim().isEmpty
+        ? nextLessonTitle.trim()
+        : currentFocus.trim();
+    messages.add(ReminderMessage(
+      switch (locale) {
+        AppLocale.kk => '{name}, бүгінгі жоспар дайын',
+        AppLocale.en => '{name}, today’s plan is ready',
+        AppLocale.ru => '{name}, план на сегодня готов',
+      },
+      switch (locale) {
+        AppLocale.kk =>
+          'Фокус: $focus. Шамамен $preferredMinutes минут — «${nextLessonTitle.trim()}».',
+        AppLocale.en =>
+          'Focus: $focus. About $preferredMinutes minutes—“${nextLessonTitle.trim()}”.',
+        AppLocale.ru =>
+          'Фокус: $focus. Примерно $preferredMinutes минут — «${nextLessonTitle.trim()}».',
+      },
+    ));
+  }
+
+  if (personalized && tone == 'focused' && dueCount > 0) {
+    messages.add(ReminderMessage(
+      switch (locale) {
+        AppLocale.kk => 'Бүгінгі басты міндет',
+        AppLocale.en => 'Today’s main task',
+        AppLocale.ru => 'Главная задача на сегодня',
+      },
+      switch (locale) {
+        AppLocale.kk => '$dueCount қайталауды жаңа материалға дейін бекіт.',
+        AppLocale.en =>
+          'Complete $dueCount due reviews before starting new material.',
+        AppLocale.ru => 'Закрепи $dueCount повторений до нового материала.',
+      },
+    ));
+  }
 
   // Контекст стрика.
   if (streak <= 0) {

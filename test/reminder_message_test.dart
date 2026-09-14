@@ -73,6 +73,24 @@ void main() {
       // Не должно быть неловкого «0-дневный стрик».
       expect(_mentions(messages, '0-дневный'), isFalse);
     });
+
+    test('birthday and next lesson are personalized without private notes', () {
+      final messages = buildReminders(
+        name: 'Алан',
+        streak: 2,
+        dueCount: 3,
+        now: _now,
+        isBirthday: true,
+        currentFocus: 'таджвид',
+        nextLessonTitle: 'Правило мадда',
+        preferredMinutes: 10,
+      );
+
+      expect(messages.first.title, contains('С днём рождения'));
+      expect(_mentions(messages, 'Правило мадда'), isTrue);
+      expect(_mentions(messages, '10'), isTrue);
+      expect(_mentions(messages, 'таджвид'), isTrue);
+    });
   });
 
   group('buildStreakReminder', () {

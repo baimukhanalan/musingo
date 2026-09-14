@@ -8,6 +8,7 @@ import 'package:muslingo/screens/home_screen.dart';
 import 'package:muslingo/screens/install_app_screen.dart';
 import 'package:muslingo/screens/league_screen.dart';
 import 'package:muslingo/screens/main_tab_screen.dart';
+import 'package:muslingo/screens/mentor_memory_screen.dart';
 import 'package:muslingo/screens/premium_screen.dart';
 import 'package:muslingo/screens/profile_screen.dart';
 import 'package:muslingo/screens/quran_screen.dart';
@@ -45,6 +46,7 @@ void main() {
       'home': const HomeScreen(),
       'quran': const QuranScreen(),
       'coach': const CoachScreen(),
+      'mentor memory': const MentorMemoryScreen(),
       'profile': const ProfileScreen(),
       'streak': const StreakScreen(),
       'league': const LeagueScreen(),

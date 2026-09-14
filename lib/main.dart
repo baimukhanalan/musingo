@@ -23,6 +23,7 @@ import 'screens/email_account_screen.dart';
 import 'screens/install_app_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/coach_screen.dart';
+import 'screens/mentor_memory_screen.dart';
 import 'screens/rules_screen.dart';
 import 'screens/academy_screen.dart';
 import 'screens/continuous_audio_screen.dart';
@@ -242,6 +243,9 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
         break;
       case '/coach':
         page = const CoachScreen(showBackButton: true);
+        break;
+      case '/mentor-memory':
+        page = const MentorMemoryScreen();
         break;
       case '/rules':
         page = const RulesScreen();

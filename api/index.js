@@ -36,6 +36,7 @@ const COACH_CONTEXT_FIELDS = [
   'quranCompleted', 'arabicCompleted', 'basicsCompleted', 'tajwidCompleted',
   'completedLessonIds', 'completedLessonTitles', 'weakAreas',
   'recommendedLessonId', 'recommendedLessonTitle', 'dueReviewCount',
+  'mentorProfile', 'conversationHistory',
 ];
 
 function coachString(value, max = COACH_STRING_LIMIT) {

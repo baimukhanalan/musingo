@@ -33,6 +33,24 @@ test('normal sync cannot overwrite authoritative xp or completed lessons', () =>
   assert.deepEqual(merged.completedLessons, ['r1']);
 });
 
+test('mentor profile sync is bounded and excludes unknown fields', () => {
+  const server = defaultProgress({ id: 'u1', display_name: 'Alan', email: 'a@example.com' });
+  const merged = mergeLearningState(server, {
+    mentorProfile: {
+      preferredName: 'Алан',
+      currentFocus: 'таджвид',
+      tone: 'focused',
+      preferredSessionMinutes: 99,
+      secret: 'must not persist',
+      memories: [{ id: 'm1', text: 'Лучше учусь утром', createdAt: '2026-09-14T00:00:00Z' }],
+    },
+  });
+  assert.equal(merged.mentorProfile.preferredName, 'Алан');
+  assert.equal(merged.mentorProfile.preferredSessionMinutes, 30);
+  assert.equal(merged.mentorProfile.secret, undefined);
+  assert.equal(merged.mentorProfile.memories.length, 1);
+});
+
 test('curriculum progress merges across devices without minting rewards', () => {
   const merged = mergeCurriculumProgress(
     {

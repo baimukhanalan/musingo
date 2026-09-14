@@ -28,6 +28,7 @@ class MuslingoAyahWidgetProvider : HomeWidgetProvider() {
                 setTextViewText(R.id.ayah_widget_number, entry.number)
                 setTextViewText(R.id.ayah_widget_arabic, entry.arabic)
                 setTextViewText(R.id.ayah_widget_translation, entry.translation)
+                setTextViewText(R.id.ayah_widget_coach, entry.coachLine)
             }
             appWidgetManager.updateAppWidget(widgetId, views)
         }
@@ -43,6 +44,7 @@ class MuslingoAyahWidgetProvider : HomeWidgetProvider() {
                     number = "${item.optString("title", "Muslingo")} · №${item.optInt("number")}",
                     arabic = item.optString("arabic"),
                     translation = item.optString("translation"),
+                    coachLine = item.optString("coachLine"),
                 )
                 if (item.optString("date") == today) return entry
             }
@@ -56,6 +58,7 @@ class MuslingoAyahWidgetProvider : HomeWidgetProvider() {
         number = "Muslingo",
         arabic = "Аят дня готовится",
         translation = "Открой приложение, чтобы обновить виджет.",
+        coachLine = "",
     )
 }
 
@@ -63,4 +66,5 @@ private data class WidgetEntry(
     val number: String,
     val arabic: String,
     val translation: String,
+    val coachLine: String,
 )

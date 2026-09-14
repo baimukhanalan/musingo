@@ -9,6 +9,7 @@ private struct AyahPayload: Decodable {
   let title: String
   let arabic: String
   let translation: String
+  let coachLine: String?
 }
 
 private struct AyahEntry: TimelineEntry {
@@ -17,6 +18,7 @@ private struct AyahEntry: TimelineEntry {
   let title: String
   let arabic: String
   let translation: String
+  let coachLine: String
 }
 
 private struct AyahProvider: TimelineProvider {
@@ -28,7 +30,8 @@ private struct AyahProvider: TimelineProvider {
       number: 1,
       title: "АЯТ ДНЯ",
       arabic: "بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ",
-      translation: "Во имя Аллаха, Милостивого, Милосердного"
+      translation: "Во имя Аллаха, Милостивого, Милосердного",
+      coachLine: "Айн: короткий шаг на сегодня"
     )
   }
 
@@ -67,7 +70,8 @@ private struct AyahProvider: TimelineProvider {
         number: item.number,
         title: item.title.uppercased(),
         arabic: item.arabic,
-        translation: item.translation
+        translation: item.translation,
+        coachLine: item.coachLine ?? ""
       )
     }
   }
@@ -78,7 +82,8 @@ private struct AyahProvider: TimelineProvider {
       number: nil,
       title: "MUSLINGO",
       arabic: "Аят дня готовится",
-      translation: "Открой Muslingo, чтобы обновить виджет."
+      translation: "Открой Muslingo, чтобы обновить виджет.",
+      coachLine: ""
     )
   }
 }
@@ -145,6 +150,13 @@ private struct AyahWidgetView: View {
         .font(.caption)
         .foregroundColor(Color(red: 0.33, green: 0.43, blue: 0.50))
         .lineLimit(3)
+      if !entry.coachLine.isEmpty && family == .systemMedium {
+        Divider().opacity(0.35)
+        Text(entry.coachLine)
+          .font(.caption2.weight(.semibold))
+          .foregroundColor(Color(red: 0.10, green: 0.33, blue: 0.48))
+          .lineLimit(1)
+      }
     }
   }
 }

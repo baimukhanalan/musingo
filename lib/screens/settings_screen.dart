@@ -135,6 +135,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 22),
               ],
               SectionLabel(
+                text: state.tr(
+                  ru: 'Персонализация',
+                  kk: 'Дербестендіру',
+                  en: 'Personalization',
+                ),
+              ),
+              const SizedBox(height: 10),
+              _SettingsCard(children: [
+                _SettingsRow(
+                  key: const ValueKey('settings-mentor-memory'),
+                  icon: Icons.psychology_alt_outlined,
+                  label: state.tr(
+                    ru: 'Что Айн знает обо мне',
+                    kk: 'Айн мен туралы не біледі',
+                    en: 'What Ayn knows about me',
+                  ),
+                  subtitle: state.tr(
+                    ru: 'Память, стиль общения и день рождения',
+                    kk: 'Жад, сөйлесу мәнері және туған күн',
+                    en: 'Memory, conversation style, and birthday',
+                  ),
+                  color: AppColors.sky,
+                  onTap: () => Navigator.pushNamed(context, '/mentor-memory'),
+                ),
+              ]),
+              const SizedBox(height: 22),
+              SectionLabel(
                   text: state.tr(
                       ru: 'Напоминания', kk: 'Еске салулар', en: 'Reminders')),
               const SizedBox(height: 10),

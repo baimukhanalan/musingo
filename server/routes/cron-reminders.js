@@ -67,7 +67,7 @@ function localParts(date, timezone) {
   };
 }
 
-function messageFor(row, localDate) {
+export function messageFor(row, localDate) {
   if (row.private_preview !== false) {
     return {
       title: 'Muslingo',
@@ -75,6 +75,32 @@ function messageFor(row, localDate) {
       url: '/#/home',
       tag: 'muslingo-daily-learning',
     };
+  }
+  const mentor = row.progress_document?.mentorProfile;
+  if (mentor && typeof mentor === 'object' && mentor.personalizedRemindersEnabled !== false) {
+    const name = String(mentor.preferredName ?? '').trim().slice(0, 60);
+    const monthDay = localDate.slice(5);
+    const birthday = [mentor.birthdayMonth, mentor.birthdayDay]
+      .every((value) => Number.isInteger(Number(value)))
+      ? `${String(Number(mentor.birthdayMonth)).padStart(2, '0')}-${String(Number(mentor.birthdayDay)).padStart(2, '0')}`
+      : '';
+    if (mentor.birthdayCelebrationsEnabled !== false && birthday === monthDay) {
+      return {
+        title: name ? `${name}, с днём рождения! 🎉` : 'С днём рождения! 🎉',
+        body: 'Айн желает тебе спокойного и наполненного смыслом года. Сегодня без давления — просто тёплое поздравление.',
+        url: '/#/coach',
+        tag: 'muslingo-birthday',
+      };
+    }
+    const focus = String(mentor.currentFocus ?? '').trim().slice(0, 120);
+    if (focus) {
+      return {
+        title: name ? `${name}, план на сегодня готов` : 'План на сегодня готов',
+        body: `Фокус: ${focus}. Айн уже собрал следующий короткий шаг.`,
+        url: '/#/daily-plan',
+        tag: 'muslingo-daily-learning',
+      };
+    }
   }
   // seed детерминированный: сумма кодов символов installation_id и локальной даты.
   // Один и тот же человек в один день получает стабильный текст, но день ото дня
@@ -225,14 +251,15 @@ export default withApi(async (request, response) => {
   // «уже отправлено сегодня» считается на лету внутри collectCandidates.
   const { checked, candidates } = await collectCandidates(
     (cursor, size) => sql`
-      SELECT endpoint_hash, endpoint, p256dh, auth_secret, installation_id,
-             timezone, reminder_hour, reminder_minute, due_count, learning_goal,
-             private_preview, last_sent_date
-      FROM muslingo_push_subscriptions
-      WHERE enabled = true
-        AND updated_at > now() - interval '120 days'
-        AND endpoint_hash > ${cursor}
-      ORDER BY endpoint_hash
+      SELECT s.endpoint_hash, s.endpoint, s.p256dh, s.auth_secret, s.installation_id,
+             s.timezone, s.reminder_hour, s.reminder_minute, s.due_count, s.learning_goal,
+             s.private_preview, s.last_sent_date, p.document AS progress_document
+      FROM muslingo_push_subscriptions s
+      LEFT JOIN muslingo_progress p ON p.user_id = s.user_id
+      WHERE s.enabled = true
+        AND s.updated_at > now() - interval '120 days'
+        AND s.endpoint_hash > ${cursor}
+      ORDER BY s.endpoint_hash
       LIMIT ${size}
     `,
     now,

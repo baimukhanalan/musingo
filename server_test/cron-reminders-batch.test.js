@@ -15,6 +15,7 @@ const {
   selectCandidates,
   collectCandidates,
   constantTimeEqual,
+  messageFor,
 } = await import('../server/routes/cron-reminders.js');
 
 // Момент, на который «сейчас» = 2026-08-09 19:30 UTC. Строки с reminder_hour=19,
@@ -115,6 +116,29 @@ test('selectCandidates не падает на битой таймзоне — о
   const candidates = selectCandidates([utcRow('z', { timezone: 'Not/AZone' })], NOW);
   assert.equal(candidates.length, 1);
   assert.equal(candidates[0].local.hour, 19);
+});
+
+test('messageFor поздравляет с днем рождения только при открытом preview', () => {
+  const profile = {
+    birthdayMonth: 8,
+    birthdayDay: 9,
+    birthdayCelebrationsEnabled: true,
+    personalizedRemindersEnabled: true,
+    preferredName: 'Алан',
+  };
+  const visible = messageFor(utcRow('birthday', {
+    private_preview: false,
+    progress_document: { mentorProfile: profile },
+  }), '2026-08-09');
+  assert.match(visible.title, /Алан/);
+  assert.equal(visible.tag, 'muslingo-birthday');
+
+  const hidden = messageFor(utcRow('private', {
+    private_preview: true,
+    progress_document: { mentorProfile: profile },
+  }), '2026-08-09');
+  assert.equal(hidden.title, 'Muslingo');
+  assert.doesNotMatch(hidden.body, /Алан/);
 });
 
 // --- collectCandidates: курсорная пагинация покрывает ВЕСЬ хвост -----------

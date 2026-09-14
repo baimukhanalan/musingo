@@ -64,6 +64,20 @@ export function defaultProgress(user) {
     learningRecommendation: null,
     nativeLanguage: null,
     soundEnabled: true,
+    mentorProfile: {
+      memoryEnabled: true,
+      proactiveQuestionsEnabled: true,
+      birthdayCelebrationsEnabled: true,
+      personalizedRemindersEnabled: true,
+      preferredName: '',
+      birthdayMonth: null,
+      birthdayDay: null,
+      motivation: '',
+      currentFocus: '',
+      tone: 'gentle',
+      preferredSessionMinutes: 6,
+      memories: [],
+    },
     updatedAt: new Date().toISOString(),
   };
 }
@@ -96,6 +110,38 @@ function safeInt(value, min, max) {
 function validDate(value) {
   const timestamp = Date.parse(String(value ?? ''));
   return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+export function safeMentorProfile(value) {
+  const raw = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const tones = new Set(['gentle', 'focused', 'cheerful']);
+  const month = safeInt(raw.birthdayMonth, 0, 12);
+  const day = safeInt(raw.birthdayDay, 0, 31);
+  const memories = safeList(raw.memories)
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => ({
+      id: safeString(item.id, 80),
+      text: safeString(item.text, 240),
+      createdAt: safeString(item.createdAt, 40),
+    }))
+    .filter((item) => item.id && item.text)
+    .slice(0, 20);
+  return {
+    memoryEnabled: raw.memoryEnabled !== false,
+    proactiveQuestionsEnabled: raw.proactiveQuestionsEnabled !== false,
+    birthdayCelebrationsEnabled: raw.birthdayCelebrationsEnabled !== false,
+    personalizedRemindersEnabled: raw.personalizedRemindersEnabled !== false,
+    preferredName: safeString(raw.preferredName, 60) ?? '',
+    birthdayMonth: month || null,
+    birthdayDay: day || null,
+    motivation: safeString(raw.motivation, 240) ?? '',
+    currentFocus: safeString(raw.currentFocus, 160) ?? '',
+    tone: tones.has(raw.tone) ? raw.tone : 'gentle',
+    preferredSessionMinutes: Number.isFinite(Number(raw.preferredSessionMinutes))
+      ? safeInt(raw.preferredSessionMinutes, 3, 30)
+      : 6,
+    memories,
+  };
 }
 
 function mergeObjectsById(serverItems, clientItems) {
@@ -175,6 +221,9 @@ export function mergeLearningState(server, incoming, { importGuest = false } = {
   next.nativeLanguage = safeString(incoming.nativeLanguage, 8) ?? server.nativeLanguage ?? null;
   if (typeof incoming.soundEnabled === 'boolean') next.soundEnabled = incoming.soundEnabled;
   next.dailyGoal = safeInt(incoming.dailyGoal ?? server.dailyGoal, 1, 20);
+  if (incoming.mentorProfile && typeof incoming.mentorProfile === 'object') {
+    next.mentorProfile = safeMentorProfile(incoming.mentorProfile);
+  }
 
   if (importGuest) {
     // Everything below is fully client-controlled guest data. We keep the

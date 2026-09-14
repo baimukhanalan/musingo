@@ -1,7 +1,8 @@
 class HomeWidgetPlatform {
   bool get isSupported => false;
 
-  Future<void> update({required String localeCode}) async {}
+  Future<void> update(
+      {required String localeCode, String coachLine = ''}) async {}
 
   Future<void> clear() async {}
 

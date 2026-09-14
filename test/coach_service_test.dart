@@ -6,6 +6,7 @@ import 'package:http/testing.dart';
 import 'package:muslingo/models/coach.dart';
 import 'package:muslingo/models/knowledge_state.dart';
 import 'package:muslingo/models/learning_profile.dart';
+import 'package:muslingo/models/mentor_profile.dart';
 import 'package:muslingo/services/backend_service.dart';
 import 'package:muslingo/services/coach_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,6 +24,7 @@ void main() {
     List<KnowledgeState> dueKnowledge = const [],
     int todayProgress = 1,
     int dailyGoal = 3,
+    MentorProfile mentorProfile = const MentorProfile(),
   }) =>
       CoachContext(
         goal: LearningGoal.shortSurahs,
@@ -53,6 +55,10 @@ void main() {
         learnedAyats: 9,
         learnedDuas: 2,
         lastStudyAt: DateTime(2026, 9, 10, 18, 30),
+        mentorProfile: mentorProfile,
+        conversationHistory: const [
+          {'role': 'user', 'text': 'Хочу заниматься утром'}
+        ],
       );
 
   KnowledgeState knowledge({
@@ -87,6 +93,31 @@ void main() {
     expect(response.dailyPlan, isNotEmpty);
     expect(response.reasoning, contains('просроченных повторений'));
     expect(response.nextAction, contains('Аль-Фатиха'));
+  });
+
+  test('sends confirmed mentor memory and conversation continuity', () {
+    final payload = service.contextPayload(
+      context(
+        mentorProfile: MentorProfile(
+          preferredName: 'Алан',
+          currentFocus: 'таджвид',
+          memories: [
+            MentorMemory(
+              id: 'm1',
+              text: 'Лучше учусь утром',
+              createdAt: DateTime(2026, 9, 14),
+            ),
+          ],
+        ),
+      ),
+      xp: 0,
+      streak: 0,
+      completedLessonIds: const [],
+    );
+
+    expect(payload['mentorProfile']['preferredName'], 'Алан');
+    expect(payload['mentorProfile']['memories'], hasLength(1));
+    expect(payload['conversationHistory'], hasLength(1));
   });
 
   test('religious explanation always includes a verified source', () {

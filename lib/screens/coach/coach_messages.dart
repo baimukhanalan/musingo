@@ -83,6 +83,17 @@ class _CoachHeader extends StatelessWidget {
               ],
             ),
           ),
+          IconButton(
+            key: const Key('coach-memory-button'),
+            tooltip: state.tr(
+              ru: 'Память наставника',
+              kk: 'Тәлімгер жады',
+              en: 'Mentor memory',
+            ),
+            onPressed: () => Navigator.pushNamed(context, '/mentor-memory'),
+            icon: const Icon(Icons.psychology_alt_outlined),
+            color: AppColors.navyDark,
+          ),
         ],
       ),
     );

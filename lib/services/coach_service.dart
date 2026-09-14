@@ -147,6 +147,14 @@ class CoachService {
       'learnedAyats': context.learnedAyats,
       'learnedDuas': context.learnedDuas,
       'lastStudyAt': context.lastStudyAt?.toIso8601String(),
+      'mentorProfile': context.mentorProfile.memoryEnabled
+          ? context.mentorProfile.toJson()
+          : {
+              'memoryEnabled': false,
+              'personalizedRemindersEnabled':
+                  context.mentorProfile.personalizedRemindersEnabled,
+            },
+      'conversationHistory': context.conversationHistory.take(10).toList(),
       'weakAreas': context.weakKnowledge
           .take(8)
           .map((knowledge) => '${knowledge.label} '
@@ -203,6 +211,17 @@ class CoachService {
     if (normalized.isEmpty) {
       return const CoachResponse(
         text: 'Напиши вопрос об уроке, суре, повторении или своей ошибке.',
+      );
+    }
+
+    if (RegExp(
+      r'^(запомни|есіңде сақта|remember)',
+      caseSensitive: false,
+    ).hasMatch(normalized)) {
+      return const CoachResponse(
+        text:
+            'Запомнил. Ты всегда можешь посмотреть или удалить это в разделе «Память наставника».',
+        sources: [_progressSource],
       );
     }
 

@@ -12,6 +12,7 @@ import '../models/learning_profile.dart';
 import '../models/knowledge_state.dart';
 import '../models/hafiz_progress.dart';
 import '../models/daily_ayah.dart';
+import '../models/mentor_profile.dart';
 import '../utils/app_locale.dart';
 import 'backend_service.dart';
 import 'lesson_data.dart';
@@ -68,6 +69,8 @@ class AppState extends ChangeNotifier {
   static const _memoryEnginePrefix = 'memory_engine_';
   static const _hafizProgressPrefix = 'hafiz_progress_';
   static const _curriculumProgressPrefix = 'curriculum_570_progress_v2_';
+  static const _mentorProfilePrefix = 'mentor_profile_v1_';
+  static const _coachConversationPrefix = 'coach_conversation_v1_';
   static const _localeKey = 'locale';
   static const _pendingSyncImportKey = 'pending_sync_import';
   static const _pendingSyncUserKey = 'pending_sync_user';
@@ -109,6 +112,7 @@ class AppState extends ChangeNotifier {
   Map<String, KnowledgeState> _knowledgeStates = {};
   Map<String, HafizProgress> _hafizProgress = {};
   Map<String, dynamic> _curriculumProgress = {};
+  MentorProfile _mentorProfile = const MentorProfile();
   final Map<String, Future<String>> _lessonAttempts = {};
 
   /// Слепок локального/гостевого прогресса, который не удалось влить на сервер
@@ -139,6 +143,92 @@ class AppState extends ChangeNotifier {
   bool get soundEnabled => _soundEnabled;
   Map<String, dynamic> get curriculumProgress =>
       Map<String, dynamic>.unmodifiable(_curriculumProgress);
+  MentorProfile get mentorProfile => _mentorProfile;
+
+  Future<void> updateMentorProfile(MentorProfile profile) async {
+    _mentorProfile = profile;
+    await _saveMentorProfile();
+    if (_notificationsEnabled) {
+      try {
+        await _scheduleLearningReminders();
+      } catch (_) {
+        _error = tr(
+          ru: 'Профиль сохранён, но напоминания обновятся при следующем запуске.',
+          kk: 'Профиль сақталды, еске салулар келесі іске қосылғанда жаңарады.',
+          en: 'Profile saved; reminders will refresh on the next launch.',
+        );
+      }
+    }
+    await refreshHomeWidget();
+    await _syncBackendProgress();
+    notifyListeners();
+  }
+
+  Future<void> rememberForCoach(String text) async {
+    if (!_mentorProfile.memoryEnabled) return;
+    final clean = text.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (clean.isEmpty) return;
+    final memory = MentorMemory(
+      id: 'memory_${DateTime.now().microsecondsSinceEpoch}',
+      text: clean.length <= 240 ? clean : clean.substring(0, 240),
+      createdAt: DateTime.now(),
+    );
+    await updateMentorProfile(_mentorProfile.copyWith(
+      memories:
+          [memory, ..._mentorProfile.memories].take(20).toList(growable: false),
+    ));
+  }
+
+  Future<void> forgetCoachMemory(String id) => updateMentorProfile(
+        _mentorProfile.copyWith(
+          memories: _mentorProfile.memories
+              .where((item) => item.id != id)
+              .toList(growable: false),
+        ),
+      );
+
+  Future<void> clearCoachMemories() => updateMentorProfile(
+        _mentorProfile.copyWith(memories: const []),
+      );
+
+  Future<void> resetMentorPersonalization() async {
+    _mentorProfile = const MentorProfile();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('$_coachConversationPrefix${_user?.id ?? 'guest'}');
+    await _saveMentorProfile();
+    if (_notificationsEnabled) {
+      try {
+        await _scheduleLearningReminders();
+      } catch (_) {}
+    }
+    await refreshHomeWidget();
+    await _syncBackendProgress();
+    notifyListeners();
+  }
+
+  String get _mentorProfileKey =>
+      '$_mentorProfilePrefix${_user?.id ?? 'guest'}';
+
+  Future<void> _loadMentorProfile(SharedPreferences prefs) async {
+    final raw = prefs.getString(_mentorProfileKey);
+    if (raw == null || raw.isEmpty) {
+      _mentorProfile = const MentorProfile();
+      return;
+    }
+    try {
+      _mentorProfile = MentorProfile.fromJson(
+        Map<String, dynamic>.from(jsonDecode(raw) as Map),
+      );
+    } catch (_) {
+      _mentorProfile = const MentorProfile();
+    }
+  }
+
+  Future<void> _saveMentorProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        _mentorProfileKey, jsonEncode(_mentorProfile.toJson()));
+  }
 
   void updateCurriculumProgress(Map<String, dynamic> progress) {
     _curriculumProgress = Map<String, dynamic>.from(progress);
@@ -669,6 +759,7 @@ class AppState extends ChangeNotifier {
         await _cacheCurrentState();
       } else {
         await _loadUser();
+        await _loadMentorProfile(preferences);
         await _restoreCourseProgress();
         await _loadKnowledgeStates();
         await _loadHafizProgress();
@@ -694,7 +785,7 @@ class AppState extends ChangeNotifier {
       }
       if (_homeWidgetEnabled) {
         try {
-          await _homeWidgetService.update(localeCode: _locale.code);
+          await refreshHomeWidget();
         } catch (_) {
           // Виджет — дополнительная поверхность и не должен блокировать запуск.
         }
@@ -795,6 +886,7 @@ class AppState extends ChangeNotifier {
     await _backend?.logout();
     _error = null;
     _user = UserModel.guest();
+    await _loadMentorProfile(await SharedPreferences.getInstance());
     _applyHeartRegen();
     await _restoreCourseProgress();
     await _loadKnowledgeStates();
@@ -1048,8 +1140,14 @@ class AppState extends ChangeNotifier {
       if (guestLeagueXp != null) {
         await preferences.setInt('$_leagueXpPrefix$userId', guestLeagueXp);
       }
+      final guestMentor = preferences.getString('${_mentorProfilePrefix}guest');
+      if (guestMentor != null) {
+        await preferences.setString(
+            '$_mentorProfilePrefix$userId', guestMentor);
+      }
       await _backend?.logout();
       _user = user;
+      await _loadMentorProfile(preferences);
       await _restoreCourseProgress();
       await _loadKnowledgeStates();
       await _loadHafizProgress();
@@ -1096,6 +1194,7 @@ class AppState extends ChangeNotifier {
 
       final userData = Map<String, dynamic>.from(account['user'] as Map);
       _user = UserModel.fromJson(userData);
+      await _loadMentorProfile(preferences);
       await _backend?.logout();
       await _restoreLearningProfileForUser(preferences, _user!.id);
       await _restoreCourseProgress();
@@ -1207,6 +1306,8 @@ class AppState extends ChangeNotifier {
     await prefs.remove('$_memoryEnginePrefix$userId');
     await prefs.remove('$_hafizProgressPrefix$userId');
     await prefs.remove('$_curriculumProgressPrefix$userId');
+    await prefs.remove('$_mentorProfilePrefix$userId');
+    await prefs.remove('$_coachConversationPrefix$userId');
     await prefs.remove('$_leagueXpPrefix$userId');
     await prefs.remove(_scopedLearningKey(userId, 'goal'));
     await prefs.remove(_scopedLearningKey(userId, 'placement_level'));
@@ -1265,6 +1366,7 @@ class AppState extends ChangeNotifier {
     _knowledgeStates = {};
     _hafizProgress = {};
     _curriculumProgress = {};
+    _mentorProfile = const MentorProfile();
     _checkAchievements();
     notifyListeners();
   }
@@ -1307,6 +1409,7 @@ class AppState extends ChangeNotifier {
       _knowledgeStates = {};
       _hafizProgress = {};
       _curriculumProgress = {};
+      _mentorProfile = const MentorProfile();
       _checkAchievements();
       return true;
     } catch (error) {
@@ -1326,7 +1429,7 @@ class AppState extends ChangeNotifier {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(_localeKey, value.code);
     if (_homeWidgetEnabled) {
-      await _homeWidgetService.update(localeCode: value.code);
+      await refreshHomeWidget();
     }
     notifyListeners();
   }
@@ -1587,7 +1690,10 @@ class AppState extends ChangeNotifier {
     if (!_homeWidgetService.isSupported) return false;
     try {
       if (enabled) {
-        await _homeWidgetService.update(localeCode: _locale.code);
+        await _homeWidgetService.update(
+          localeCode: _locale.code,
+          coachLine: _widgetCoachLine(),
+        );
       } else {
         await _homeWidgetService.clear();
       }
@@ -1610,7 +1716,10 @@ class AppState extends ChangeNotifier {
   Future<void> refreshHomeWidget() async {
     if (!_homeWidgetEnabled) return;
     try {
-      await _homeWidgetService.update(localeCode: _locale.code);
+      await _homeWidgetService.update(
+        localeCode: _locale.code,
+        coachLine: _widgetCoachLine(),
+      );
     } catch (_) {
       // Системный виджет не должен мешать возвращению в приложение.
     }
@@ -1625,7 +1734,10 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _scheduleLearningReminders() {
-    final name = _user?.name ?? '';
+    final personalized = _mentorProfile.personalizedRemindersEnabled;
+    final name = personalized && _mentorProfile.preferredName.isNotEmpty
+        ? _mentorProfile.preferredName
+        : _user?.name ?? '';
     final streak = _user?.streak ?? 0;
     final due = dueReviewCount + hafizDueCount;
     final goal = _learningGoal?.storageValue ?? '';
@@ -1649,6 +1761,12 @@ class AppState extends ChangeNotifier {
         dueCount: due,
         learningGoal: goal,
         locale: _locale,
+        personalized: personalized,
+        isBirthday: _mentorProfile.isBirthday(now),
+        currentFocus: _mentorProfile.currentFocus,
+        nextLessonTitle: recommendedLesson?.title ?? '',
+        preferredMinutes: _mentorProfile.preferredSessionMinutes,
+        tone: _mentorProfile.tone.name,
       ),
       dueCount: due,
       learningGoal: goal,
@@ -1665,6 +1783,32 @@ class AppState extends ChangeNotifier {
       ayahHour: _dailyAyahHour,
       ayahMinute: _dailyAyahMinute,
       showOnLockScreen: _lockScreenPreviewEnabled,
+    );
+  }
+
+  String _widgetCoachLine() {
+    final name = _mentorProfile.preferredName.trim();
+    if (_mentorProfile.isBirthday(DateTime.now())) {
+      return tr(
+        ru: '${name.isEmpty ? 'С днём рождения' : '$name, с днём рождения'} 🎉',
+        kk: '${name.isEmpty ? 'Туған күніңмен' : '$name, туған күніңмен'} 🎉',
+        en: '${name.isEmpty ? 'Happy birthday' : 'Happy birthday, $name'} 🎉',
+      );
+    }
+    if (!_mentorProfile.personalizedRemindersEnabled) return '';
+    if (dueReviewCount > 0) {
+      return tr(
+        ru: 'Айн: сегодня $dueReviewCount повторений',
+        kk: 'Айн: бүгін $dueReviewCount қайталау',
+        en: 'Ayn: $dueReviewCount reviews today',
+      );
+    }
+    final title = recommendedLesson?.title;
+    if (title == null) return '';
+    return tr(
+      ru: 'Дальше: $title',
+      kk: 'Келесі: $title',
+      en: 'Next: $title',
     );
   }
 
@@ -2304,6 +2448,12 @@ class AppState extends ChangeNotifier {
     if (curriculum is Map) {
       _curriculumProgress = Map<String, dynamic>.from(curriculum);
     }
+    final mentor = state['mentorProfile'];
+    if (mentor is Map) {
+      _mentorProfile = MentorProfile.fromJson(
+        Map<String, dynamic>.from(mentor),
+      );
+    }
     _checkAchievements();
   }
 
@@ -2370,6 +2520,7 @@ class AppState extends ChangeNotifier {
       'learningSkillProfile': _learningSkillProfile?.toJson(),
       'nativeLanguage': _nativeLanguage?.code,
       'soundEnabled': _soundEnabled,
+      'mentorProfile': _mentorProfile.toJson(),
     };
   }
 
@@ -2468,6 +2619,7 @@ class AppState extends ChangeNotifier {
       await preferences.setString('native_language', _nativeLanguage!.code);
     }
     await preferences.setBool('sound_enabled', _soundEnabled);
+    await _saveMentorProfile();
   }
 
   @override
