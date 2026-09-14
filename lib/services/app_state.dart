@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
@@ -66,6 +67,7 @@ class AppState extends ChangeNotifier {
   static const _learningProfilePrefix = 'learning_profile_';
   static const _memoryEnginePrefix = 'memory_engine_';
   static const _hafizProgressPrefix = 'hafiz_progress_';
+  static const _curriculumProgressPrefix = 'curriculum_570_progress_v2_';
   static const _localeKey = 'locale';
   static const _pendingSyncImportKey = 'pending_sync_import';
   static const _pendingSyncUserKey = 'pending_sync_user';
@@ -106,6 +108,7 @@ class AppState extends ChangeNotifier {
   LearningSkillProfile? _learningSkillProfile;
   Map<String, KnowledgeState> _knowledgeStates = {};
   Map<String, HafizProgress> _hafizProgress = {};
+  Map<String, dynamic> _curriculumProgress = {};
   final Map<String, Future<String>> _lessonAttempts = {};
 
   /// Слепок локального/гостевого прогресса, который не удалось влить на сервер
@@ -134,6 +137,13 @@ class AppState extends ChangeNotifier {
   String? get backendAuthToken => isBackendUser ? _backend?.authToken : null;
   String? get lastEmailDelivery => _backend?.lastEmailDelivery;
   bool get soundEnabled => _soundEnabled;
+  Map<String, dynamic> get curriculumProgress =>
+      Map<String, dynamic>.unmodifiable(_curriculumProgress);
+
+  void updateCurriculumProgress(Map<String, dynamic> progress) {
+    _curriculumProgress = Map<String, dynamic>.from(progress);
+    if (isBackendUser) unawaited(_syncBackendProgress());
+  }
 
   bool _isExpiredSession(Object error) =>
       error is BackendException &&
@@ -1196,6 +1206,7 @@ class AppState extends ChangeNotifier {
     await prefs.remove('completed_lessons_$userId');
     await prefs.remove('$_memoryEnginePrefix$userId');
     await prefs.remove('$_hafizProgressPrefix$userId');
+    await prefs.remove('$_curriculumProgressPrefix$userId');
     await prefs.remove('$_leagueXpPrefix$userId');
     await prefs.remove(_scopedLearningKey(userId, 'goal'));
     await prefs.remove(_scopedLearningKey(userId, 'placement_level'));
@@ -1253,6 +1264,7 @@ class AppState extends ChangeNotifier {
     _courses = LessonData.getCourses();
     _knowledgeStates = {};
     _hafizProgress = {};
+    _curriculumProgress = {};
     _checkAchievements();
     notifyListeners();
   }
@@ -1294,6 +1306,7 @@ class AppState extends ChangeNotifier {
       _courses = LessonData.getCourses();
       _knowledgeStates = {};
       _hafizProgress = {};
+      _curriculumProgress = {};
       _checkAchievements();
       return true;
     } catch (error) {
@@ -2287,6 +2300,10 @@ class AppState extends ChangeNotifier {
           .toList(growable: false);
       _hafizProgress = {for (final item in items) item.id: item};
     }
+    final curriculum = state['curriculumProgress'];
+    if (curriculum is Map) {
+      _curriculumProgress = Map<String, dynamic>.from(curriculum);
+    }
     _checkAchievements();
   }
 
@@ -2346,6 +2363,7 @@ class AppState extends ChangeNotifier {
       'hafizProgress': _hafizProgress.values
           .map((progress) => progress.toJson())
           .toList(growable: false),
+      'curriculumProgress': _curriculumProgress,
       'learningGoal': _learningGoal?.storageValue,
       'placementLevel': _placementLevel,
       'learningRecommendation': _learningRecommendation,

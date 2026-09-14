@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/curriculum_module.dart';
+import '../models/curriculum_progress.dart';
 import '../services/app_state.dart';
+import '../services/curriculum_progress_service.dart';
 import '../services/curriculum_repository.dart';
 import '../utils/colors.dart';
 import '../widgets/premium_background.dart';
@@ -27,6 +29,32 @@ class _CurriculumLibraryScreenState extends State<CurriculumLibraryScreen> {
   final _searchController = TextEditingController();
   String _query = '';
   String _track = 'all';
+  CurriculumProgress _progress = const CurriculumProgress();
+  String? _learnerId;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final learnerId = context.read<AppState>().user?.id ?? 'anonymous-learner';
+    if (_learnerId == learnerId) return;
+    _learnerId = learnerId;
+    _reloadProgress();
+  }
+
+  Future<void> _reloadProgress() async {
+    final learnerId = _learnerId;
+    if (learnerId == null) return;
+    final local = await CurriculumProgressService.load(learnerId);
+    if (!mounted || learnerId != _learnerId) return;
+    final remote = CurriculumProgress.fromJson(
+      context.read<AppState>().curriculumProgress,
+    );
+    final progress = local.mergedWith(remote);
+    await CurriculumProgressService.persist(learnerId, progress);
+    if (mounted && learnerId == _learnerId) {
+      setState(() => _progress = progress);
+    }
+  }
 
   @override
   void dispose() {
@@ -69,7 +97,7 @@ class _CurriculumLibraryScreenState extends State<CurriculumLibraryScreen> {
                           padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
                           sliver: SliverList.list(
                             children: [
-                              _notice(state),
+                              _learningDashboard(state, modules),
                               const SizedBox(height: 14),
                               TextField(
                                 key: const ValueKey('curriculum-search'),
@@ -138,7 +166,11 @@ class _CurriculumLibraryScreenState extends State<CurriculumLibraryScreen> {
                             itemCount: filtered.length,
                             itemBuilder: (context, index) => Padding(
                               padding: const EdgeInsets.only(bottom: 10),
-                              child: _ModuleCard(module: filtered[index]),
+                              child: _ModuleCard(
+                                module: filtered[index],
+                                progress: _progress,
+                                onReturn: _reloadProgress,
+                              ),
                             ),
                           ),
                         ),
@@ -193,32 +225,137 @@ class _CurriculumLibraryScreenState extends State<CurriculumLibraryScreen> {
         ),
       );
 
-  Widget _notice(AppState state) => PremiumCard(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(Icons.library_books_rounded, color: AppColors.navy),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                state.tr(
-                  ru: 'Все 570 модулей открыты бесплатно. Для каждого показаны цель, источники и текущий статус редакционной проверки.',
-                  kk: 'Барлық 570 модуль тегін ашық. Әр модульде мақсат, дереккөз және редакциялық тексеру мәртебесі көрсетілген.',
-                  en: 'All 570 modules are free. Each shows its objective, sources, and current editorial review status.',
+  Widget _learningDashboard(
+    AppState state,
+    List<CurriculumModule> modules,
+  ) {
+    final completed = _progress.completedCount.clamp(0, modules.length);
+    final value = modules.isEmpty ? 0.0 : completed / modules.length;
+    CurriculumModule? continuation;
+    final lastId = _progress.lastModuleId;
+    if (lastId != null) {
+      for (final module in modules) {
+        if (module.id == lastId &&
+            !_progress.completedModuleIds.contains(module.id)) {
+          continuation = module;
+          break;
+        }
+      }
+    }
+    return PremiumCard(
+      color: AppColors.navyDark,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.sky.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                style: const TextStyle(
-                  fontFamily: 'Nunito',
-                  fontSize: 13,
-                  height: 1.35,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textDark,
+                child: const Icon(Icons.school_rounded, color: AppColors.sky),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      state.tr(
+                        ru: 'Твоя образовательная траектория',
+                        kk: 'Сенің оқу траекторияң',
+                        en: 'Your learning path',
+                      ),
+                      style: const TextStyle(
+                        fontFamily: 'Nunito',
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.white,
+                      ),
+                    ),
+                    Text(
+                      state.tr(
+                        ru: '$completed из 570 модулей освоено',
+                        kk: '570 модульдің $completed аяқталды',
+                        en: '$completed of 570 modules mastered',
+                      ),
+                      style: TextStyle(
+                        fontFamily: 'Nunito',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.white.withValues(alpha: 0.72),
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              Text(
+                '${(value * 100).round()}%',
+                style: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.sky,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(9),
+            child: LinearProgressIndicator(
+              value: value,
+              minHeight: 9,
+              backgroundColor: AppColors.white.withValues(alpha: 0.16),
+              color: AppColors.sky,
+            ),
+          ),
+          const SizedBox(height: 13),
+          Text(
+            state.tr(
+              ru: 'Все модули бесплатны: теория, источники, активная практика и проверка мастерства.',
+              kk: 'Барлық модуль тегін: теория, дереккөз, белсенді тәжірибе және меңгеруді тексеру.',
+              en: 'Every module is free: concept, sources, active practice, and mastery checks.',
+            ),
+            style: TextStyle(
+              fontFamily: 'Nunito',
+              fontSize: 12,
+              height: 1.35,
+              fontWeight: FontWeight.w700,
+              color: AppColors.white.withValues(alpha: 0.82),
+            ),
+          ),
+          if (continuation != null) ...[
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              key: const ValueKey('curriculum-continue'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.sky,
+                foregroundColor: AppColors.navyDark,
+              ),
+              onPressed: () async {
+                await Navigator.pushNamed(
+                  context,
+                  '/curriculum-module',
+                  arguments: continuation,
+                );
+                await _reloadProgress();
+              },
+              icon: const Icon(Icons.play_arrow_rounded),
+              label: Text(state.tr(
+                ru: 'Продолжить ${continuation.id}',
+                kk: '${continuation.id} жалғастыру',
+                en: 'Continue ${continuation.id}',
+              )),
             ),
           ],
-        ),
-      );
+        ],
+      ),
+    );
+  }
 
   Widget _trackChip(AppState state, String value, String label) => Padding(
         padding: const EdgeInsets.only(right: 8),
@@ -245,8 +382,14 @@ class _CurriculumLibraryScreenState extends State<CurriculumLibraryScreen> {
 
 class _ModuleCard extends StatelessWidget {
   final CurriculumModule module;
+  final CurriculumProgress progress;
+  final Future<void> Function() onReturn;
 
-  const _ModuleCard({required this.module});
+  const _ModuleCard({
+    required this.module,
+    required this.progress,
+    required this.onReturn,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -255,11 +398,14 @@ class _ModuleCard extends StatelessWidget {
       child: InkWell(
         key: ValueKey('curriculum-module-${module.id}'),
         borderRadius: BorderRadius.circular(18),
-        onTap: () => Navigator.pushNamed(
-          context,
-          '/curriculum-module',
-          arguments: module,
-        ),
+        onTap: () async {
+          await Navigator.pushNamed(
+            context,
+            '/curriculum-module',
+            arguments: module,
+          );
+          await onReturn();
+        },
         child: Padding(
           padding: const EdgeInsets.all(15),
           child: Row(
@@ -313,8 +459,10 @@ class _ModuleCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppColors.textLight),
+              _ModuleProgressBadge(
+                completion: progress.completionFor(module.id),
+                mastery: progress.masteryByModuleId[module.id],
+              ),
             ],
           ),
         ),
@@ -323,142 +471,51 @@ class _ModuleCard extends StatelessWidget {
   }
 }
 
-class CurriculumModuleScreen extends StatelessWidget {
-  final CurriculumModule module;
+class _ModuleProgressBadge extends StatelessWidget {
+  final double completion;
+  final int? mastery;
 
-  const CurriculumModuleScreen({super.key, required this.module});
+  const _ModuleProgressBadge({required this.completion, required this.mastery});
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: PremiumBackground(
-        child: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(18, 6, 18, 32),
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: IconButton(
-                  onPressed: () => Navigator.maybePop(context),
-                  icon: const Icon(Icons.arrow_back_rounded),
-                ),
-              ),
-              Text(
-                '${module.id} · ${module.track}',
-                style: const TextStyle(
-                  fontFamily: 'Nunito',
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.sky,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                module.title,
-                style: const TextStyle(
-                  fontFamily: 'Nunito',
-                  fontSize: 25,
-                  height: 1.18,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.navyDark,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _DetailSection(
-                title: state.tr(ru: 'Цель', kk: 'Мақсат', en: 'Objective'),
-                body: module.objective,
-              ),
-              _DetailSection(
-                title: state.tr(ru: 'Источник', kk: 'Дереккөз', en: 'Source'),
-                body: module.sourceLocator,
-              ),
-              _DetailSection(
-                title: state.tr(
-                    ru: 'Предварительное условие',
-                    kk: 'Алғышарт',
-                    en: 'Prerequisite'),
-                body: module.prerequisite,
-              ),
-              _DetailSection(
-                title: state.tr(
-                    ru: 'Редакционный статус',
-                    kk: 'Редакциялық мәртебе',
-                    en: 'Editorial status'),
-                body: module.reviewStatus,
-                warning: module.publicationStatus == 'blocked_until_review',
-              ),
-              const SizedBox(height: 8),
-              FilledButton.icon(
-                onPressed: () => Navigator.pushNamed(
-                  context,
-                  '/audio-session',
-                  arguments: module,
-                ),
-                icon: const Icon(Icons.headphones_rounded),
-                label: Text(state.tr(
-                  ru: 'Слушать с этого модуля',
-                  kk: 'Осы модульден тыңдау',
-                  en: 'Listen from this module',
-                )),
-              ),
-            ],
-          ),
+    if (mastery != null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: AppColors.success.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(99),
         ),
-      ),
-    );
-  }
-}
-
-class _DetailSection extends StatelessWidget {
-  final String title;
-  final String body;
-  final bool warning;
-
-  const _DetailSection({
-    required this.title,
-    required this.body,
-    this.warning = false,
-  });
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: PremiumCard(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  if (warning) ...[
-                    const Icon(Icons.info_outline_rounded,
-                        size: 17, color: AppColors.gold),
-                    const SizedBox(width: 6),
-                  ],
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontFamily: 'Nunito',
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.navy,
-                    ),
-                  ),
-                ],
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_rounded, size: 15, color: AppColors.success),
+            const SizedBox(width: 3),
+            Text(
+              '$mastery%',
+              style: const TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                color: AppColors.success,
               ),
-              const SizedBox(height: 7),
-              Text(
-                body,
-                style: const TextStyle(
-                  fontFamily: 'Nunito',
-                  fontSize: 14,
-                  height: 1.45,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textDark,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
+    }
+    if (completion > 0) {
+      return SizedBox(
+        width: 34,
+        height: 34,
+        child: CircularProgressIndicator(
+          value: completion,
+          strokeWidth: 4,
+          backgroundColor: AppColors.border,
+          color: AppColors.sky,
+        ),
+      );
+    }
+    return const Icon(Icons.chevron_right_rounded, color: AppColors.textLight);
+  }
 }

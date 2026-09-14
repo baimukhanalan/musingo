@@ -110,9 +110,9 @@ class _OpenCurriculumActions extends StatelessWidget {
                 ),
               ),
               subtitle: Text(state.tr(
-                ru: 'Открыты бесплатно',
-                kk: 'Тегін ашық',
-                en: 'Open for free',
+                ru: '5 интерактивных этапов · бесплатно',
+                kk: '5 интерактивті кезең · тегін',
+                en: '5 interactive stages · free',
               )),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.pushNamed(context, '/curriculum'),

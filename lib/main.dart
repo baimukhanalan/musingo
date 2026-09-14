@@ -27,6 +27,7 @@ import 'screens/rules_screen.dart';
 import 'screens/academy_screen.dart';
 import 'screens/continuous_audio_screen.dart';
 import 'screens/curriculum_library_screen.dart';
+import 'screens/curriculum_module_screen.dart';
 import 'models/lesson.dart';
 import 'models/curriculum_module.dart';
 

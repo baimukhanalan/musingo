@@ -52,6 +52,13 @@ export function defaultProgress(user) {
     completedLessons: [],
     knowledgeStates: [],
     hafizProgress: [],
+    curriculumProgress: {
+      completedModuleIds: [],
+      stepByModuleId: {},
+      masteryByModuleId: {},
+      lastModuleId: null,
+      lastActivityAt: null,
+    },
     learningGoal: null,
     placementLevel: 1,
     learningRecommendation: null,
@@ -105,6 +112,45 @@ function mergeObjectsById(serverItems, clientItems) {
   return [...merged.values()].slice(0, maxListItems);
 }
 
+function validCurriculumModuleId(value) {
+  const match = /^(QUR|ARB|TAJ|FND)-(\d{3})$/.exec(String(value ?? ''));
+  if (!match) return false;
+  const sequence = Number(match[2]);
+  const caps = { QUR: 150, ARB: 170, TAJ: 70, FND: 180 };
+  return sequence >= 1 && sequence <= caps[match[1]];
+}
+
+export function mergeCurriculumProgress(serverValue, incomingValue) {
+  const server = serverValue && typeof serverValue === 'object' ? serverValue : {};
+  const incoming = incomingValue && typeof incomingValue === 'object' ? incomingValue : {};
+  const completed = new Set([
+    ...safeList(server.completedModuleIds),
+    ...safeList(incoming.completedModuleIds),
+  ].filter(validCurriculumModuleId));
+  const mergeNumberMap = (left, right, max) => {
+    const result = {};
+    for (const source of [left, right]) {
+      if (!source || typeof source !== 'object' || Array.isArray(source)) continue;
+      for (const [id, raw] of Object.entries(source)) {
+        if (!validCurriculumModuleId(id)) continue;
+        result[id] = Math.max(result[id] ?? 0, safeInt(raw, 0, max));
+      }
+    }
+    return Object.fromEntries(Object.entries(result).slice(0, 570));
+  };
+  const serverTime = validDate(server.lastActivityAt);
+  const incomingTime = validDate(incoming.lastActivityAt);
+  const useIncoming = incomingTime >= serverTime;
+  const candidateLast = useIncoming ? incoming.lastModuleId : server.lastModuleId;
+  return {
+    completedModuleIds: [...completed].slice(0, 570),
+    stepByModuleId: mergeNumberMap(server.stepByModuleId, incoming.stepByModuleId, 4),
+    masteryByModuleId: mergeNumberMap(server.masteryByModuleId, incoming.masteryByModuleId, 100),
+    lastModuleId: validCurriculumModuleId(candidateLast) ? candidateLast : null,
+    lastActivityAt: new Date(Math.max(serverTime, incomingTime, 0)).toISOString(),
+  };
+}
+
 export function mergeLearningState(server, incoming, { importGuest = false } = {}) {
   const next = { ...server };
   // Completed lessons are awarded by /api/progress/complete. A regular sync
@@ -119,6 +165,10 @@ export function mergeLearningState(server, incoming, { importGuest = false } = {
   next.completedLessons = [...completed].slice(0, 500);
   next.knowledgeStates = mergeObjectsById(server.knowledgeStates, incoming.knowledgeStates);
   next.hafizProgress = mergeObjectsById(server.hafizProgress, incoming.hafizProgress);
+  next.curriculumProgress = mergeCurriculumProgress(
+    server.curriculumProgress,
+    incoming.curriculumProgress,
+  );
   next.learningGoal = safeString(incoming.learningGoal, 40) ?? server.learningGoal ?? null;
   next.placementLevel = safeInt(incoming.placementLevel ?? server.placementLevel, 1, 8);
   next.learningRecommendation = safeString(incoming.learningRecommendation, 500) ?? server.learningRecommendation ?? null;

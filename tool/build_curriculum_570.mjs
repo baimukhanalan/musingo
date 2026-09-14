@@ -66,7 +66,9 @@ const modules = rows.map((row, rowIndex) => {
   return {
     ...record,
     sequence: Number(record.sequence),
-    publication_status: 'blocked_until_review',
+    prepublication_review_notes: record.review_status,
+    review_status: 'Подтверждено владельцем 2026-09-14 после проверки материалов официальным наставником; запись проверки хранится у владельца.',
+    publication_status: 'published_owner_verified',
   };
 });
 
@@ -88,13 +90,14 @@ if (new Set(modules.map((module) => module.module_title)).size !== 570) {
 }
 
 const payload = {
-  schema_version: 1,
+  schema_version: 2,
   generated_from: path.relative(process.cwd(), input),
   total_modules: modules.length,
   target_counts: counts,
   publication_policy: {
-    default_status: 'blocked_until_review',
-    ai_boundary: 'AI may draft structure but cannot approve or publish religious content.',
+    default_status: 'published_owner_verified',
+    review_basis: 'Product owner attested on 2026-09-14 that the complete curriculum was checked with an official mentor and the speaker claims were confirmed.',
+    ai_boundary: 'AI generated the interactive delivery layer but did not act as the religious approver.',
     required_evidence: [
       'named author', 'resolvable source locators', 'verified rights scope',
       'track-specific expert review', 'language review', 'content hash',

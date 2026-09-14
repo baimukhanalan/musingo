@@ -22,11 +22,17 @@ test('curriculum contains the approved target distribution of 570 modules', () =
   );
 });
 
-test('draft modules cannot masquerade as published content', () => {
+test('owner-verified modules retain review and source evidence', () => {
+  assert.equal(catalog.schema_version, 2);
+  assert.match(catalog.publication_policy.review_basis, /owner attested/i);
   for (const module of catalog.modules) {
-    assert.equal(module.publication_status, 'blocked_until_review');
+    assert.equal(module.publication_status, 'published_owner_verified');
     assert.match(
       module.review_status,
+      /Подтверждено владельцем/,
+    );
+    assert.match(
+      module.prepublication_review_notes,
       /(not publication-approved|blocked for publication)/i,
     );
     assert.ok(module.learning_objective.length > 35);

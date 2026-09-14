@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { defaultProgress, mergeLearningState } from '../server/lib/progress.js';
+import {
+  defaultProgress,
+  mergeCurriculumProgress,
+  mergeLearningState,
+} from '../server/lib/progress.js';
 
 test('guest import merges learning data and clamps counters', () => {
   const server = defaultProgress({ id: 'u1', email: 'a@b.co', display_name: 'Alan' });
@@ -27,4 +31,29 @@ test('normal sync cannot overwrite authoritative xp or completed lessons', () =>
   const merged = mergeLearningState(server, { xp: 999999, completedLessons: ['r2'] });
   assert.equal(merged.xp, 100);
   assert.deepEqual(merged.completedLessons, ['r1']);
+});
+
+test('curriculum progress merges across devices without minting rewards', () => {
+  const merged = mergeCurriculumProgress(
+    {
+      completedModuleIds: ['QUR-001'],
+      stepByModuleId: { 'QUR-001': 4, 'ARB-001': 2 },
+      masteryByModuleId: { 'QUR-001': 90 },
+      lastModuleId: 'ARB-001',
+      lastActivityAt: '2026-09-14T08:00:00.000Z',
+    },
+    {
+      completedModuleIds: ['ARB-001', 'FAKE-999'],
+      stepByModuleId: { 'ARB-001': 4, 'TAJ-001': 99 },
+      masteryByModuleId: { 'ARB-001': 100, 'QUR-999': 100 },
+      lastModuleId: 'ARB-001',
+      lastActivityAt: '2026-09-14T09:00:00.000Z',
+    },
+  );
+  assert.deepEqual(merged.completedModuleIds, ['QUR-001', 'ARB-001']);
+  assert.equal(merged.stepByModuleId['ARB-001'], 4);
+  assert.equal(merged.stepByModuleId['TAJ-001'], 4);
+  assert.equal(merged.masteryByModuleId['ARB-001'], 100);
+  assert.equal(merged.masteryByModuleId['QUR-999'], undefined);
+  assert.equal(merged.lastModuleId, 'ARB-001');
 });

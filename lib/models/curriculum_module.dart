@@ -11,6 +11,8 @@ class CurriculumModule {
   final String rightsStatus;
   final String reviewStatus;
   final String publicationStatus;
+  final String videoNeed;
+  final String speakerDomain;
 
   const CurriculumModule({
     required this.id,
@@ -25,6 +27,8 @@ class CurriculumModule {
     required this.rightsStatus,
     required this.reviewStatus,
     required this.publicationStatus,
+    this.videoNeed = '',
+    this.speakerDomain = '',
   });
 
   factory CurriculumModule.fromJson(Map<String, dynamic> json) =>
@@ -41,5 +45,7 @@ class CurriculumModule {
         rightsStatus: json['rights_status'] as String? ?? '',
         reviewStatus: json['review_status'] as String? ?? '',
         publicationStatus: json['publication_status'] as String? ?? '',
+        videoNeed: json['video_need'] as String? ?? '',
+        speakerDomain: json['speaker_domain'] as String? ?? '',
       );
 }
