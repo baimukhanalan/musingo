@@ -96,7 +96,13 @@ class CoachService {
           ),
           catalog: catalog,
         );
-        if (remote != null) return _withPersonalization(remote, context);
+        if (remote != null) {
+          return _withMemorySuggestion(
+            _withPersonalization(remote, context),
+            question,
+            context,
+          );
+        }
       } catch (_) {
         // Любой сбой backend — тихий откат на локальный движок ниже.
       }
@@ -203,7 +209,11 @@ class CoachService {
   }
 
   CoachResponse answer(String question, CoachContext context) {
-    return _withPersonalization(_answerCore(question, context), context);
+    return _withMemorySuggestion(
+      _withPersonalization(_answerCore(question, context), context),
+      question,
+      context,
+    );
   }
 
   CoachResponse _answerCore(String question, CoachContext context) {
@@ -521,6 +531,45 @@ class CoachService {
       reasoning: reasoning,
       dailyPlan: plan,
       nextAction: nextAction,
+      actionType: response.actionType,
+      actionLabel: response.actionLabel,
+      lessonId: response.lessonId,
+    );
+  }
+
+  CoachResponse _withMemorySuggestion(
+    CoachResponse response,
+    String question,
+    CoachContext context,
+  ) {
+    if (response.memorySuggestion != null ||
+        !context.mentorProfile.memoryEnabled) {
+      return response;
+    }
+    final clean = question.trim().replaceAll(RegExp(r'\s+'), ' ');
+    final normalized = clean.toLowerCase();
+    if (clean.isEmpty ||
+        clean.endsWith('?') ||
+        RegExp(r'^(запомни|есіңде сақта|remember)', caseSensitive: false)
+            .hasMatch(clean) ||
+        !RegExp(
+          r'(мне (?:удобнее|легче|лучше)|я (?:хочу|предпочитаю|люблю) (?:заниматься|учиться|повторять)|моя цель|хочу (?:выучить|освоить)|маған (?:ыңғайлы|оңай)|менің мақсатым|мен (?:оқығым|үйренгім) келеді|i (?:prefer|learn best|want to study)|my goal)',
+          caseSensitive: false,
+        ).hasMatch(normalized) ||
+        RegExp(
+          r'(парол|password|құпия ?сөз|token|токен|otp|pin|банк|bank|карт|card|cvv|iban|иин|iin|паспорт|passport|адрес|address|мекенжай|телефон|phone|email|e-mail|почт|медицин|medical|диагноз|diagnos|интим|intimate|сексуал|sexual|голосов.*запис|voice recording)',
+          caseSensitive: false,
+        ).hasMatch(normalized)) {
+      return response;
+    }
+    final suggestion = clean.length <= 240 ? clean : clean.substring(0, 240);
+    return CoachResponse(
+      text: response.text,
+      memorySuggestion: suggestion,
+      sources: response.sources,
+      reasoning: response.reasoning,
+      dailyPlan: response.dailyPlan,
+      nextAction: response.nextAction,
       actionType: response.actionType,
       actionLabel: response.actionLabel,
       lessonId: response.lessonId,

@@ -120,6 +120,25 @@ void main() {
     expect(payload['conversationHistory'], hasLength(1));
   });
 
+  test('local fallback suggests a durable learning preference with consent',
+      () {
+    final response = service.answer(
+      'Мне удобнее заниматься каждое утро до работы по 10 минут',
+      context(),
+    );
+
+    expect(response.memorySuggestion, contains('каждое утро'));
+  });
+
+  test('local fallback never suggests sensitive data for mentor memory', () {
+    final response = service.answer(
+      'Мне удобнее заниматься утром, мой пароль qwerty123',
+      context(),
+    );
+
+    expect(response.memorySuggestion, isNull);
+  });
+
   test('religious explanation always includes a verified source', () {
     final response = service.answer(
       'Объясни Аль-Фатиху просто',
