@@ -125,6 +125,7 @@ class _CoachScreenState extends State<CoachScreen> {
                   role:
                       map['role'] == 'user' ? CoachRole.user : CoachRole.coach,
                   text: map['text']?.toString() ?? '',
+                  memorySuggestion: map['memorySuggestion']?.toString(),
                   createdAt:
                       DateTime.tryParse(map['createdAt']?.toString() ?? '') ??
                           DateTime.now(),
@@ -157,6 +158,8 @@ class _CoachScreenState extends State<CoachScreen> {
               'id': message.id,
               'role': message.role.name,
               'text': message.text,
+              if (message.memorySuggestion != null)
+                'memorySuggestion': message.memorySuggestion,
               'createdAt': message.createdAt.toIso8601String(),
             })
         .toList();
@@ -294,6 +297,7 @@ class _CoachScreenState extends State<CoachScreen> {
         id: 'coach_${DateTime.now().microsecondsSinceEpoch}',
         role: CoachRole.coach,
         text: _displayText(response, state),
+        memorySuggestion: memory == null ? response.memorySuggestion : null,
         createdAt: DateTime.now(),
         sources: response.sources,
         reasoning: response.reasoning,
@@ -425,6 +429,54 @@ class _CoachScreenState extends State<CoachScreen> {
     }
   }
 
+  Future<void> _handleMemorySuggestion(
+    CoachMessage message, {
+    required bool save,
+  }) async {
+    final suggestion = message.memorySuggestion?.trim();
+    if (suggestion == null || suggestion.isEmpty) return;
+    final state = context.read<AppState>();
+    final saved = save && state.mentorProfile.memoryEnabled;
+    if (saved) await state.rememberForCoach(suggestion);
+    if (!mounted) return;
+    final index = _messages.indexWhere((item) => item.id == message.id);
+    if (index >= 0) {
+      setState(() {
+        _messages[index] = CoachMessage(
+          id: message.id,
+          role: message.role,
+          text: message.text,
+          createdAt: message.createdAt,
+          sources: message.sources,
+          reasoning: message.reasoning,
+          dailyPlan: message.dailyPlan,
+          nextAction: message.nextAction,
+          actionType: message.actionType,
+          actionLabel: message.actionLabel,
+          lessonId: message.lessonId,
+        );
+      });
+      await _persistConversation();
+    }
+    _showMessage(saved
+        ? state.tr(
+            ru: 'Сохранено в памяти наставника.',
+            kk: 'Тәлімгер жадына сақталды.',
+            en: 'Saved to mentor memory.',
+          )
+        : save
+            ? state.tr(
+                ru: 'Память наставника отключена в настройках.',
+                kk: 'Тәлімгер жады баптауларда өшірілген.',
+                en: 'Mentor memory is disabled in settings.',
+              )
+            : state.tr(
+                ru: 'Не сохраняю.',
+                kk: 'Сақтамаймын.',
+                en: 'Not saved.',
+              ));
+  }
+
   Future<void> _openUrl(String rawUrl) async {
     final opened = await launchUrl(
       Uri.parse(rawUrl),
@@ -473,6 +525,12 @@ class _CoachScreenState extends State<CoachScreen> {
                     final message = _messages[index];
                     return _MessageView(
                       message: message,
+                      onRemember: message.memorySuggestion == null
+                          ? null
+                          : () => _handleMemorySuggestion(message, save: true),
+                      onDismissMemory: message.memorySuggestion == null
+                          ? null
+                          : () => _handleMemorySuggestion(message, save: false),
                       onAction: message.actionType == null
                           ? null
                           : () => _runAction(message),

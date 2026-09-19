@@ -290,6 +290,7 @@ void main() {
         return http.Response(
           jsonEncode({
             'text': 'Сначала повторение.',
+            'memorySuggestion': 'Лучше учусь утром перед работой.',
             'reasoning': 'Аят подошёл по расписанию памяти.',
             'dailyPlan': [
               {
@@ -327,6 +328,7 @@ void main() {
 
     expect(response, isNotNull);
     expect(response!.reasoning, contains('расписанию'));
+    expect(response.memorySuggestion, 'Лучше учусь утром перед работой.');
     expect(response.dailyPlan.single.lessonId, 'q1');
     expect(response.dailyPlan.single.isReview, isTrue);
     expect(response.nextAction, 'Открой урок q1');

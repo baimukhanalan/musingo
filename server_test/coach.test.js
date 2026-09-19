@@ -149,6 +149,7 @@ test('buildSystemPrompt honors locale and forbids self-issued fatwa', () => {
   assert.match(kk, /недоверенные данные/);
   assert.match(kk, /голосовых записей/);
   assert.match(kk, /mentorProfile/);
+  assert.match(kk, /memorySuggestion/);
   assert.match(kk, /пароль/);
   assert.match(kk, /JSON/);
   // Unknown locale falls back to ru.
@@ -187,6 +188,29 @@ test('parseCoachReply extracts reply, whitelisted action and sources', () => {
   assert.deepEqual(parsed.action, { type: 'openHafiz', label: 'Открыть Hafiz' });
   assert.equal(parsed.sources[0].title, 'Коран 1:1-7');
   assert.equal(parsed.sources[0].url, 'https://quran.com/ru/1');
+});
+
+test('parseCoachReply keeps a bounded safe memory suggestion', () => {
+  const parsed = parseCoachReply(JSON.stringify({
+    reply: 'Хорошо, буду учитывать это в плане.',
+    memorySuggestion: '  Лучше учусь утром перед работой.  ',
+  }));
+  assert.equal(parsed.memorySuggestion, 'Лучше учусь утром перед работой.');
+});
+
+test('parseCoachReply drops sensitive memory suggestions', () => {
+  for (const memorySuggestion of [
+    'Мой пароль qwerty123',
+    'Номер банковской карты 4111 1111 1111 1111',
+    'Мой медицинский диагноз нужно учитывать',
+    'My exact address is 10 Main Street',
+  ]) {
+    const parsed = parseCoachReply(JSON.stringify({
+      reply: 'Я не буду это сохранять.',
+      memorySuggestion,
+    }));
+    assert.equal(parsed.memorySuggestion, undefined);
+  }
 });
 
 test('parseCoachReply removes unapproved source URLs', () => {

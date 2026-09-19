@@ -333,6 +333,23 @@ void main() {
     expect(state.user?.energy, 4);
     expect(state.user?.hearts, 5);
   });
+
+  test('mentor memory requires consent state and ignores duplicates', () async {
+    final state = AppState();
+    await _waitUntilInitialized(state);
+
+    await state.rememberForCoach('Лучше учусь утром');
+    await state.rememberForCoach('  лучше   учусь утром  ');
+
+    expect(state.mentorProfile.memories, hasLength(1));
+    expect(state.mentorProfile.memories.single.text, 'Лучше учусь утром');
+
+    await state.updateMentorProfile(
+      state.mentorProfile.copyWith(memoryEnabled: false),
+    );
+    await state.rememberForCoach('Новый факт');
+    expect(state.mentorProfile.memories, hasLength(1));
+  });
 }
 
 Future<void> _waitUntilInitialized(AppState state) async {

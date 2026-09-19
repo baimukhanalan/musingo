@@ -36,6 +36,7 @@ class CoachPlanItem {
 
 class CoachResponse {
   final String text;
+  final String? memorySuggestion;
   final List<CoachSource> sources;
   final String? reasoning;
   final List<CoachPlanItem> dailyPlan;
@@ -46,6 +47,7 @@ class CoachResponse {
 
   const CoachResponse({
     required this.text,
+    this.memorySuggestion,
     this.sources = const [],
     this.reasoning,
     this.dailyPlan = const [],
@@ -60,6 +62,7 @@ class CoachMessage {
   final String id;
   final CoachRole role;
   final String text;
+  final String? memorySuggestion;
   final DateTime createdAt;
   final List<CoachSource> sources;
   final String? reasoning;
@@ -73,6 +76,7 @@ class CoachMessage {
     required this.id,
     required this.role,
     required this.text,
+    this.memorySuggestion,
     required this.createdAt,
     this.sources = const [],
     this.reasoning,

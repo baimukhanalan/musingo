@@ -168,6 +168,11 @@ class AppState extends ChangeNotifier {
     if (!_mentorProfile.memoryEnabled) return;
     final clean = text.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (clean.isEmpty) return;
+    final normalized = clean.toLowerCase();
+    if (_mentorProfile.memories
+        .any((item) => item.text.trim().toLowerCase() == normalized)) {
+      return;
+    }
     final memory = MentorMemory(
       id: 'memory_${DateTime.now().microsecondsSinceEpoch}',
       text: clean.length <= 240 ? clean : clean.substring(0, 240),

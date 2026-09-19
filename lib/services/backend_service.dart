@@ -533,6 +533,7 @@ class BackendService {
 
     return CoachResponse(
       text: text,
+      memorySuggestion: _boundedCoachText(json['memorySuggestion'], 240),
       sources: sources,
       reasoning: _boundedCoachText(json['reasoning'], 1000),
       dailyPlan: dailyPlan,

@@ -102,12 +102,16 @@ class _CoachHeader extends StatelessWidget {
 
 class _MessageView extends StatelessWidget {
   final CoachMessage message;
+  final VoidCallback? onRemember;
+  final VoidCallback? onDismissMemory;
   final VoidCallback? onAction;
   final VoidCallback? onReport;
   final ValueChanged<String> onSource;
 
   const _MessageView({
     required this.message,
+    required this.onRemember,
+    required this.onDismissMemory,
     required this.onAction,
     required this.onReport,
     required this.onSource,
@@ -206,6 +210,91 @@ class _MessageView extends StatelessWidget {
                       color: isUser ? Colors.white : AppColors.textDark,
                     ),
                   ),
+                  if (!isUser && message.memorySuggestion != null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      key: ValueKey('coach-memory-suggestion-${message.id}'),
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.sky.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: AppColors.sky.withValues(alpha: 0.24),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.psychology_alt_outlined,
+                                  size: 18, color: AppColors.sky),
+                              const SizedBox(width: 7),
+                              Expanded(
+                                child: Text(
+                                  state.tr(
+                                    ru: 'Сохранить в память?',
+                                    kk: 'Жадқа сақтау керек пе?',
+                                    en: 'Save to memory?',
+                                  ),
+                                  style: const TextStyle(
+                                    fontFamily: 'Nunito',
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.navyDark,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            message.memorySuggestion!,
+                            style: const TextStyle(
+                              fontFamily: 'Nunito',
+                              fontSize: 13,
+                              height: 1.35,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              FilledButton(
+                                key:
+                                    ValueKey('coach-memory-save-${message.id}'),
+                                onPressed: onRemember,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppColors.sky,
+                                  foregroundColor: Colors.white,
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                child: Text(state.tr(
+                                  ru: 'Запомнить',
+                                  kk: 'Есте сақтау',
+                                  en: 'Remember',
+                                )),
+                              ),
+                              TextButton(
+                                key: ValueKey(
+                                    'coach-memory-dismiss-${message.id}'),
+                                onPressed: onDismissMemory,
+                                child: Text(state.tr(
+                                  ru: 'Не сейчас',
+                                  kk: 'Қазір емес',
+                                  en: 'Not now',
+                                )),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   if (isGreeting) const _ProgressSummary(),
                   if (message.sources.isNotEmpty) ...[
                     const SizedBox(height: 11),

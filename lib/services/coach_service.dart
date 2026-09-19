@@ -516,6 +516,7 @@ class CoachService {
     }
     return CoachResponse(
       text: response.text,
+      memorySuggestion: response.memorySuggestion,
       sources: sources,
       reasoning: reasoning,
       dailyPlan: plan,
