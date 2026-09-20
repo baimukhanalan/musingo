@@ -6,9 +6,11 @@ import '../models/curriculum_progress.dart';
 import '../services/app_state.dart';
 import '../services/curriculum_progress_service.dart';
 import '../services/curriculum_repository.dart';
+import '../services/lesson_content_localization.dart';
 import '../utils/colors.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_card.dart';
+import '../widgets/translation_review_note.dart';
 
 class CurriculumLibraryScreen extends StatefulWidget {
   final Future<List<CurriculumModule>>? modulesFuture;
@@ -72,6 +74,7 @@ class _CurriculumLibraryScreenState extends State<CurriculumLibraryScreen> {
           child: Column(
             children: [
               _header(state),
+              TranslationReviewNote(locale: state.locale.code),
               Expanded(
                 child: FutureBuilder<List<CurriculumModule>>(
                   future: _modules,
@@ -85,10 +88,15 @@ class _CurriculumLibraryScreenState extends State<CurriculumLibraryScreen> {
                         )),
                       );
                     }
-                    final modules = snapshot.data;
-                    if (modules == null) {
+                    final sourceModules = snapshot.data;
+                    if (sourceModules == null) {
                       return const Center(child: CircularProgressIndicator());
                     }
+                    final modules = sourceModules
+                        .map((module) =>
+                            LessonContentLocalization.localizeModule(
+                                module, state.locale.code))
+                        .toList(growable: false);
                     final filtered = _filter(modules);
                     return CustomScrollView(
                       key: const ValueKey('curriculum-scroll'),
@@ -135,11 +143,34 @@ class _CurriculumLibraryScreenState extends State<CurriculumLibraryScreen> {
                                           kk: 'Барлық 570',
                                           en: 'All 570',
                                         )),
-                                    _trackChip(state, 'Quran', 'Quran · 150'),
-                                    _trackChip(state, 'Arabic', 'Arabic · 170'),
-                                    _trackChip(state, 'Tajwid', 'Tajwid · 70'),
-                                    _trackChip(state, 'Foundations/Academy',
-                                        'Foundations · 180'),
+                                    _trackChip(
+                                        state,
+                                        'Quran',
+                                        state.tr(
+                                            ru: 'Коран · 150',
+                                            kk: 'Құран · 150',
+                                            en: 'Quran · 150')),
+                                    _trackChip(
+                                        state,
+                                        'Arabic',
+                                        state.tr(
+                                            ru: 'Арабский · 170',
+                                            kk: 'Араб тілі · 170',
+                                            en: 'Arabic · 170')),
+                                    _trackChip(
+                                        state,
+                                        'Tajwid',
+                                        state.tr(
+                                            ru: 'Таджвид · 70',
+                                            kk: 'Тәжуид · 70',
+                                            en: 'Tajwid · 70')),
+                                    _trackChip(
+                                        state,
+                                        'Foundations/Academy',
+                                        state.tr(
+                                            ru: 'Основы · 180',
+                                            kk: 'Негіздер · 180',
+                                            en: 'Foundations · 180')),
                                   ],
                                 ),
                               ),

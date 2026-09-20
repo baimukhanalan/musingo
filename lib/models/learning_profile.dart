@@ -71,6 +71,23 @@ class LearningSkillProfile {
 }
 
 extension LearningSkillDetails on LearningSkill {
+  String titleFor(AppLocale locale) {
+    if (locale == AppLocale.ru) return title;
+    return switch ((this, locale)) {
+      (LearningSkill.letters, AppLocale.kk) => 'Әріптер',
+      (LearningSkill.reading, AppLocale.kk) => 'Оқу',
+      (LearningSkill.surahRecall, AppLocale.kk) => 'Сүрелер',
+      (LearningSkill.meaning, AppLocale.kk) => 'Мағына',
+      (LearningSkill.tajwid, AppLocale.kk) => 'Тәжуид',
+      (LearningSkill.letters, AppLocale.en) => 'Letters',
+      (LearningSkill.reading, AppLocale.en) => 'Reading',
+      (LearningSkill.surahRecall, AppLocale.en) => 'Surahs',
+      (LearningSkill.meaning, AppLocale.en) => 'Meaning',
+      (LearningSkill.tajwid, AppLocale.en) => 'Tajwid',
+      _ => title,
+    };
+  }
+
   String get title {
     switch (this) {
       case LearningSkill.letters:

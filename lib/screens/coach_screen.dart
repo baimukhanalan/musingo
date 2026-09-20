@@ -34,14 +34,24 @@ class _CoachScreenState extends State<CoachScreen> {
   final _coach = CoachService();
   final List<CoachMessage> _messages = [];
   bool _sending = false;
+  String? _activeConversationKey;
   // Свой экземпляр backend создаём лениво: он читает JWT из SharedPreferences,
   // поэтому одинаково работает и для залогиненного (Bearer), и для анонима.
   BackendService? _backend;
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _restoreConversation());
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final state = Provider.of<AppState>(context);
+    final key = _conversationKey(state);
+    if (_activeConversationKey == key) return;
+    _activeConversationKey = key;
+    _messages.clear();
+    _sending = false;
+    _controller.clear();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _activeConversationKey == key) _restoreConversation(key);
+    });
   }
 
   @override
@@ -104,13 +114,18 @@ class _CoachScreenState extends State<CoachScreen> {
   }
 
   String _conversationKey(AppState state) =>
-      'coach_conversation_v1_${state.user?.id ?? 'guest'}';
+      'coach_conversation_v1_${state.user?.id ?? 'guest'}_${state.locale.code}';
 
-  Future<void> _restoreConversation() async {
+  Future<void> _restoreConversation(String key) async {
     if (!mounted) return;
     final state = context.read<AppState>();
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_conversationKey(state));
+    if (!mounted || _activeConversationKey != key) return;
+    final raw = prefs.getString(key) ??
+        (state.locale.code == 'ru'
+            ? prefs
+                .getString('coach_conversation_v1_${state.user?.id ?? 'guest'}')
+            : null);
     if (raw != null && raw.isNotEmpty) {
       try {
         final decoded = jsonDecode(raw);
@@ -125,6 +140,7 @@ class _CoachScreenState extends State<CoachScreen> {
                   role:
                       map['role'] == 'user' ? CoachRole.user : CoachRole.coach,
                   text: map['text']?.toString() ?? '',
+                  isOffline: map['isOffline'] == true,
                   memorySuggestion: map['memorySuggestion']?.toString(),
                   createdAt:
                       DateTime.tryParse(map['createdAt']?.toString() ?? '') ??
@@ -134,22 +150,23 @@ class _CoachScreenState extends State<CoachScreen> {
               .where((item) => item.text.trim().isNotEmpty)
               .take(30)
               .toList();
-          if (mounted && restored.isNotEmpty) {
+          if (mounted && _activeConversationKey == key && restored.isNotEmpty) {
             setState(() => _messages.addAll(restored));
           }
         }
       } catch (_) {
-        await prefs.remove(_conversationKey(state));
+        await prefs.remove(key);
       }
     }
+    if (!mounted || _activeConversationKey != key) return;
     _addGreeting();
     _scrollToBottom();
   }
 
   Future<void> _persistConversation() async {
     if (!mounted) return;
-    final state = context.read<AppState>();
-    final prefs = await SharedPreferences.getInstance();
+    final key = _activeConversationKey;
+    if (key == null) return;
     final items = _messages.reversed
         .take(30)
         .toList()
@@ -158,12 +175,14 @@ class _CoachScreenState extends State<CoachScreen> {
               'id': message.id,
               'role': message.role.name,
               'text': message.text,
+              'isOffline': message.isOffline,
               if (message.memorySuggestion != null)
                 'memorySuggestion': message.memorySuggestion,
               'createdAt': message.createdAt.toIso8601String(),
             })
         .toList();
-    await prefs.setString(_conversationKey(state), jsonEncode(items));
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(key, jsonEncode(items));
   }
 
   CoachContext _contextFrom(AppState state) {
@@ -267,8 +286,11 @@ class _CoachScreenState extends State<CoachScreen> {
     _scrollToBottom();
 
     final state = context.read<AppState>();
+    final conversationKey = _activeConversationKey;
+    final locale = state.locale.code;
     final memory = _explicitMemory(question, state);
     if (memory != null) await state.rememberForCoach(memory);
+    if (!mounted || _activeConversationKey != conversationKey) return;
 
     final coachContext = _contextFrom(state);
     // Индикатор «печатает…» держится, пока ждём ответ (сеть или локальный
@@ -277,26 +299,27 @@ class _CoachScreenState extends State<CoachScreen> {
     BackendService? backend;
     if (kIsWeb || BackendService.hasConfiguredApiUrl) {
       backend = await _ensureBackend();
-      if (!mounted) return;
+      if (!mounted || _activeConversationKey != conversationKey) return;
     }
 
     final response = await _coach.answerSmart(
       question,
       coachContext,
       backend: backend,
-      locale: state.locale.code,
+      locale: locale,
       catalog: _catalogFrom(state),
       xp: state.user?.xp ?? 0,
       streak: state.user?.streak ?? 0,
       completedLessonIds: _completedLessonIds(state),
     );
-    if (!mounted) return;
+    if (!mounted || _activeConversationKey != conversationKey) return;
     setState(() {
       _sending = false;
       _messages.add(CoachMessage(
         id: 'coach_${DateTime.now().microsecondsSinceEpoch}',
         role: CoachRole.coach,
         text: _displayText(response, state),
+        isOffline: response.isOffline,
         memorySuggestion: memory == null ? response.memorySuggestion : null,
         createdAt: DateTime.now(),
         sources: response.sources,

@@ -1,4 +1,5 @@
 import '../services/lesson_data.dart';
+import '../services/lesson_content_localization.dart';
 import '../utils/app_locale.dart';
 import 'reminder_message.dart';
 
@@ -15,13 +16,23 @@ class AyahOfDay {
     required this.translation,
   });
 
-  String? translationFor(AppLocale locale) => switch (locale) {
-        AppLocale.ru => translation,
-        AppLocale.kk || AppLocale.en => null,
-      };
+  String? translationFor(AppLocale locale) {
+    if (locale == AppLocale.ru) return translation;
+    final localized =
+        LessonContentLocalization.translateText(translation, locale.code);
+    // Never present untranslated Russian as a Kazakh or English translation.
+    return localized == translation || localized.trim().isEmpty
+        ? null
+        : localized;
+  }
+
+  String transliterationFor(AppLocale locale) =>
+      LessonContentLocalization.transliterationFor(
+          transliteration, locale.code) ??
+      transliteration;
 
   String secondaryTextFor(AppLocale locale) =>
-      translationFor(locale) ?? transliteration;
+      translationFor(locale) ?? transliterationFor(locale);
 }
 
 class DailyAyahData {

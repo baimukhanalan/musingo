@@ -2,6 +2,7 @@ import '../models/coach.dart';
 import '../models/knowledge_state.dart';
 import '../models/learning_profile.dart';
 import 'backend_service.dart';
+import 'localized_coach.dart';
 
 class CoachService {
   static const suggestions = [
@@ -14,6 +15,12 @@ class CoachService {
     'Помоги запомнить суру',
     'Составь план на 7 дней',
   ];
+
+  static List<String> suggestionsFor(String locale) => switch (locale) {
+        'kk' => LocalizedCoach.kazakhSuggestions,
+        'en' => LocalizedCoach.englishSuggestions,
+        _ => suggestions,
+      };
 
   static const _progressSource = CoachSource(
     title: 'Твой прогресс Muslingo',
@@ -98,7 +105,7 @@ class CoachService {
         );
         if (remote != null) {
           return _withMemorySuggestion(
-            _withPersonalization(remote, context),
+            locale == 'ru' ? _withPersonalization(remote, context) : remote,
             question,
             context,
           );
@@ -107,7 +114,7 @@ class CoachService {
         // Любой сбой backend — тихий откат на локальный движок ниже.
       }
     }
-    return answer(question, context);
+    return answer(question, context, locale: locale);
   }
 
   /// Плоский JSON-снимок прогресса для серверного коуча.
@@ -208,11 +215,26 @@ class CoachService {
     };
   }
 
-  CoachResponse answer(String question, CoachContext context) {
-    return _withMemorySuggestion(
-      _withPersonalization(_answerCore(question, context), context),
+  CoachResponse answer(String question, CoachContext context,
+      {String locale = 'ru'}) {
+    final response = _withMemorySuggestion(
+      locale == 'ru'
+          ? _withPersonalization(_answerCore(question, context), context)
+          : LocalizedCoach.answer(question, context, locale),
       question,
       context,
+    );
+    return CoachResponse(
+      text: response.text,
+      isOffline: true,
+      memorySuggestion: response.memorySuggestion,
+      sources: response.sources,
+      reasoning: response.reasoning,
+      dailyPlan: response.dailyPlan,
+      nextAction: response.nextAction,
+      actionType: response.actionType,
+      actionLabel: response.actionLabel,
+      lessonId: response.lessonId,
     );
   }
 

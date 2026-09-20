@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+
+import 'lesson_content_localization.dart';
+import 'learning_recommendation_localization.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,6 +25,7 @@ import 'home_widget_service.dart';
 enum NativeLanguage {
   russian('ru', 'Русский'),
   kazakh('kk', 'Казахский'),
+  english('en', 'English'),
   uzbek('uz', 'Узбекский');
 
   final String code;
@@ -125,7 +129,8 @@ class AppState extends ChangeNotifier {
   String? _pendingSyncUserId;
 
   UserModel? get user => _user;
-  List<Course> get courses => _courses;
+  List<Course> get courses =>
+      LessonContentLocalization.localizeCourses(_courses, _locale.code);
   List<Achievement> get achievements => _achievements;
   bool get isLoading => _isLoading;
   bool get isInitialized => _isInitialized;
@@ -196,10 +201,23 @@ class AppState extends ChangeNotifier {
         _mentorProfile.copyWith(memories: const []),
       );
 
+  Future<void> _clearCoachConversations(
+      SharedPreferences prefs, String userId) async {
+    final prefix = '$_coachConversationPrefix$userId';
+    for (final key in [
+      prefix,
+      '${prefix}_ru',
+      '${prefix}_kk',
+      '${prefix}_en'
+    ]) {
+      await prefs.remove(key);
+    }
+  }
+
   Future<void> resetMentorPersonalization() async {
     _mentorProfile = const MentorProfile();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('$_coachConversationPrefix${_user?.id ?? 'guest'}');
+    await _clearCoachConversations(prefs, _user?.id ?? 'guest');
     await _saveMentorProfile();
     if (_notificationsEnabled) {
       try {
@@ -469,7 +487,8 @@ class AppState extends ChangeNotifier {
 
   LearningGoal? get learningGoal => _learningGoal;
   int get placementLevel => _placementLevel;
-  String? get learningRecommendation => _learningRecommendation;
+  String? get learningRecommendation =>
+      LearningRecommendationLocalization.localize(_learningRecommendation, _locale.code);
   LearningSkillProfile? get learningSkillProfile => _learningSkillProfile;
 
   /// Дневная цель пользователя (сколько уроков за день). Дефолт — 3.
@@ -557,7 +576,7 @@ class AppState extends ChangeNotifier {
         }
       }
     }
-    for (final course in _courses) {
+    for (final course in courses) {
       for (final lesson in course.lessons) {
         if (lesson.status == LessonStatus.available ||
             lesson.status == LessonStatus.inProgress) {
@@ -730,12 +749,12 @@ class AppState extends ChangeNotifier {
   Future<void> _init() async {
     try {
       _courses = LessonData.getCourses();
+      await LessonContentLocalization.load();
       final preferences = await SharedPreferences.getInstance();
       await _removeLegacyPlaintextAccounts(preferences);
       _soundEnabled = preferences.getBool('sound_enabled') ?? true;
       _locale = AppLocale.fromCode(preferences.getString(_localeKey));
-      _nativeLanguage =
-          NativeLanguage.fromCode(preferences.getString('native_language'));
+      _nativeLanguage = NativeLanguage.fromCode(_locale.code);
       _notificationsEnabled =
           preferences.getBool(_notificationsEnabledKey) ?? false;
       _reminderHour = preferences.getInt(_reminderHourKey) ?? 19;
@@ -1312,7 +1331,7 @@ class AppState extends ChangeNotifier {
     await prefs.remove('$_hafizProgressPrefix$userId');
     await prefs.remove('$_curriculumProgressPrefix$userId');
     await prefs.remove('$_mentorProfilePrefix$userId');
-    await prefs.remove('$_coachConversationPrefix$userId');
+    await _clearCoachConversations(prefs, userId);
     await prefs.remove('$_leagueXpPrefix$userId');
     await prefs.remove(_scopedLearningKey(userId, 'goal'));
     await prefs.remove(_scopedLearningKey(userId, 'placement_level'));
@@ -1426,17 +1445,24 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Меняет язык интерфейса, сохраняет код в SharedPreferences и уведомляет
-  /// подписчиков, чтобы экраны, читающие [locale]/[tr], перестроились.
+  /// One language controls the interface, lesson explanations and mentor.
   Future<void> setLocale(AppLocale value) async {
-    if (_locale == value) return;
+    if (_locale == value && _nativeLanguage?.code == value.code) return;
     _locale = value;
+    _nativeLanguage = NativeLanguage.fromCode(value.code);
+    notifyListeners();
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(_localeKey, value.code);
+    await preferences.setString('native_language', value.code);
     if (_homeWidgetEnabled) {
       await refreshHomeWidget();
     }
-    notifyListeners();
+    if (_notificationsEnabled) {
+      try {
+        await _scheduleLearningReminders();
+      } catch (_) {}
+    }
+    await _syncBackendProgress();
   }
 
   /// Возвращает строку под текущий язык интерфейса. [ru] обязателен и служит
@@ -1461,6 +1487,10 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> setNativeLanguage(NativeLanguage language) async {
+    if (language != NativeLanguage.uzbek) {
+      await setLocale(AppLocale.fromCode(language.code));
+      return;
+    }
     _nativeLanguage = language;
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString('native_language', language.code);
@@ -2185,7 +2215,8 @@ class AppState extends ChangeNotifier {
 
   Course? getCourse(CourseType type) {
     try {
-      return _courses.firstWhere((c) => c.type == type);
+      return LessonContentLocalization.localizeCourse(
+          _courses.firstWhere((c) => c.type == type), _locale.code);
     } catch (_) {
       return null;
     }
@@ -2194,7 +2225,9 @@ class AppState extends ChangeNotifier {
   Lesson? _findLesson(String lessonId) {
     for (final course in _courses) {
       for (final lesson in course.lessons) {
-        if (lesson.id == lessonId) return lesson;
+        if (lesson.id == lessonId) {
+          return LessonContentLocalization.localizeLesson(lesson, _locale.code);
+        }
       }
     }
     return null;
@@ -2424,10 +2457,8 @@ class AppState extends ChangeNotifier {
         Map<String, dynamic>.from(skillProfile),
       );
     }
-    _nativeLanguage = NativeLanguage.fromCode(
-          state['nativeLanguage'] as String?,
-        ) ??
-        _nativeLanguage;
+    // The current device's language is authoritative for what is displayed.
+    _nativeLanguage = NativeLanguage.fromCode(_locale.code);
     _soundEnabled = state['soundEnabled'] as bool? ?? _soundEnabled;
     final knowledge = state['knowledgeStates'];
     if (knowledge is List) {

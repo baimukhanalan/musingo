@@ -10,6 +10,7 @@ import 'package:muslingo/screens/league_screen.dart';
 import 'package:muslingo/screens/main_tab_screen.dart';
 import 'package:muslingo/screens/quran_screen.dart';
 import 'package:muslingo/services/app_state.dart';
+import 'package:muslingo/widgets/cat_character.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Регрессия на «пустой экран уроков»: pinned SliverPersistentHeader на главной
@@ -40,6 +41,62 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 50));
   }
+
+  testWidgets(
+      'learning language picker fits compact screens and updates the app',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final state = await guestState(tester);
+    await tester.pumpWidget(ChangeNotifierProvider<AppState>.value(
+      value: state,
+      child: MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: const TextScaler.linear(1.5)),
+          child: child!,
+        ),
+        home: const HomeScreen(),
+      ),
+    ));
+    await tester.pump();
+    final arabicMode = find.byKey(const ValueKey('course-mode-arabic'));
+    for (var attempt = 0;
+        attempt < 6 && arabicMode.hitTestable().evaluate().isEmpty;
+        attempt++) {
+      await tester.drag(
+          find.byType(CustomScrollView).first, const Offset(0, -240));
+      await tester.pump(const Duration(milliseconds: 150));
+    }
+    await tester.tap(arabicMode.hitTestable());
+    await tester.pump(const Duration(milliseconds: 450));
+    final picker = find.byKey(const ValueKey('choose-native-language'));
+    for (var attempt = 0;
+        attempt < 6 && picker.hitTestable().evaluate().isEmpty;
+        attempt++) {
+      final position =
+          tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+      position
+          .jumpTo((position.pixels + 200).clamp(0, position.maxScrollExtent));
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    await tester.tap(picker.hitTestable());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 450));
+    expect(find.text('Oʻzbekcha'), findsNothing);
+    expect(find.text('English'), findsOneWidget);
+    await tester.ensureVisible(find.text('Қазақша'));
+    await tester.pump();
+    await tester.tap(find.text('Қазақша'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 450));
+    expect(state.locale.code, 'kk');
+    expect(state.nativeLanguage, NativeLanguage.kazakh);
+    expect(tester.takeException(), isNull);
+    await teardown(tester);
+  });
 
   testWidgets('Главная рендерится без ошибок верстки и показывает уроки',
       (tester) async {
@@ -77,11 +134,7 @@ void main() {
     expect(find.text('Начать урок'), findsOneWidget);
     expect(
       find.byWidgetPredicate(
-        (widget) =>
-            widget is Image &&
-            widget.image is AssetImage &&
-            (widget.image as AssetImage).assetName ==
-                'assets/images/cat_learning_real.webp',
+        (widget) => widget is CatCharacter && widget.mood == CatMood.learning,
       ),
       findsOneWidget,
     );
@@ -137,7 +190,9 @@ void main() {
     expect(find.byKey(const ValueKey('course-path-quran')), findsNothing);
     expect(find.byKey(const ValueKey('course-path-arabic')), findsOneWidget);
     expect(find.text('100 уроков'), findsOneWidget);
-    expect(find.text('Выбрать язык объяснений'), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('choose-native-language')), findsOneWidget);
+    expect(find.text('Язык обучения: Русский'), findsOneWidget);
     expect(find.text('Выбери родной язык'), findsNothing);
     expect(tester.takeException(), isNull);
 
@@ -327,7 +382,7 @@ void main() {
     expect(find.byKey(const Key('coach-back-button')), findsOneWidget);
   });
 
-  testWidgets('ответ Coach помечен как AI и его можно отправить на проверку',
+  testWidgets('локальная подсказка не выдаётся за AI и доступна для проверки',
       (tester) async {
     final state = await guestState(tester);
     await tester.pumpWidget(
@@ -342,7 +397,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
 
-    expect(find.text('AI-объяснение'), findsOneWidget);
+    expect(find.text('Учебная подсказка · без ИИ'), findsOneWidget);
+    expect(find.text('AI-объяснение'), findsNothing);
     expect(find.text('Сообщить о неточности'), findsOneWidget);
 
     await teardown(tester);

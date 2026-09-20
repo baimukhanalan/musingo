@@ -8,7 +8,9 @@ class _GreetingHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final firstName = _firstName(name);
+    final firstName = state.isGuest
+        ? state.tr(ru: 'Гость', kk: 'Қонақ', en: 'Guest')
+        : _firstName(name);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
       child: Column(
@@ -319,68 +321,6 @@ class _TapStat extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: child,
-      ),
-    );
-  }
-}
-
-class _InstallBanner extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _InstallBanner({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-      child: Material(
-        color: AppColors.navy,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-            child: Row(
-              children: [
-                const Icon(Icons.install_mobile_rounded, color: Colors.white),
-                const SizedBox(width: 11),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        state.tr(
-                            ru: 'Установить Muslingo',
-                            kk: 'Muslingo орнату',
-                            en: 'Install Muslingo'),
-                        style: const TextStyle(
-                          fontFamily: 'Nunito',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Text(
-                        state.tr(
-                            ru: 'Добавь приложение на главный экран',
-                            kk: 'Қолданбаны негізгі экранға қосыңыз',
-                            en: 'Add the app to your home screen'),
-                        style: const TextStyle(
-                          fontFamily: 'Nunito',
-                          fontSize: 12,
-                          color: Colors.white70,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right_rounded, color: Colors.white),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

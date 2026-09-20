@@ -12,6 +12,7 @@ import '../services/app_state.dart';
 import '../services/backend_service.dart';
 import '../services/haptics_service.dart';
 import '../services/lesson_video_catalog.dart';
+import '../services/lesson_content_localization.dart';
 import '../services/quran_audio_player.dart';
 import '../services/speech_evaluation_service.dart';
 import '../services/speech_synthesizer.dart';
@@ -26,6 +27,7 @@ import '../widgets/premium_card.dart';
 import '../widgets/pressable_scale.dart';
 import '../widgets/section_label.dart';
 import '../widgets/semantic_switcher_layout.dart';
+import '../widgets/translation_review_note.dart';
 
 part 'lesson/lesson_top_bar.dart';
 part 'lesson/step_guide.dart';
@@ -114,9 +116,14 @@ class _LessonScreenState extends State<LessonScreen> {
   bool _exitDialogOpen = false;
   bool _capturedStartingHearts = false;
   int _startingHearts = 5;
+  String? _contentLocale;
+  Lesson? _previousLocalizedLesson;
+
+  Lesson get _localizedLesson => LessonContentLocalization.localizeLesson(
+      widget.lesson, context.read<AppState>().locale.code);
 
   List<LessonStep> get _activeSteps =>
-      _reviewingMistakes ? _reviewSteps : widget.lesson.steps;
+      _reviewingMistakes ? _reviewSteps : _localizedLesson.steps;
   LessonStep get _step => _activeSteps[_stepIndex];
   double get _progress => (_stepIndex) / _activeSteps.length;
 
@@ -158,6 +165,32 @@ class _LessonScreenState extends State<LessonScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final locale = context.watch<AppState>().locale.code;
+    final localized = _localizedLesson;
+    if (_contentLocale != null && _contentLocale != locale) {
+      final previousSteps = _previousLocalizedLesson!.steps;
+      LessonStep relocalize(LessonStep step) {
+        final index = previousSteps.indexOf(step);
+        return index < 0 ? step : localized.steps[index];
+      }
+
+      final mistakes = _mistakeSteps.map(relocalize).toList();
+      _mistakeSteps
+        ..clear()
+        ..addAll(mistakes);
+      _reviewSteps = _reviewSteps.map(relocalize).toList();
+      // Choices are re-presented in the new language. Recorded results and
+      // progress remain intact; stale matching/order widgets must not grade.
+      _selectedAnswer = null;
+      _orderPicks = const [];
+      _answered = false;
+      _showHint = false;
+      _speakPassed = _isSpeakPassed(_step);
+      _audioReady = _isAudioReady(_step);
+      _matchingComplete = _isMatchingComplete(_step);
+    }
+    _contentLocale = locale;
+    _previousLocalizedLesson = localized;
     if (!_capturedStartingHearts) {
       _startingHearts = context.read<AppState>().user?.hearts ?? 5;
       _capturedStartingHearts = true;
@@ -325,7 +358,7 @@ class _LessonScreenState extends State<LessonScreen> {
     }
     if (mounted) {
       Navigator.pushReplacementNamed(context, '/lesson_review', arguments: {
-        'lesson': widget.lesson,
+        'lesson': _localizedLesson,
         'xpEarned': result['xpEarned'] ?? 25,
         'streakBonus': result['streakBonus'] ?? 0,
         // Премиум жизни не теряет — не показываем ему списание.
@@ -396,6 +429,7 @@ class _LessonScreenState extends State<LessonScreen> {
                     controller: _contentScrollController,
                     child: Column(
                       children: [
+                        TranslationReviewNote(locale: state.locale.code),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: Column(
@@ -433,7 +467,7 @@ class _LessonScreenState extends State<LessonScreen> {
                               SizedBox(height: compactHeight ? 10 : 16),
                               TweenAnimationBuilder<double>(
                                 key: ValueKey(
-                                  '${widget.lesson.id}_${_stepIndex}_$_reviewingMistakes',
+                                  '${widget.lesson.id}_${_stepIndex}_${_reviewingMistakes}_$_contentLocale',
                                 ),
                                 tween: Tween(begin: 0, end: 1),
                                 duration:
@@ -535,7 +569,7 @@ class _LessonScreenState extends State<LessonScreen> {
           // Ключ на индекс шага: у каждого аудирования свой проигрыватель и
           // счётчик прослушиваний — State не должен протекать на соседний шаг.
           key: ValueKey(
-              'listen_${widget.lesson.id}_${_stepIndex}_$_reviewingMistakes'),
+              'listen_${widget.lesson.id}_${_stepIndex}_${_reviewingMistakes}_$_contentLocale'),
           step: _step,
           simulatePlayback: widget.speechSimulator != null,
           playbackSimulator: widget.audioPlaybackSimulator,
@@ -570,8 +604,8 @@ class _LessonScreenState extends State<LessonScreen> {
         );
       case LessonStepType.matching:
         return _MatchingStep(
-          key:
-              ValueKey('${widget.lesson.id}_${_stepIndex}_$_reviewingMistakes'),
+          key: ValueKey(
+              '${widget.lesson.id}_${_stepIndex}_${_reviewingMistakes}_$_contentLocale'),
           step: _step,
           onWrong: () {
             HapticsService.wrong();
@@ -598,7 +632,7 @@ class _LessonScreenState extends State<LessonScreen> {
           // иначе прослушанный образец, счётчик попыток и статус «принято»
           // протекли бы на следующий шаг.
           key: ValueKey(
-              'speak_${widget.lesson.id}_${_stepIndex}_$_reviewingMistakes'),
+              'speak_${widget.lesson.id}_${_stepIndex}_${_reviewingMistakes}_$_contentLocale'),
           step: _step,
           speechSimulator: widget.speechSimulator,
           onVerified: (passed) {
@@ -639,7 +673,7 @@ class _LessonScreenState extends State<LessonScreen> {
   }
 
   String _stepId(LessonStep step) {
-    final index = widget.lesson.steps.indexOf(step);
+    final index = _localizedLesson.steps.indexOf(step);
     return step.id ?? '${widget.lesson.id}:$index';
   }
 

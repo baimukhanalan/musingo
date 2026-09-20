@@ -66,15 +66,10 @@ class _DailyPlanCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Positioned(
+              const Positioned(
                 right: 2,
                 bottom: -6,
-                child: Image.asset(
-                  'assets/images/cat_learning_real.webp',
-                  width: 112,
-                  height: 112,
-                  fit: BoxFit.contain,
-                ),
+                child: CatCharacter(mood: CatMood.learning, size: 112),
               ),
               Padding(
                 padding: const EdgeInsets.all(20),

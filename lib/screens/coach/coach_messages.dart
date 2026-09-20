@@ -46,9 +46,12 @@ class _CoachHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Muslingo Coach',
-                  style: TextStyle(
+                Text(
+                  state.tr(
+                      ru: 'Айн · наставник',
+                      kk: 'Айн · тәлімгер',
+                      en: 'Ayn · mentor'),
+                  style: const TextStyle(
                     fontFamily: 'Nunito',
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
@@ -183,19 +186,26 @@ class _MessageView extends StatelessWidget {
                           color: AppColors.textGrey,
                         ),
                         const SizedBox(width: 5),
-                        Text(
-                          state.tr(
-                            ru: 'AI-объяснение',
-                            kk: 'AI түсіндірмесі',
-                            en: 'AI-generated explanation',
-                          ),
+                        Flexible(
+                            child: Text(
+                          message.isOffline
+                              ? state.tr(
+                                  ru: 'Учебная подсказка · без ИИ',
+                                  kk: 'Оқу кеңесі · ЖИ-сіз',
+                                  en: 'Learning guidance · offline',
+                                )
+                              : state.tr(
+                                  ru: 'AI-объяснение',
+                                  kk: 'AI түсіндірмесі',
+                                  en: 'AI-generated explanation',
+                                ),
                           style: const TextStyle(
                             fontFamily: 'Nunito',
                             fontSize: 10.5,
                             fontWeight: FontWeight.w800,
                             color: AppColors.textGrey,
                           ),
-                        ),
+                        )),
                       ],
                     ),
                     const SizedBox(height: 7),

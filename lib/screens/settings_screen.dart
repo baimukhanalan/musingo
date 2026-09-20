@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -21,10 +23,27 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  StreamSubscription<void>? _installSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _installSubscription = AppInstallService.statusChanges.listen((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _installSubscription?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final showInstall = AppInstallService.isWebInstallExperience;
+    final showInstall = AppInstallService.isWebInstallExperience &&
+        !AppInstallService.isInstalled;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -48,6 +67,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ru: 'Язык приложения',
                       kk: 'Қолданба тілі',
                       en: 'App language'),
+                  subtitle: state.tr(
+                    ru: 'Интерфейс, все уроки и наставник',
+                    kk: 'Интерфейс, барлық сабақтар және тәлімгер',
+                    en: 'Interface, all lessons and mentor',
+                  ),
                   color: AppColors.pistachio,
                   trailing: Text(_appLocaleName(state.locale),
                       style: const TextStyle(
@@ -56,28 +80,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           fontWeight: FontWeight.w800,
                           color: AppColors.textGrey)),
                   onTap: () => _showAppLanguagePicker(context),
-                ),
-                _SettingsRow(
-                  key: const ValueKey('settings-hint-language'),
-                  icon: Icons.translate_rounded,
-                  label: state.tr(
-                    ru: 'Язык объяснений',
-                    kk: 'Түсіндіру тілі',
-                    en: 'Explanation language',
-                  ),
-                  subtitle: state.tr(
-                    ru: 'Подсказки и учебные видео',
-                    kk: 'Көмекші мәтіндер мен оқу видеолары',
-                    en: 'Hints and learning videos',
-                  ),
-                  color: AppColors.sky,
-                  trailing: Text(state.nativeLanguage?.label ?? 'Русский',
-                      style: const TextStyle(
-                          fontFamily: 'Nunito',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textGrey)),
-                  onTap: () => _showHintLanguagePicker(context),
                 ),
               ]),
               const SizedBox(height: 22),
@@ -796,63 +798,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (selected == null || !context.mounted) return;
     await context.read<AppState>().setLocale(selected);
-  }
-
-  Future<void> _showHintLanguagePicker(BuildContext context) async {
-    final state = context.read<AppState>();
-    final selected = await showModalBottomSheet<NativeLanguage>(
-      context: context,
-      backgroundColor: AppColors.white,
-      showDragHandle: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(4, 0, 4, 16),
-                child: Text(
-                    state.tr(
-                        ru: 'Выбери язык подсказок',
-                        kk: 'Көмекші тілін таңда',
-                        en: 'Choose the hint language'),
-                    style: const TextStyle(
-                        fontFamily: 'Nunito',
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.navyDark)),
-              ),
-              _SettingsCard(
-                children: [
-                  for (final language in NativeLanguage.values)
-                    _SettingsRow(
-                      icon: language == state.nativeLanguage
-                          ? Icons.check_circle_rounded
-                          : Icons.language_rounded,
-                      label: language.label,
-                      color: language == state.nativeLanguage
-                          ? AppColors.pistachio
-                          : AppColors.textGrey,
-                      trailing: language == state.nativeLanguage
-                          ? const Icon(Icons.check_rounded,
-                              color: AppColors.pistachio, size: 22)
-                          : const SizedBox.shrink(),
-                      onTap: () => Navigator.pop(sheetContext, language),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (selected == null || !context.mounted) return;
-    await context.read<AppState>().setNativeLanguage(selected);
   }
 }
 

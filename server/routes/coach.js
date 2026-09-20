@@ -628,6 +628,8 @@ export default withApi(async (request, response) => {
   }
 
   const context = buildCoachContext(body.context, progressDocument, { locale });
+  // A stale saved profile must never override the current UI language.
+  context.language = locale;
   const dailyPlan = buildDailyPlan(context, catalog);
   const modelCatalog = selectModelCatalog(catalog, context, dailyPlan);
   const system = buildSystemPrompt(locale);
@@ -655,7 +657,7 @@ export default withApi(async (request, response) => {
     sources: reply.sources ?? [],
     dailyPlan: dailyPlan.tasks.map((task) => ({
       title: task.title,
-      detail: `${task.minutes} min. ${task.reason}`,
+      detail: `${task.minutes} ${{ ru: 'мин.', kk: 'мин.', en: 'min.' }[locale]} ${task.reason}`,
       lessonId: task.lessonId,
       isReview: task.type === 'review',
     })),

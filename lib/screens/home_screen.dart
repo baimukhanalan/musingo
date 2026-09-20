@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
@@ -7,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../models/lesson.dart';
 import '../models/learning_profile.dart';
 import '../services/app_state.dart';
-import '../services/app_install_service.dart';
 import '../services/haptics_service.dart';
 import '../utils/colors.dart';
 import '../widgets/cat_character.dart';
@@ -40,7 +37,6 @@ class _HomeScreenState extends State<HomeScreen> {
   _LearningMode _mode = _LearningMode.quran;
   bool _languagePromptOpen = false;
   bool _learningPathExpanded = false;
-  StreamSubscription<void>? _installStatusSubscription;
   final Map<String, ScrollController> _pathControllers = {};
 
   static const _quranIcons = [
@@ -82,16 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _pathControllers.putIfAbsent(courseId, ScrollController.new);
 
   @override
-  void initState() {
-    super.initState();
-    _installStatusSubscription = AppInstallService.statusChanges.listen((_) {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
   void dispose() {
-    _installStatusSubscription?.cancel();
     for (final controller in _pathControllers.values) {
       controller.dispose();
     }
@@ -182,13 +169,6 @@ class _HomeScreenState extends State<HomeScreen> {
               SliverToBoxAdapter(
                 child: _GreetingHeader(name: user.name),
               ),
-              if (AppInstallService.isWebInstallExperience &&
-                  !AppInstallService.isInstalled)
-                SliverToBoxAdapter(
-                  child: _InstallBanner(
-                    onTap: () => Navigator.pushNamed(context, '/install'),
-                  ),
-                ),
               // (2) Ряд из 3 статов: стрик, XP, жизни — значения из AppState.
               SliverToBoxAdapter(
                 child: _StatBadgesRow(
@@ -358,6 +338,8 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       await showModalBottomSheet<void>(
         context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
         isDismissible: true,
         enableDrag: true,
         backgroundColor: Colors.transparent,

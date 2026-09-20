@@ -6,11 +6,13 @@ import 'package:web/web.dart' as web;
 class QuranAudioPlaybackState {
   final bool playing;
   final bool completed;
+  final bool buffering;
   final Object? error;
 
   const QuranAudioPlaybackState({
     required this.playing,
     this.completed = false,
+    this.buffering = false,
     this.error,
   });
 }
@@ -24,14 +26,15 @@ class QuranAudioPlayer {
       _stateController.stream;
 
   Future<void> setUrl(String url) async {
-    stopCurrent();
+    _releaseAudio();
     _audio = _buildAudio(url);
+    _audio!.load();
   }
 
   Future<void> setFile(String path) => setUrl(path);
 
   Future<void> playUrl(String url) async {
-    stopCurrent();
+    _releaseAudio();
     final audio = _buildAudio(url);
     _audio = audio;
     await audio.play().toDart;
@@ -43,19 +46,22 @@ class QuranAudioPlayer {
     final audio = web.HTMLAudioElement()
       ..src = url
       ..preload = 'auto';
-    audio.onplay = ((web.Event _) {
-      _stateController.add(const QuranAudioPlaybackState(playing: true));
+    audio.onplaying = ((web.Event _) {
+      _emit(const QuranAudioPlaybackState(playing: true));
+    }).toJS;
+    audio.onwaiting = ((web.Event _) {
+      _emit(const QuranAudioPlaybackState(playing: false, buffering: true));
     }).toJS;
     audio.onpause = ((web.Event _) {
-      _stateController.add(const QuranAudioPlaybackState(playing: false));
+      _emit(const QuranAudioPlaybackState(playing: false));
     }).toJS;
     audio.onended = ((web.Event _) {
-      _stateController.add(
+      _emit(
         const QuranAudioPlaybackState(playing: false, completed: true),
       );
     }).toJS;
     audio.onerror = ((web.Event _) {
-      _stateController.add(
+      _emit(
         QuranAudioPlaybackState(
           playing: false,
           error: StateError('Browser audio stream failed.'),
@@ -63,6 +69,25 @@ class QuranAudioPlayer {
       );
     }).toJS;
     return audio;
+  }
+
+  void _emit(QuranAudioPlaybackState state) {
+    if (!_stateController.isClosed) _stateController.add(state);
+  }
+
+  void _releaseAudio() {
+    final audio = _audio;
+    if (audio == null) return;
+    // Detach queued DOM callbacks before disposing or replacing the element.
+    audio.onplaying = null;
+    audio.onwaiting = null;
+    audio.onpause = null;
+    audio.onended = null;
+    audio.onerror = null;
+    audio.pause();
+    audio.removeAttribute('src');
+    audio.load();
+    _audio = null;
   }
 
   Future<void> play() async {
@@ -93,7 +118,7 @@ class QuranAudioPlayer {
   }
 
   void dispose() {
-    stop();
+    _releaseAudio();
     _stateController.close();
   }
 }

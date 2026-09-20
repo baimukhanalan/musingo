@@ -122,15 +122,17 @@ class _SuggestionChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final suggestions =
+        CoachService.suggestionsFor(context.watch<AppState>().locale.code);
     return SizedBox(
       height: 42,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: CoachService.suggestions.length,
+        itemCount: suggestions.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final text = CoachService.suggestions[index];
+          final text = suggestions[index];
           return _SuggestionPill(
             text: text,
             onTap: enabled ? () => onSelect(text) : null,

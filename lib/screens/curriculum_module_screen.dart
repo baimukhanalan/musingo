@@ -8,10 +8,12 @@ import '../models/curriculum_progress.dart';
 import '../services/app_state.dart';
 import '../services/curriculum_progress_service.dart';
 import '../services/curriculum_repository.dart';
+import '../services/lesson_content_localization.dart';
 import '../utils/colors.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
 import '../widgets/premium_card.dart';
+import '../widgets/translation_review_note.dart';
 
 @visibleForTesting
 int curriculumCorrectAnswerIndex(CurriculumModule module) =>
@@ -94,7 +96,13 @@ List<String> curriculumChallengeOptions({
 List<CurriculumChallenge> buildCurriculumChallenges({
   required CurriculumModule module,
   required List<CurriculumModule> allModules,
+  String locale = 'ru',
 }) {
+  String tr(String ru, String kk, String en) => locale == 'kk'
+      ? kk
+      : locale == 'en'
+          ? en
+          : ru;
   List<String> options(
     int salt,
     String Function(CurriculumModule) valueOf,
@@ -107,61 +115,81 @@ List<CurriculumChallenge> buildCurriculumChallenges({
       );
 
   String evidencePlan(CurriculumModule item) =>
-      'Опора: ${curriculumSourceSummary(item.sourceLocator)}\n'
-      'Доказательство результата: ${item.objective}';
+      '${tr('Опора', 'Дереккөз', 'Evidence')}: ${curriculumSourceSummary(item.sourceLocator)}\n'
+      '${tr('Доказательство результата', 'Нәтиженің дәлелі', 'Proof of the outcome')}: ${item.objective}';
   String transferPlan(CurriculumModule item) =>
-      '1. Учесть: ${item.prerequisite}\n'
-      '2. Проверить: ${curriculumSourceSummary(item.sourceLocator)}\n'
-      '3. Показать навык: ${item.objective}';
+      '1. ${tr('Учесть', 'Ескер', 'Consider')}: ${item.prerequisite}\n'
+      '2. ${tr('Проверить', 'Тексер', 'Verify')}: ${curriculumSourceSummary(item.sourceLocator)}\n'
+      '3. ${tr('Показать навык', 'Дағдыны көрсет', 'Demonstrate the skill')}: ${item.objective}';
   String auditDecision(CurriculumModule item) =>
-      '${item.title}\nСверить источник, затем подтвердить навык: ${item.objective}';
+      '${item.title}\n${tr('Сверить источник, затем подтвердить навык', 'Дереккөзді тексеріп, дағдыны раста', 'Check the source, then demonstrate the skill')}: ${item.objective}';
 
   return [
     CurriculumChallenge(
-      level: 'ПОНИМАНИЕ',
-      prompt:
+      level: tr('ПОНИМАНИЕ', 'ТҮСІНУ', 'UNDERSTANDING'),
+      prompt: tr(
           'Ученик изучил «${module.title}». Какой наблюдаемый результат действительно доказывает понимание?',
+          'Оқушы «${module.title}» тақырыбын оқыды. Түсінгенін қандай нақты нәтиже дәлелдейді?',
+          'A learner has studied “${module.title}”. Which observable outcome demonstrates understanding?'),
       options: options(0, (item) => item.objective),
       correctIndex: curriculumCorrectAnswerIndexFor(module, 0),
-      explanation:
+      explanation: tr(
           'Результат должен совпадать с заявленной целью модуля, а не только быть похожим по теме.',
+          'Нәтиже тақырыпқа ұқсас болып қана қоймай, модульдің мақсатына сәйкес келуі керек.',
+          'The outcome must match the module’s stated objective, rather than simply relate to a similar topic.'),
     ),
     CurriculumChallenge(
-      level: 'РАБОТА С ДОКАЗАТЕЛЬСТВОМ',
-      prompt:
+      level: tr('РАБОТА С ДОКАЗАТЕЛЬСТВОМ', 'ДӘЛЕЛМЕН ЖҰМЫС', 'USING EVIDENCE'),
+      prompt: tr(
           'Нужно проверить вывод по модулю, не полагаясь на память. Какая опора относится именно к этой теме?',
+          'Модуль бойынша қорытындыны есте сақтағанға сүйенбей тексеру керек. Осы тақырыпқа қай дереккөз қатысты?',
+          'Verify the module’s conclusion without relying on memory. Which source belongs to this topic?'),
       options:
           options(1, (item) => curriculumSourceSummary(item.sourceLocator)),
       correctIndex: curriculumCorrectAnswerIndexFor(module, 1),
-      explanation:
+      explanation: tr(
           'Сильный ответ связывает вывод с источником, указанным в материале этого модуля.',
+          'Негізді жауап қорытындыны осы модульде көрсетілген дереккөзбен байланыстырады.',
+          'A well-supported answer connects the conclusion to the source given in this module.'),
     ),
     CurriculumChallenge(
-      level: 'АНАЛИЗ',
-      prompt:
+      level: tr('АНАЛИЗ', 'ТАЛДАУ', 'ANALYSIS'),
+      prompt: tr(
           'В четырёх планах одна цепочка не содержит подмены темы или источника. Найди её.',
+          'Төрт жоспардың бірінде тақырып та, дереккөз де дұрыс берілген. Сол жоспарды тап.',
+          'Only one of these four plans keeps both the topic and source consistent. Find it.'),
       options: options(2, evidencePlan),
       correctIndex: curriculumCorrectAnswerIndexFor(module, 2),
-      explanation:
+      explanation: tr(
           'Проверь два звена отдельно: источник должен относиться к теме, а результат — следовать из цели.',
+          'Екі бөлікті жеке тексер: дереккөз тақырыпқа қатысты, ал нәтиже мақсатқа сәйкес болуы керек.',
+          'Check each link separately: the source must fit the topic, and the outcome must follow from the objective.'),
     ),
     CurriculumChallenge(
-      level: 'ПЕРЕНОС',
-      prompt:
+      level: tr('ПЕРЕНОС', 'ҚОЛДАНУ', 'APPLICATION'),
+      prompt: tr(
           'Какой порядок действий позволит применить материал и обосновать результат наставнику?',
+          'Материалды қолданып, нәтижені тәлімгерге негіздеу үшін қай әрекет реті дұрыс?',
+          'Which sequence lets you apply the material and justify the outcome to your mentor?'),
       options: options(3, transferPlan),
       correctIndex: curriculumCorrectAnswerIndexFor(module, 3),
-      explanation:
+      explanation: tr(
           'Надёжная цепочка начинается с входного условия, проходит через проверяемую опору и заканчивается демонстрацией навыка.',
+          'Дұрыс тізбек бастапқы шарттан басталып, дереккөзді тексеру арқылы өтіп, дағдыны көрсетумен аяқталады.',
+          'A reliable sequence starts with the prerequisite, checks the evidence, and ends by demonstrating the skill.'),
     ),
     CurriculumChallenge(
-      level: 'ИТОГОВАЯ АТТЕСТАЦИЯ',
-      prompt:
+      level: tr('ИТОГОВАЯ АТТЕСТАЦИЯ', 'ҚОРЫТЫНДЫ БАҒАЛАУ', 'FINAL ASSESSMENT'),
+      prompt: tr(
           'Ученик допустил ошибку и должен проверить рассуждение заново. Какой маршрут относится к текущему модулю целиком?',
+          'Оқушы қателесіп, ойын қайта тексеруі керек. Қай бағыт осы модульге толығымен сәйкес келеді?',
+          'A learner made a mistake and needs to check their reasoning again. Which route fully matches this module?'),
       options: options(4, auditDecision),
       correctIndex: curriculumCorrectAnswerIndexFor(module, 4),
-      explanation:
+      explanation: tr(
           'Название, источник и проверяемый навык должны образовывать одну непротиворечивую цепочку.',
+          'Атау, дереккөз және тексерілетін дағды бір-біріне қайшы келмейтін тізбек құруы керек.',
+          'The title, source, and assessed skill must form a consistent chain.'),
     ),
   ];
 }
@@ -181,6 +209,8 @@ class CurriculumModuleScreen extends StatefulWidget {
 }
 
 class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
+  CurriculumModule get _module => LessonContentLocalization.localizeModule(
+      widget.module, context.read<AppState>().locale.code);
   static const _stepCount = 5;
 
   List<CurriculumModule> _allModules = const [];
@@ -195,9 +225,24 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
   int _finalMistakes = 0;
   bool _assessmentFailed = false;
   final List<int> _practiceOrder = [];
+  String? _contentLocale;
 
   String get _learnerId =>
       context.read<AppState>().user?.id ?? 'anonymous-learner';
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locale = context.watch<AppState>().locale.code;
+    if (_contentLocale != null && _contentLocale != locale) {
+      // Localized source summaries can select a different distractor after
+      // deduplication. Re-present the question instead of retaining its choice.
+      _selectedAnswer = null;
+      _answerRevealed = false;
+      _practiceOrder.clear();
+    }
+    _contentLocale = locale;
+  }
 
   @override
   void initState() {
@@ -222,17 +267,21 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
     setState(() {
       _allModules = modules;
       _progress = progress;
-      _finished = progress.completedModuleIds.contains(widget.module.id);
+      _finished = progress.completedModuleIds.contains(_module.id);
       _step = _finished
           ? 0
-          : (progress.stepByModuleId[widget.module.id] ?? 0).clamp(0, 4);
+          : (progress.stepByModuleId[_module.id] ?? 0).clamp(0, 4);
       _loading = false;
     });
   }
 
   List<CurriculumChallenge> get _challenges => buildCurriculumChallenges(
-        module: widget.module,
-        allModules: _allModules,
+        module: _module,
+        allModules: _allModules
+            .map((module) => LessonContentLocalization.localizeModule(
+                module, context.read<AppState>().locale.code))
+            .toList(growable: false),
+        locale: context.read<AppState>().locale.code,
       );
 
   List<CurriculumChallenge> get _activeChallenges =>
@@ -292,7 +341,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
     try {
       _progress = await CurriculumProgressService.recordStep(
         learnerId: _learnerId,
-        moduleId: widget.module.id,
+        moduleId: _module.id,
         step: next,
       );
       if (!mounted) return;
@@ -308,7 +357,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
     try {
       _progress = await CurriculumProgressService.complete(
         learnerId: _learnerId,
-        moduleId: widget.module.id,
+        moduleId: _module.id,
         mastery: mastery,
       );
       if (!mounted) return;
@@ -356,7 +405,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
   }
 
   CurriculumModule? get _nextModule {
-    final index = _allModules.indexWhere((item) => item.id == widget.module.id);
+    final index = _allModules.indexWhere((item) => item.id == _module.id);
     if (index < 0 || index + 1 >= _allModules.length) return null;
     return _allModules[index + 1];
   }
@@ -373,6 +422,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
               : Column(
                   children: [
                     _header(state),
+                    TranslationReviewNote(locale: state.locale.code),
                     if (!_finished) _progressHeader(state),
                     Expanded(
                       child: AnimatedSwitcher(
@@ -409,7 +459,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${widget.module.id} · ${widget.module.strand}',
+                    '${_module.id} · ${_module.strand}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -420,7 +470,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
                     ),
                   ),
                   Text(
-                    widget.module.title,
+                    _module.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -437,7 +487,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
               onPressed: () => Navigator.pushNamed(
                 context,
                 '/audio-session',
-                arguments: widget.module,
+                arguments: _module,
               ),
               tooltip: state.tr(ru: 'Слушать', kk: 'Тыңдау', en: 'Listen'),
               icon: const Icon(Icons.headphones_rounded),
@@ -552,13 +602,16 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    _pill(widget.module.track, AppColors.skyLight),
-                    _pill(widget.module.difficulty, AppColors.goldLight),
+                    _pill(
+                        LessonContentLocalization.trackTitle(
+                            _module.track, state.locale.code),
+                        AppColors.skyLight),
+                    _pill(_module.difficulty, AppColors.goldLight),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  widget.module.objective,
+                  _module.objective,
                   style: const TextStyle(
                     fontFamily: 'Nunito',
                     fontSize: 18,
@@ -574,7 +627,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
           _infoRow(
             Icons.route_rounded,
             state.tr(ru: 'Перед стартом', kk: 'Бастамас бұрын', en: 'Before'),
-            widget.module.prerequisite,
+            _module.prerequisite,
           ),
           _infoRow(
             Icons.timer_outlined,
@@ -615,7 +668,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
                 ru: 'Источник модуля',
                 kk: 'Модуль дереккөзі',
                 en: 'Module source'),
-            curriculumSourceSummary(widget.module.sourceLocator),
+            curriculumSourceSummary(_module.sourceLocator),
           ),
           const SizedBox(height: 12),
           _sourceCard(
@@ -624,7 +677,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
                 ru: 'Что нужно доказать',
                 kk: 'Нені дәлелдеу керек',
                 en: 'What you must prove'),
-            widget.module.objective,
+            _module.objective,
             color: AppColors.goldLight.withValues(alpha: 0.55),
           ),
           const SizedBox(height: 12),
@@ -634,9 +687,9 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
                 ru: 'Компетенция наставника',
                 kk: 'Ұстаз құзыреті',
                 en: 'Mentor expertise'),
-            widget.module.speakerDomain,
+            _module.speakerDomain,
           ),
-          if (widget.module.videoNeed.trim().isNotEmpty) ...[
+          if (_module.videoNeed.trim().isNotEmpty) ...[
             const SizedBox(height: 12),
             _sourceCard(
               Icons.ondemand_video_rounded,
@@ -645,7 +698,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
                 kk: 'Видео тәжірибе',
                 en: 'Video practice',
               ),
-              widget.module.videoNeed,
+              _module.videoNeed,
               color: AppColors.pistachio.withValues(alpha: 0.12),
             ),
           ],
@@ -656,7 +709,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
                 ru: 'Статус проверки',
                 kk: 'Тексеру мәртебесі',
                 en: 'Review status'),
-            widget.module.reviewStatus,
+            _module.reviewStatus,
             color: AppColors.skyLight,
           ),
         ],
@@ -702,9 +755,9 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
 
   Widget _practiceStage(AppState state) {
     final labels = [
-      '${state.tr(ru: 'Учесть входное условие', kk: 'Бастапқы шартты ескеру', en: 'Check the prerequisite')}\n${widget.module.prerequisite}',
-      '${state.tr(ru: 'Проверить по опоре', kk: 'Дереккөзбен тексеру', en: 'Verify with evidence')}\n${curriculumSourceSummary(widget.module.sourceLocator)}',
-      '${state.tr(ru: 'Продемонстрировать результат', kk: 'Нәтижені көрсету', en: 'Demonstrate the outcome')}\n${widget.module.objective}',
+      '${state.tr(ru: 'Учесть входное условие', kk: 'Бастапқы шартты ескеру', en: 'Check the prerequisite')}\n${_module.prerequisite}',
+      '${state.tr(ru: 'Проверить по опоре', kk: 'Дереккөзбен тексеру', en: 'Verify with evidence')}\n${curriculumSourceSummary(_module.sourceLocator)}',
+      '${state.tr(ru: 'Продемонстрировать результат', kk: 'Нәтижені көрсету', en: 'Demonstrate the outcome')}\n${_module.objective}',
     ];
     final displayOrder = [1, 2, 0];
     final attempted = _practiceOrder.length == 3;
@@ -1222,7 +1275,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
   }
 
   Widget _completionView(AppState state) {
-    final score = _progress.masteryByModuleId[widget.module.id] ??
+    final score = _progress.masteryByModuleId[_module.id] ??
         curriculumAssessmentScore(_finalMistakes);
     final next = _nextModule;
     return SingleChildScrollView(
@@ -1259,7 +1312,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            widget.module.title,
+            _module.title,
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontFamily: 'Nunito',

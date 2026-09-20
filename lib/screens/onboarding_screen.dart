@@ -477,8 +477,18 @@ class _MascotGlowState extends State<_MascotGlow>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context) ||
+        !TickerMode.valuesOf(context).enabled) {
+      _ringController.stop();
+    } else if (!_ringController.isAnimating) {
+      _ringController.repeat();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final int cache = (212 * MediaQuery.of(context).devicePixelRatio).round();
     return SizedBox.square(
       dimension: 236,
       child: Stack(
@@ -498,16 +508,14 @@ class _MascotGlowState extends State<_MascotGlow>
               ),
             ),
           ),
-          _PingRing(animation: _ringController, phase: 0),
-          _PingRing(animation: _ringController, phase: 0.65),
-          Image.asset(
-            'assets/images/cat_greet_real.webp',
-            key: const ValueKey('premium-intro-mascot'),
-            width: 212,
-            height: 212,
-            fit: BoxFit.contain,
-            cacheWidth: cache,
-            cacheHeight: cache,
+          if (!MediaQuery.disableAnimationsOf(context)) ...[
+            _PingRing(animation: _ringController, phase: 0),
+            _PingRing(animation: _ringController, phase: 0.65),
+          ],
+          const CatCharacter(
+            key: ValueKey('premium-intro-mascot'),
+            mood: CatMood.greet,
+            size: 212,
           ),
         ],
       ),

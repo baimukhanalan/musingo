@@ -38,7 +38,9 @@ class _LessonPath extends StatelessWidget {
             return SizedBox(
               // Узел урока (круг 70 + отступ 12 + плашка названия ~29 ≈ 111px)
               // не влезал в 104 → Column переполнялся на 7px. Даём запас.
-              height: isCurrent ? 134 : 116,
+              height: (isCurrent ? 134 : 116) +
+                  (MediaQuery.textScalerOf(context).scale(12) - 12)
+                      .clamp(0, 36),
               child: Stack(
                 alignment: Alignment.topCenter,
                 children: [

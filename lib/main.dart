@@ -31,6 +31,7 @@ import 'screens/curriculum_library_screen.dart';
 import 'screens/curriculum_module_screen.dart';
 import 'models/lesson.dart';
 import 'models/curriculum_module.dart';
+import 'widgets/cat_character.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -286,13 +287,26 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
     return PageRouteBuilder(
       settings: settings,
       pageBuilder: (_, __, ___) => page,
-      transitionsBuilder: (_, animation, __, child) {
+      transitionsBuilder: (context, animation, __, child) {
+        if (MediaQuery.disableAnimationsOf(context)) return child;
+        final eased = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
         return FadeTransition(
-          opacity: CurvedAnimation(parent: animation, curve: Curves.easeInOut),
-          child: child,
+          opacity: eased,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.035, 0),
+              end: Offset.zero,
+            ).animate(eased),
+            child: child,
+          ),
         );
       },
-      transitionDuration: const Duration(milliseconds: 280),
+      transitionDuration: const Duration(milliseconds: 320),
+      reverseTransitionDuration: const Duration(milliseconds: 240),
     );
   }
 }
@@ -413,8 +427,8 @@ class _SplashScreenState extends State<_SplashScreen>
     super.initState();
     _ctrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1000));
-    _scale = Tween<double>(begin: 0.5, end: 1.0)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut));
+    _scale = Tween<double>(begin: 0.96, end: 1.0)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
     _fade = Tween<double>(begin: 0, end: 1)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeIn));
     _ctrl.forward();
@@ -445,11 +459,6 @@ class _SplashScreenState extends State<_SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    // M12: квадратный WebP показывается 190x190. Декодируем растр под
-    // экранный размер, домноженный на devicePixelRatio, а не в исходном
-    // разрешении. Картинка квадратная, поэтому cacheWidth == cacheHeight без
-    // искажения пропорций.
-    final catCache = (190 * MediaQuery.of(context).devicePixelRatio).round();
     final state = context.watch<AppState>();
     return Scaffold(
       backgroundColor: AppColors.sky,
@@ -463,14 +472,7 @@ class _SplashScreenState extends State<_SplashScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Image.asset(
-                    'assets/images/muslingo_cat.webp',
-                    width: 190,
-                    height: 190,
-                    fit: BoxFit.contain,
-                    cacheWidth: catCache,
-                    cacheHeight: catCache,
-                  ),
+                  const CatCharacter(mood: CatMood.greet, size: 190),
                   const SizedBox(height: 18),
                   const Text(
                     'muslingo',

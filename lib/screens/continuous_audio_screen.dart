@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../models/curriculum_module.dart';
 import '../services/app_state.dart';
 import '../services/curriculum_repository.dart';
+import '../services/lesson_content_localization.dart';
 import '../services/speech_synthesizer.dart';
 import '../utils/colors.dart';
 import '../widgets/premium_background.dart';
@@ -14,11 +15,13 @@ import '../widgets/premium_card.dart';
 class ContinuousAudioScreen extends StatefulWidget {
   final CurriculumModule? startModule;
   final Future<List<CurriculumModule>>? modulesFuture;
+  final SpeechSynthesizer? speechSynthesizer;
 
   const ContinuousAudioScreen({
     super.key,
     this.startModule,
     @visibleForTesting this.modulesFuture,
+    @visibleForTesting this.speechSynthesizer,
   });
 
   @override
@@ -37,6 +40,7 @@ class _ContinuousAudioScreenState extends State<ContinuousAudioScreen>
   int _sessionMinutes = 10;
   int _runToken = 0;
   DateTime? _sessionDeadline;
+  String? _languageCode;
 
   CurriculumModule? get _current =>
       _modules.isEmpty ? null : _modules[_index.clamp(0, _modules.length - 1)];
@@ -45,7 +49,7 @@ class _ContinuousAudioScreenState extends State<ContinuousAudioScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _tts = SpeechSynthesizer();
+    _tts = widget.speechSynthesizer ?? SpeechSynthesizer();
     _tts.setErrorHandler((message) {
       if (!mounted) return;
       setState(() {
@@ -83,6 +87,24 @@ class _ContinuousAudioScreenState extends State<ContinuousAudioScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locale = context.watch<AppState>().locale.code;
+    final changed = _languageCode != null && _languageCode != locale;
+    _languageCode = locale;
+    if (changed && _playing) {
+      final token = ++_runToken;
+      unawaited(_restartInSelectedLanguage(token));
+    }
+  }
+
+  Future<void> _restartInSelectedLanguage(int token) async {
+    await _tts.stop();
+    if (!mounted || token != _runToken || !_playing || _paused) return;
+    await _run(token);
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.detached) unawaited(_stop());
   }
@@ -114,15 +136,18 @@ class _ContinuousAudioScreenState extends State<ContinuousAudioScreen>
         await _stop();
         return;
       }
-      final module = _current;
-      if (module == null) return;
+      final original = _current;
+      if (original == null) return;
       try {
         final state = context.read<AppState>();
+        final module = LessonContentLocalization.localizeModule(
+            original, state.locale.code);
         await _tts.setLanguage(_voiceLocale(state));
         await _tts.setSpeechRate(0.42);
         await _tts.setPitch(1);
         await _tts.setVolume(1);
         await _tts.awaitSpeakCompletion(true);
+        if (!mounted || token != _runToken || !_playing || _paused) return;
         final intro = state.tr(
           ru: 'Модуль ${module.id}. ${module.title}. Цель. ${module.objective}',
           kk: '${module.id} модулі. ${module.title}. Мақсат. ${module.objective}',
@@ -205,7 +230,10 @@ class _ContinuousAudioScreenState extends State<ContinuousAudioScreen>
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final current = _current;
+    final original = _current;
+    final current = original == null
+        ? null
+        : LessonContentLocalization.localizeModule(original, state.locale.code);
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: PremiumBackground(

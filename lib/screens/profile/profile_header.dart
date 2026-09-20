@@ -25,7 +25,10 @@ class _ProfileHeader extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            user.name,
+                            state.isGuest
+                                ? state.tr(
+                                    ru: 'Гость', kk: 'Қонақ', en: 'Guest')
+                                : user.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -73,6 +76,8 @@ class _ProfileHeader extends StatelessWidget {
     switch (lang) {
       case NativeLanguage.kazakh:
         return 'KZ';
+      case NativeLanguage.english:
+        return 'EN';
       case NativeLanguage.russian:
       case NativeLanguage.uzbek:
       case null:

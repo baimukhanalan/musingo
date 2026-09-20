@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/lesson_video.dart';
 import '../services/app_state.dart';
 import '../services/lesson_video_catalog.dart';
+import '../services/lesson_content_localization.dart';
 import '../utils/colors.dart';
 import 'premium_card.dart';
 
@@ -28,8 +29,16 @@ class LessonVideoKnowledgeChallenge {
 List<LessonVideoKnowledgeChallenge> buildLessonVideoChallenges(
   LessonVideo video, {
   List<LessonVideo>? catalog,
+  String locale = 'ru',
 }) {
+  String tr(String ru, String kk, String en) => locale == 'kk'
+      ? kk
+      : locale == 'en'
+          ? en
+          : ru;
+  video = LessonContentLocalization.localizeVideo(video, locale);
   final peers = (catalog ?? LessonVideoCatalog.curated.entries)
+      .map((item) => LessonContentLocalization.localizeVideo(item, locale))
       .where((item) =>
           item.id != video.id && item.languageCode == video.languageCode)
       .toList(growable: false);
@@ -63,41 +72,68 @@ List<LessonVideoKnowledgeChallenge> buildLessonVideoChallenges(
   final concept = buildOptions(
     video.topic,
     (peer) => peer.topic,
-    const [
-      'Общая мотивация без разбора правила',
-      'История автора без учебного вывода',
-      'Тема, не связанная с текущим уроком',
+    [
+      tr(
+          'Общая мотивация без разбора правила',
+          'Ережені талдамайтын жалпы ынталандыру',
+          'General motivation without explaining the rule'),
+      tr(
+          'История автора без учебного вывода',
+          'Оқу қорытындысы жоқ автордың әңгімесі',
+          'The author’s story without a learning takeaway'),
+      tr('Тема, не связанная с текущим уроком',
+          'Осы сабаққа қатысы жоқ тақырып', 'A topic unrelated to this lesson'),
     ],
     0,
   );
-  String application(String topic) =>
-      'Выделить принцип «$topic», проверить его по текстовой опоре и применить в упражнении Muslingo.';
+  String application(String topic) => tr(
+      'Выделить принцип «$topic», проверить его по текстовой опоре и применить в упражнении Muslingo.',
+      '«$topic» қағидасын анықтап, мәтінмен тексеріп, Muslingo жаттығуында қолдану.',
+      'Identify the principle “$topic”, check it against the text, and apply it in a Muslingo exercise.');
   final transfer = buildOptions(
     application(video.topic),
     (peer) => application(peer.topic),
-    const [
-      'Считать просмотр достаточным и пропустить практику.',
-      'Сделать вывод, которого нет в материале, не проверяя источник.',
-      'Запомнить отдельные слова, не связывая их с правилом урока.',
+    [
+      tr(
+          'Считать просмотр достаточным и пропустить практику.',
+          'Көруді жеткілікті деп санап, жаттығуды өткізіп жіберу.',
+          'Treat watching as sufficient and skip the practice.'),
+      tr(
+          'Сделать вывод, которого нет в материале, не проверяя источник.',
+          'Дереккөзді тексермей, материалда жоқ қорытынды жасау.',
+          'Draw a conclusion absent from the material without checking the source.'),
+      tr(
+          'Запомнить отдельные слова, не связывая их с правилом урока.',
+          'Жеке сөздерді сабақ ережесімен байланыстырмай жаттау.',
+          'Memorize isolated words without connecting them to the lesson’s rule.'),
     ],
     1,
   );
 
   return [
     LessonVideoKnowledgeChallenge(
-      prompt:
+      prompt: tr(
           'После просмотра нужно назвать центральную идею без подсказки. Какая формулировка точнее?',
+          'Көргеннен кейін негізгі ойды көмексіз атау керек. Қай тұжырым дәлірек?',
+          'After watching, recall the central idea without a hint. Which wording is most accurate?'),
       options: concept,
       correctIndex: concept.indexOf(video.topic),
-      explanation:
+      explanation: tr(
           'Ответ берётся из заявленной темы видео, а не из похожего материала соседнего урока.',
+          'Жауап басқа сабақтағы ұқсас материалдан емес, осы видеоның тақырыбынан алынады.',
+          'The answer comes from this video’s stated topic, rather than similar material from another lesson.'),
     ),
     LessonVideoKnowledgeChallenge(
-      prompt: 'Какой следующий шаг превращает просмотр в проверяемый навык?',
+      prompt: tr(
+          'Какой следующий шаг превращает просмотр в проверяемый навык?',
+          'Қай келесі қадам көргеніңді тексерілетін дағдыға айналдырады?',
+          'Which next step turns watching into a demonstrable skill?'),
       options: transfer,
       correctIndex: transfer.indexOf(application(video.topic)),
-      explanation:
+      explanation: tr(
           'Нужно связать идею видео с текстовой опорой и затем применить её в интерактивной практике.',
+          'Видеоның идеясын мәтінмен байланыстырып, интерактивті жаттығуда қолдану керек.',
+          'Connect the video’s idea to the text and then apply it in interactive practice.'),
     ),
   ];
 }
@@ -128,8 +164,9 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final video = widget.video;
-    if (!const LessonVideoPolicy().validate(video).canDisplay) {
+    final video = LessonContentLocalization.localizeVideo(
+        widget.video, state.locale.code);
+    if (!const LessonVideoPolicy().validate(widget.video).canDisplay) {
       return const SizedBox.shrink();
     }
 
@@ -231,7 +268,8 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
             const SizedBox(height: 7),
             _MetadataLine(
               icon: Icons.verified_outlined,
-              text: '${video.source.publisher} · ${video.rights.label}',
+              text:
+                  '${video.source.publisher} · ${LessonContentLocalization.translateText(video.rights.label, state.locale.code)}',
             ),
             const SizedBox(height: 16),
             Text(
@@ -305,7 +343,8 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
   }
 
   Widget _knowledgeCheck(AppState state, LessonVideo video) {
-    final challenges = buildLessonVideoChallenges(video);
+    final challenges =
+        buildLessonVideoChallenges(widget.video, locale: state.locale.code);
     final challenge = challenges[_checkIndex];
     if (_checkMastered) {
       return Container(
@@ -481,7 +520,8 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
   }
 
   void _advanceKnowledgeCheck() {
-    final challenge = buildLessonVideoChallenges(widget.video)[_checkIndex];
+    final challenge = buildLessonVideoChallenges(widget.video,
+        locale: context.read<AppState>().locale.code)[_checkIndex];
     if (!_checkRevealed) {
       setState(() => _checkRevealed = true);
       return;

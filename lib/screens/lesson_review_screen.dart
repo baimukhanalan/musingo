@@ -100,11 +100,7 @@ class _LessonReviewScreenState extends State<LessonReviewScreen> {
                       const SizedBox(height: 20),
                       _MascotGlow(
                         mood: perfect ? CatMood.praise : CatMood.success,
-                      ).animate().scale(
-                            begin: const Offset(0.5, 0.5),
-                            duration: 600.ms,
-                            curve: Curves.elasticOut,
-                          ),
+                      ),
                       const SizedBox(height: 24),
 
                       // Итоговые статы урока в белой премиум-карточке.

@@ -163,6 +163,13 @@ class _MiniResource extends StatelessWidget {
   }
 }
 
+String _languageName(NativeLanguage language) => switch (language) {
+      NativeLanguage.russian => 'Русский',
+      NativeLanguage.kazakh => 'Қазақша',
+      NativeLanguage.english => 'English',
+      NativeLanguage.uzbek => 'Oʻzbekcha',
+    };
+
 class _LanguageButton extends StatelessWidget {
   final NativeLanguage language;
   final VoidCallback onTap;
@@ -175,9 +182,9 @@ class _LanguageButton extends StatelessWidget {
     return Semantics(
       button: true,
       label: state.tr(
-          ru: 'Выбрать ${language.label}',
-          kk: '${language.label} таңдау',
-          en: 'Choose ${language.label}'),
+          ru: 'Выбрать ${_languageName(language)}',
+          kk: '${_languageName(language)} таңдау',
+          en: 'Choose ${_languageName(language)}'),
       child: GestureDetector(
         onTap: onTap,
         child: Container(
@@ -194,7 +201,7 @@ class _LanguageButton extends StatelessWidget {
                   color: AppColors.navy, size: 23),
               const SizedBox(width: 12),
               Text(
-                language.label,
+                _languageName(language),
                 style: const TextStyle(
                   fontFamily: 'Nunito',
                   fontSize: 16,

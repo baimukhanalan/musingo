@@ -14,6 +14,35 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   final service = CoachService();
 
+  for (final locale in ['kk', 'en']) {
+    test('offline coach keeps $locale across every suggested question', () {
+      final learning = CoachContext(
+        goal: LearningGoal.shortSurahs,
+        placementLevel: 2,
+        recommendation: '',
+        recommendedLessonId: 'q1',
+        recommendedLessonTitle:
+            locale == 'kk' ? 'Әл-Фатиха: бастау' : 'Al-Fatihah: beginning',
+        dueReviewCount: 2,
+        weakKnowledge: const [],
+      );
+      for (final question in CoachService.suggestionsFor(locale)) {
+        final response = service.answer(question, learning, locale: locale);
+        expect(response.isOffline, isTrue);
+        expect(response.text, isNotEmpty);
+        expect(response.text, isNot(contains('Сегодня')));
+        expect(response.text, isNot(contains('Сначала')));
+        expect(response.actionLabel, isNot(contains('Открыть')));
+        if (locale == 'en') {
+          expect(RegExp(r'[А-Яа-яЁё]').hasMatch(response.text), isFalse);
+        } else {
+          expect(
+              RegExp(r'[әіңғүұқөһӘІҢҒҮҰҚӨҺ]').hasMatch(response.text), isTrue);
+        }
+      }
+    });
+  }
+
   CoachContext context({
     int due = 0,
     List<KnowledgeState> weak = const [],

@@ -20,13 +20,26 @@ class MainTabScreen extends StatefulWidget {
   State<MainTabScreen> createState() => _MainTabScreenState();
 }
 
-class _MainTabScreenState extends State<MainTabScreen> {
+class _MainTabScreenState extends State<MainTabScreen>
+    with SingleTickerProviderStateMixin {
   late int _current;
+  late final AnimationController _tabMotion;
 
   @override
   void initState() {
     super.initState();
     _current = widget.initialIndex;
+    _tabMotion = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+      value: 1,
+    );
+  }
+
+  @override
+  void dispose() {
+    _tabMotion.dispose();
+    super.dispose();
   }
 
   // Таббар прототипа: «Главная · Коран · Coach · Hafiz · Профиль».
@@ -61,20 +74,26 @@ class _MainTabScreenState extends State<MainTabScreen> {
       // детей: CatCharacter.repeat() в неактивных вкладках жёг бы CPU/батарею.
       // TickerMode(enabled: только у активной) замораживает анимации скрытых
       // вкладок и возобновляет их при переключении.
-      body: IndexedStack(
-        index: _current,
-        children: [
-          for (var i = 0; i < screens.length; i++)
-            TickerMode(
-              enabled: i == _current,
-              child: AnimatedScale(
-                scale: i == _current ? 1 : 0.992,
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                child: screens[i],
-              ),
-            ),
-        ],
+      body: FadeTransition(
+        opacity: Tween<double>(begin: 0.35, end: 1).animate(
+          CurvedAnimation(parent: _tabMotion, curve: Curves.easeOutCubic),
+        ),
+        child: SlideTransition(
+          position:
+              Tween<Offset>(begin: const Offset(0, 0.012), end: Offset.zero)
+                  .animate(CurvedAnimation(
+                      parent: _tabMotion, curve: Curves.easeOutCubic)),
+          child: IndexedStack(
+            index: _current,
+            children: [
+              for (var i = 0; i < screens.length; i++)
+                TickerMode(
+                  enabled: i == _current,
+                  child: RepaintBoundary(child: screens[i]),
+                ),
+            ],
+          ),
+        ),
       ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
@@ -104,7 +123,8 @@ class _MainTabScreenState extends State<MainTabScreen> {
                 _NavItem(
                     icon: Icons.auto_awesome_outlined,
                     activeIcon: Icons.auto_awesome_rounded,
-                    label: 'Coach',
+                    label: appState.tr(
+                        ru: 'Наставник', kk: 'Тәлімгер', en: 'Coach'),
                     index: 2,
                     current: _current,
                     onTap: _onTap),
@@ -131,7 +151,15 @@ class _MainTabScreenState extends State<MainTabScreen> {
     );
   }
 
-  void _onTap(int index) => setState(() => _current = index);
+  void _onTap(int index) {
+    if (index == _current) return;
+    setState(() => _current = index);
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _tabMotion.value = 1;
+    } else {
+      _tabMotion.forward(from: 0);
+    }
+  }
 }
 
 class _NavItem extends StatelessWidget {
@@ -176,14 +204,16 @@ class _NavItem extends StatelessWidget {
                 height: 52,
                 child: Center(
                   child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 160),
+                    duration: MediaQuery.disableAnimationsOf(context)
+                        ? Duration.zero
+                        : const Duration(milliseconds: 200),
                     switchInCurve: Curves.easeOut,
                     switchOutCurve: Curves.easeIn,
                     transitionBuilder: (child, animation) => ScaleTransition(
-                      scale: Tween<double>(begin: 0.72, end: 1).animate(
+                      scale: Tween<double>(begin: 0.94, end: 1).animate(
                         CurvedAnimation(
                           parent: animation,
-                          curve: Curves.easeOutBack,
+                          curve: Curves.easeOutCubic,
                         ),
                       ),
                       child: FadeTransition(opacity: animation, child: child),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 const String muslingoMascotName = 'Айн';
 
@@ -14,6 +13,8 @@ enum CatMood {
   prayer,
 }
 
+/// Articulated Blender character with independent eye, ear, head and paw motion.
+/// Its position in the surrounding layout stays stable.
 class CatCharacter extends StatefulWidget {
   final CatMood mood;
   final double size;
@@ -29,144 +30,108 @@ class CatCharacter extends StatefulWidget {
 }
 
 class _CatCharacterState extends State<CatCharacter>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _bobController;
-  late Animation<double> _bobAnim;
+    with WidgetsBindingObserver {
+  bool _foreground = true;
 
   @override
   void initState() {
     super.initState();
-    _bobController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1800),
-    );
-    _bobAnim = Tween<double>(begin: -4, end: 4).animate(
-      CurvedAnimation(parent: _bobController, curve: Curves.easeInOut),
-    );
+    WidgetsBinding.instance.addObserver(this);
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    _foreground = lifecycle == null || lifecycle == AppLifecycleState.resumed;
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (MediaQuery.of(context).disableAnimations) {
-      _bobController
-        ..stop()
-        ..value = 0.5;
-    } else if (!_bobController.isAnimating) {
-      _bobController.repeat(reverse: true);
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final foreground = state == AppLifecycleState.resumed;
+    if (_foreground != foreground) {
+      setState(() => _foreground = foreground);
     }
   }
 
   @override
   void dispose() {
-    _bobController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final asset = _assetForMood(widget.mood);
-    // M12: декодируем PNG в разрешении под экранный размер, а не в исходные
-    // 600x900. Коты портретные и рисуются с BoxFit.contain в квадратной рамке
-    // widget.size, поэтому ограничивающая сторона — высота. Задаём только
-    // cacheHeight, чтобы ширина масштабировалась пропорционально (без искажения).
-    final cacheExtent =
-        (widget.size * MediaQuery.of(context).devicePixelRatio).round();
-    final cat = Semantics(
+    final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    // Tiny repeated chat avatars stay still: their motion is not readable and
+    // decoding one animation for every message wastes battery and frame time.
+    final animate = widget.size >= 64 &&
+        !reducedMotion &&
+        _foreground &&
+        TickerMode.valuesOf(context).enabled;
+    final mood = widget.mood == CatMood.support ? 'thinking' : widget.mood.name;
+    final asset = 'assets/images/ayn_$mood${animate ? '' : '_still'}.webp';
+    final extent = (widget.size * MediaQuery.devicePixelRatioOf(context))
+        .round()
+        .clamp(64, 384);
+    return Semantics(
       image: true,
-      label: _labelForMood(widget.mood),
-      child: SizedBox.square(
-        dimension: widget.size,
-        child: ClipRect(
-          child: Image.asset(
-            asset,
-            fit: BoxFit.contain,
-            alignment: Alignment.center,
-            filterQuality: FilterQuality.high,
-            gaplessPlayback: true,
-            cacheHeight: cacheExtent,
+      label: _labelForMood(
+          widget.mood, Localizations.localeOf(context).languageCode),
+      child: RepaintBoundary(
+        child: SizedBox.square(
+          dimension: widget.size,
+          child: AnimatedSwitcher(
+            duration: reducedMotion
+                ? Duration.zero
+                : const Duration(milliseconds: 220),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeOutCubic,
+            child: Image.asset(
+              asset,
+              key: ValueKey(asset),
+              width: widget.size,
+              height: widget.size,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.medium,
+              gaplessPlayback: true,
+              cacheWidth: extent,
+              excludeFromSemantics: true,
+            ),
           ),
         ),
       ),
     );
-
-    if (MediaQuery.of(context).disableAnimations) return cat;
-
-    switch (widget.mood) {
-      case CatMood.success:
-        return cat
-            .animate()
-            .moveY(begin: 0, end: -20, duration: 300.ms, curve: Curves.easeOut)
-            .then()
-            .moveY(
-                begin: -20, end: 0, duration: 400.ms, curve: Curves.bounceOut);
-      case CatMood.error:
-        return cat.animate().shakeX(amount: 6, duration: 500.ms);
-      case CatMood.praise:
-        return cat
-            .animate(onPlay: (c) => c.repeat(period: 1.2.seconds))
-            .moveY(begin: 0, end: -16, duration: 400.ms, curve: Curves.easeOut)
-            .then()
-            .moveY(
-                begin: -16, end: 0, duration: 400.ms, curve: Curves.bounceOut);
-      case CatMood.greet:
-        return cat
-            .animate()
-            .fadeIn(duration: 400.ms)
-            .scale(begin: const Offset(0.85, 0.85), end: const Offset(1, 1));
-      default:
-        return AnimatedBuilder(
-          animation: _bobAnim,
-          builder: (context, child) {
-            return Transform.translate(
-              offset: Offset(0, _bobAnim.value),
-              child: child,
-            );
-          },
-          child: cat,
-        );
-    }
   }
 
-  String _assetForMood(CatMood mood) {
-    switch (mood) {
-      case CatMood.idle:
-        return 'assets/images/cat_idle_real.webp';
-      case CatMood.success:
-        return 'assets/images/cat_success_real.webp';
-      case CatMood.error:
-        return 'assets/images/cat_error_real.webp';
-      case CatMood.greet:
-        return 'assets/images/cat_greet_real.webp';
-      case CatMood.support:
-        return 'assets/images/cat_thinking_real.webp';
-      case CatMood.praise:
-        return 'assets/images/cat_praise_real.webp';
-      case CatMood.learning:
-        return 'assets/images/cat_learning_real.webp';
-      case CatMood.prayer:
-        return 'assets/images/cat_prayer_real.webp';
-    }
-  }
-
-  String _labelForMood(CatMood mood) {
-    switch (mood) {
-      case CatMood.idle:
-        return '$muslingoMascotName, кот Muslingo, спокойно ждёт';
-      case CatMood.success:
-        return '$muslingoMascotName поздравляет с правильным ответом';
-      case CatMood.error:
-        return '$muslingoMascotName поддерживает после ошибки';
-      case CatMood.greet:
-        return '$muslingoMascotName приветствует';
-      case CatMood.support:
-        return '$muslingoMascotName обдумывает подсказку';
-      case CatMood.praise:
-        return '$muslingoMascotName объясняет новый материал';
-      case CatMood.learning:
-        return '$muslingoMascotName читает и учится';
-      case CatMood.prayer:
-        return '$muslingoMascotName молится';
-    }
+  String _labelForMood(CatMood mood, String language) {
+    final descriptions = switch (language) {
+      'kk' => const [
+          'Айн сабырмен күтіп тұр',
+          'Айн дұрыс жауаппен құттықтайды',
+          'Айн қателіктен кейін қолдайды',
+          'Айн амандасады',
+          'Айн кеңесті ойластырады',
+          'Айн жетістігіңе қуанады',
+          'Айн оқып, үйреніп жатыр',
+          'Айн дұға жасап тұр',
+        ],
+      'en' => const [
+          'Ayn is waiting patiently',
+          'Ayn celebrates your correct answer',
+          'Ayn encourages you after a mistake',
+          'Ayn says hello',
+          'Ayn is thinking of a hint',
+          'Ayn celebrates your progress',
+          'Ayn is reading and learning',
+          'Ayn is praying',
+        ],
+      _ => const [
+          'Айн спокойно ждёт',
+          'Айн поздравляет с правильным ответом',
+          'Айн поддерживает после ошибки',
+          'Айн приветствует',
+          'Айн обдумывает подсказку',
+          'Айн радуется твоим успехам',
+          'Айн читает и учится',
+          'Айн молится',
+        ],
+    };
+    return descriptions[mood.index];
   }
 }

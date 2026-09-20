@@ -1,7 +1,6 @@
 import 'package:flutter/widgets.dart';
 
-/// Язык интерфейса приложения. Отдельно от [NativeLanguage] (родной язык для
-/// подсказок): AppLocale управляет тем, на каком языке показывается сам UI.
+/// The selected language controls the interface, lessons and mentor together.
 enum AppLocale {
   ru('ru', 'RU'),
   kk('kk', 'KZ'),
