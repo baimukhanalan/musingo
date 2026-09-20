@@ -92,6 +92,7 @@ class _LessonScreenState extends State<LessonScreen> {
   final ScrollController _contentScrollController = ScrollController();
   int _stepIndex = 0;
   CatMood _catMood = CatMood.greet;
+  int _reactionIndex = 0;
   int? _selectedAnswer;
   bool _answered = false;
 
@@ -232,6 +233,7 @@ class _LessonScreenState extends State<LessonScreen> {
     setState(() {
       _answered = true;
       _lastAnswerCorrect = isCorrect;
+      _reactionIndex += 1;
       if (isCorrect) {
         _catMood = CatMood.success;
       } else {
@@ -441,6 +443,7 @@ class _LessonScreenState extends State<LessonScreen> {
                                 child: CatCharacter(
                                   key: ValueKey(_catMood),
                                   mood: _catMood,
+                                  reactionId: _reactionIndex,
                                   size: veryCompactHeight
                                       ? 68
                                       : compactHeight
@@ -611,6 +614,7 @@ class _LessonScreenState extends State<LessonScreen> {
             HapticsService.wrong();
             setState(() {
               _catMood = CatMood.error;
+              _reactionIndex += 1;
               _errors = (_errors + 1).clamp(0, 5);
               if (!_mistakeSteps.contains(_step)) _mistakeSteps.add(_step);
               _weakStepIds.add(_stepId(_step));
@@ -622,6 +626,7 @@ class _LessonScreenState extends State<LessonScreen> {
             setState(() {
               _matchingComplete = true;
               _catMood = CatMood.success;
+              _reactionIndex += 1;
             });
           },
         );
@@ -641,7 +646,11 @@ class _LessonScreenState extends State<LessonScreen> {
             } else {
               HapticsService.speechFailed();
             }
-            setState(() => _speakPassed = passed);
+            setState(() {
+              _speakPassed = passed;
+              _catMood = passed ? CatMood.success : CatMood.error;
+              _reactionIndex += 1;
+            });
             if (!passed) _weakStepIds.add(_stepId(_step));
           },
           // (H1-а) Распознавание речи недоступно на устройстве — это вина среды,

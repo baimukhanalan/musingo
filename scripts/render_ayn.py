@@ -12,6 +12,10 @@ from mathutils import Vector
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "design", "ayn")
+FPS = 24
+FRAMES = 72
+SEGMENT = 84
+REACTIONS = {'greet', 'success', 'error', 'praise'}
 os.makedirs(OUT, exist_ok=True)
 bpy.ops.object.select_all(action='SELECT')
 bpy.ops.object.delete(use_global=False)
@@ -132,33 +136,50 @@ for index in range(4):
     line('Fine turban stitching',[(x,y-.006,z-.028) for x,y,z in points],.006,seam,head)
 
 eyes=[]
+pupils=[]
+brows=[]
+lids=[]
 for side in (-1,1):
     x=.34*side
     eye=empty('Blink eyelid rig',(x,-.516,.54),head)
     uv('White of eye',(0,0,0),(.235,.063,.265),white,eye)
-    uv('Pupil',(side*.012,-.055,.008),(.123,.037,.175),ink,eye)
-    uv('Large catchlight',(-.040,-.085,.078),(.040,.016,.049),white,eye)
-    uv('Small catchlight',(.037,-.089,-.048),(.017,.013,.020),white,eye)
+    gaze=empty('Gaze joint',(0,0,0),eye)
+    uv('Pupil',(side*.012,-.055,.008),(.123,.037,.175),ink,gaze)
+    uv('Large catchlight',(-.040,-.085,.078),(.040,.016,.049),white,gaze)
+    uv('Small catchlight',(.037,-.089,-.048),(.017,.013,.020),white,gaze)
+    pupils.append(gaze)
     eyes.append(eye)
+    lid=empty('Closed eyelid joint',(x,-.605,.54),head)
+    line('Closed eyelid',[(-.18,0,.025),(0,-.008,-.028),(.18,0,.025)],.018,blue_dark,lid)
+    lids.append(lid)
     ring=[(x+.267*math.cos(t),-.585,.54+.29*math.sin(t)) for t in [i*2*math.pi/36 for i in range(36)]]
     line('Round glasses',ring,.026,ink,head,True)
     line('Glasses temple',[(x+side*.265,-.57,.57),(side*.79,-.35,.61)],.025,ink,head)
-    line('Kind eyebrow',[(x-.11,-.49,.94),(x,-.50,.985),(x+.11,-.49,.96)],.036,blue_dark,head)
+    brow=empty('Eyebrow joint',(x,-.49,.91),head)
+    line('Kind eyebrow',[(-.11,0,0),(0,-.01,.04),(.11,0,.02)],.033,blue_dark,brow)
+    brows.append(brow)
     for n in range(2):
         line('Soft whisker',[(side*.64,-.445,.30-n*.11),(side*.80,-.39,.33-n*.14)],.017,blue_dark,head)
 line('Glasses bridge',[(-.074,-.583,.55),(0,-.60,.58),(.074,-.583,.55)],.025,ink,head)
 uv('Pink nose',(0,-.60,.305),(.085,.045,.060),pink,head)
-line('Smile left',[(0,-.565,.255),(-.06,-.563,.19),(-.14,-.55,.235)],.018,ink,head)
-line('Smile right',[(0,-.565,.255),(.06,-.563,.19),(.14,-.55,.235)],.018,ink,head)
+smile=empty('Smile joint',(0,-.565,.24),head)
+line('Smile left',[(0,0,.015),(-.06,.002,-.05),(-.14,.015,-.005)],.018,ink,smile)
+line('Smile right',[(0,0,.015),(.06,.002,-.05),(.14,.015,-.005)],.018,ink,smile)
+joy=empty('Joyful mouth joint',(0,-.566,.185),head)
+uv('Open joyful mouth',(0,0,0),(.17,.029,.061),ink,joy)
+uv('Tongue',(0,-.027,-.027),(.094,.008,.022),pink,joy)
 
 arms=[]
+wrists=[]
 for side in (-1,1):
     arm=empty('Shoulder joint',(.48*side,-.01,.62),body)
     uv('Robe sleeve',(.15*side,0,-.23),(.235,.27,.39),cream,arm)
-    uv('Cyan hand',(.20*side,-.02,-.51),(.18,.21,.20),blue,arm)
+    wrist=empty('Wrist joint',(.20*side,-.02,-.51),arm)
+    uv('Cyan hand',(0,0,0),(.18,.21,.20),blue,wrist)
     for d in (-.055,.045):
-        line('Paw fingers',[(side*.20+d,-.224,-.54),(side*.20+d,-.227,-.46)],.009,blue_dark,arm)
+        line('Paw fingers',[(d,-.204,-.03),(d,-.207,.05)],.009,blue_dark,wrist)
     arms.append(arm)
+    wrists.append(wrist)
 
 book=empty('Book joint',(.39,-.48,-.22),arms[1])
 cube('Book pages',(0,0,0),(.55,.11,.71),cream,book,.035)
@@ -191,17 +212,18 @@ obj=bpy.data.objects.new('Gold star',mesh); bpy.context.collection.objects.link(
 obj.parent=book; obj.data.materials.append(gold)
 
 scene=bpy.context.scene
-scene.render.engine='CYCLES'
-scene.cycles.samples=20
-scene.cycles.use_denoising=True
+scene.render.engine='BLENDER_EEVEE'
+scene.eevee.taa_render_samples=32
+scene.eevee.shadow_ray_count=2
+scene.render.use_persistent_data=True
 scene.render.resolution_x=384
 scene.render.resolution_y=384
 scene.render.resolution_percentage=100
 scene.render.film_transparent=True
 scene.render.image_settings.file_format='PNG'
 scene.render.image_settings.color_mode='RGBA'
-scene.render.fps=16
-scene.frame_start=1; scene.frame_end=32
+scene.render.fps=FPS
+scene.frame_start=1; scene.frame_end=FRAMES
 scene.world.color=(.35,.35,.35)
 scene.view_settings.view_transform='AgX'
 scene.view_settings.look='AgX - Medium High Contrast'
@@ -219,68 +241,114 @@ camera=bpy.context.object; camera.name='Portrait camera'
 camera.rotation_euler=(Vector((0,-.02,1.85))-camera.location).to_track_quat('-Z','Y').to_euler()
 camera.data.type='ORTHO'; camera.data.ortho_scale=4.12; scene.camera=camera
 
+def smoothstep(start,end,t):
+    x=max(0,min(1,(t-start)/(end-start)))
+    return x*x*(3-2*x)
+
 def pose(mood,frame):
-    t=(frame-1)/32
+    t=(frame-1)/(FRAMES-1 if mood in REACTIONS else FRAMES)
     wave=math.sin(t*math.tau)
-    body.scale=(1+.004*wave,1+.007*wave,1+.008*wave)
+    # Reactions enter gently, hold their intent, then settle completely.
+    gesture=smoothstep(.035,.24,t)*(1-smoothstep(.68,1,t))
+    body.scale=(1+.003*wave,1+.005*wave,1+.005*wave)
     head.rotation_euler=(0,0,0)
-    head.rotation_euler[1]=.025*wave
-    tail.rotation_euler[2]=.06*wave
+    head.rotation_euler[1]=.014*wave
+    tail.rotation_euler[2]=.045*wave
     for n,e in enumerate(ears): e.rotation_euler[1]=(-1 if n==0 else 1)*.025*math.sin(t*math.tau+.8)
     for a in arms: a.rotation_euler=(0,0,0)
-    # A quick asymmetric blink, never squash the glasses or entire character.
-    blink=max(.06,1-.96*math.exp(-((t-.72)/.037)**2))
-    for e in eyes: e.scale.z=blink
+    for wrist in wrists: wrist.rotation_euler=(0,0,0)
+    for pupil in pupils: pupil.location=(0,0,0)
+    for brow in brows:
+        brow.rotation_euler=(0,0,0)
+        brow.location.z=.91
+    book.rotation_euler=(0,0,0)
+    smile.scale=(1,1,1)
+    joy.scale=(.001,.001,.001)
+    # Eye whites close entirely; a curved eyelid replaces the old white slit.
+    blink=max(.001,1-math.exp(-((t-.73)/.026)**2))
+    for eye in eyes: eye.scale.z=blink
+    closed=max(.001,1-smoothstep(.02,.38,blink))
+    for lid in lids: lid.scale=(closed,1,closed)
     if mood=='greet':
-        arms[0].rotation_euler[1]=1.8+.18*math.sin(t*math.tau*2)
-        arms[0].rotation_euler[0]=-.16
-        head.rotation_euler[1]=-.06+.025*wave
+        # A raised paw, two small wrist waves, a quiet pause and a soft return.
+        wave_window=smoothstep(.22,.30,t)*(1-smoothstep(.53,.62,t))
+        arms[0].rotation_euler[1]=1.85*gesture
+        arms[0].rotation_euler[0]=-.16*gesture
+        wrists[0].rotation_euler[1]=.26*math.sin((t-.24)*math.tau*5)*wave_window
+        head.rotation_euler[1]=-.065*gesture+.014*wave
+        for brow in brows: brow.location.z+=.025*gesture
+        smile.scale.x=1+.13*gesture
     elif mood=='success':
-        arms[0].rotation_euler[1]=2.10+.10*wave
-        head.rotation_euler[0]=.035+.055*wave
-        for e in eyes: e.scale.z=.82*blink
-        ears[0].rotation_euler[1]=-.09; ears[1].rotation_euler[1]=.09
+        arms[0].rotation_euler[1]=2.10*gesture
+        wrists[0].rotation_euler[1]=-.15*gesture
+        head.rotation_euler[0]=-.065*gesture+.035*wave*gesture
+        for eye in eyes: eye.scale.z=(1-.12*gesture)*blink
+        for brow in brows: brow.location.z+=.033*gesture
+        ears[0].rotation_euler[1]=-.10*gesture; ears[1].rotation_euler[1]=.10*gesture
+        joy.scale=(gesture,gesture,gesture)
+        smile.scale=(1-.9*gesture,1,1-.9*gesture)
     elif mood=='praise':
-        arms[0].rotation_euler[1]=1.28+.10*wave
-        head.rotation_euler[0]=.06*math.sin(t*math.tau*2)
-        for e in eyes: e.scale.z=.9*blink
+        arms[0].rotation_euler[1]=1.10*gesture
+        arms[0].rotation_euler[0]=-.20*gesture
+        head.rotation_euler[0]=.085*math.sin(t*math.tau*2)*gesture
+        smile.scale.x=1+.25*gesture
+        for brow in brows: brow.location.z+=.016*gesture
     elif mood=='thinking':
         arms[0].rotation_euler[1]=-2.15
         arms[0].rotation_euler[0]=-.35
-        head.rotation_euler[1]=-.12+.025*wave
-        head.rotation_euler[2]=.06
+        head.rotation_euler[1]=-.105+.016*wave
+        head.rotation_euler[2]=.045
+        for pupil in pupils: pupil.location=(-.04,0,.048)
+        brows[0].location.z+=.035
+        brows[1].rotation_euler[1]=-.15
+        smile.scale=(.75,1,.8)
     elif mood=='error':
-        head.rotation_euler[0]=.12
-        head.rotation_euler[2]=.035*wave
-        ears[0].rotation_euler[1]=-.16; ears[1].rotation_euler[1]=.16
-        arms[0].rotation_euler[0]=-.35
+        head.rotation_euler[0]=.07*gesture
+        head.rotation_euler[1]=.075*gesture
+        ears[0].rotation_euler[1]=-.15*gesture; ears[1].rotation_euler[1]=.15*gesture
+        arms[0].rotation_euler[0]=-.45*gesture
+        arms[0].rotation_euler[1]=-.16*gesture
+        for i,brow in enumerate(brows): brow.rotation_euler[1]=(-.16 if i==0 else .16)*gesture
+        for pupil in pupils: pupil.location.z=-.024*gesture
+        smile.scale.x=1-.22*gesture
     elif mood=='learning':
-        head.rotation_euler[0]=.16+.025*wave
-        arms[1].rotation_euler[0]=-.20
+        head.rotation_euler[0]=.15+.018*wave
+        head.rotation_euler[2]=-.035
+        for pupil in pupils: pupil.location=(.042,0,-.045)
+        arms[1].rotation_euler[0]=-.17
         arms[0].rotation_euler[0]=-.45
         arms[0].rotation_euler[1]=-.48
+        book.rotation_euler[0]=-.06
+        smile.scale.x=.85
     elif mood=='prayer':
-        head.rotation_euler[0]=.18+.015*wave
-        for e in eyes: e.scale.z=.055
-        arms[0].rotation_euler[0]=-.76
-        arms[0].rotation_euler[1]=-.46
-        arms[1].rotation_euler[0]=-.76
-        arms[1].rotation_euler[1]=.46
-    book.hide_render=mood=='prayer'
-    for child in book.children: child.hide_render=mood=='prayer'
+        head.rotation_euler[0]=.16+.012*wave
+        for eye in eyes: eye.scale.z=.001
+        for lid in lids: lid.scale=(1,1,1)
+        smile.scale=(.85,1,.7)
+        arms[0].rotation_euler[0]=-1.50
+        arms[0].rotation_euler[1]=-.70
+        arms[1].rotation_euler[0]=-1.50
+        arms[1].rotation_euler[1]=.70
+        wrists[0].rotation_euler=(.35,0,.20)
+        wrists[1].rotation_euler=(.35,0,-.20)
+    for child in book.children:
+        child.hide_render=mood=='prayer'
+        child.hide_viewport=mood=='prayer'
 
 moods=['idle','greet','thinking','success','error','prayer','learning','praise']
-saved_actions={obj: [] for obj in [body,head,tail,*ears,*arms,*eyes]}
+animated=[body,head,tail,book,smile,joy,*ears,*arms,*wrists,*eyes,*pupils,*brows,*lids]
+saved_actions={obj: [] for obj in animated}
 for mood in moods:
-    scene.timeline_markers.new(mood,frame=1+moods.index(mood)*40)
+    scene.timeline_markers.new(mood,frame=1+moods.index(mood)*SEGMENT)
 # Store editable joint actions and arrange the eight performances on the NLA timeline.
 for mood in moods:
-    for frame in range(1,33):
+    for frame in range(1,FRAMES+1):
         pose(mood,frame)
-        for obj in [body,head,tail,*ears,*arms,*eyes]:
+        for obj in animated:
             obj.keyframe_insert(data_path='rotation_euler',frame=frame)
             obj.keyframe_insert(data_path='scale',frame=frame)
-    for obj in [body,head,tail,*ears,*arms,*eyes]:
+            obj.keyframe_insert(data_path='location',frame=frame)
+    for obj in animated:
         action=obj.animation_data.action
         action.name=f'Ayn / {mood} / {obj.name}'
         action.use_fake_user=True
@@ -292,31 +360,37 @@ for obj,actions in saved_actions.items():
     track=obj.animation_data.nla_tracks.new()
     track.name='Ayn emotional performances'
     for index,action in enumerate(actions):
-        strip=track.strips.new(moods[index],1+index*40,action)
+        strip=track.strips.new(moods[index],1+index*SEGMENT,action)
         strip.extrapolation='NOTHING'
 for child in book.children:
     for index,mood in enumerate(moods):
         child.hide_render=mood=='prayer'
         child.hide_viewport=mood=='prayer'
-        child.keyframe_insert(data_path='hide_render',frame=1+index*40)
-        child.keyframe_insert(data_path='hide_viewport',frame=1+index*40)
+        child.keyframe_insert(data_path='hide_render',frame=1+index*SEGMENT)
+        child.keyframe_insert(data_path='hide_viewport',frame=1+index*SEGMENT)
     child.hide_render=False
     child.hide_viewport=False
-scene.frame_end=312
+scene.frame_end=(len(moods)-1)*SEGMENT+FRAMES
+scene.frame_set(1)
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT,'ayn_articulated.blend'))
 for obj in saved_actions: obj.animation_data_clear()
 for child in book.children: child.animation_data_clear()
 if '--preview' in sys.argv:
-    pose('greet',1)
+    pose('greet',32)
     scene.render.filepath=os.path.join(OUT,'preview.png')
     bpy.ops.render.render(write_still=True)
+if '--contact' in sys.argv:
+    for mood in ['greet','success','thinking','prayer']:
+        pose(mood,32)
+        scene.render.filepath=os.path.join(OUT,f'preview_{mood}.png')
+        bpy.ops.render.render(write_still=True)
 if '--render' in sys.argv:
     selected=moods
     if '--moods' in sys.argv:
         selected=sys.argv[sys.argv.index('--moods')+1].split(',')
     for mood in selected:
-        folder=os.path.join(OUT,'frames',mood); os.makedirs(folder,exist_ok=True)
-        for frame in range(1,33):
+        folder=os.path.join(OUT,'frames_24fps',mood); os.makedirs(folder,exist_ok=True)
+        for frame in range(1,FRAMES+1):
             pose(mood,frame)
             scene.render.filepath=os.path.join(folder,f'{frame:03d}.png')
             bpy.ops.render.render(write_still=True)

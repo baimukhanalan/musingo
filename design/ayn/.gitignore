@@ -1,2 +1,6 @@
 frames/
+frames_24fps/
 *.blend1
+benchmark_*.py
+eevee_preview_*.png
+preview_*.png
