@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import '../models/curriculum_module.dart';
 import '../models/lesson.dart';
 import '../models/lesson_video.dart';
+import 'arabic_learning_localization.dart';
+import 'learning_title_localization.dart';
 
 /// Bundled translations of learning content. IDs, grading, Arabic recitation and
 /// source URLs stay identical across languages; switching never resets progress.
@@ -68,8 +70,28 @@ class LessonContentLocalization {
     }));
   }
 
-  static String translateText(String source, String locale) =>
-      locale == 'ru' ? source : _strings[locale]?[source] ?? source;
+  static String translateText(String source, String locale) {
+    if (locale == 'ru') return source;
+    final terminology = localizeArabicLearningText(source, locale);
+    if (terminology != null) return terminology;
+    // Reasoning questions embed the very same source facts used by the lesson.
+    // Translate each fact independently, so a corrected letter name cannot
+    // become "Dad"/"father" again inside a combined answer.
+    final lines = source.split('\n');
+    final numberedAnswer = RegExp(r'^(\d+ — )(.*)$');
+    if (lines.length > 1 && lines.every(numberedAnswer.hasMatch)) {
+      return lines.map((line) {
+        final match = numberedAnswer.firstMatch(line)!;
+        return '${match[1]}${translateText(match[2]!, locale)}';
+      }).join('\n');
+    }
+    final letterPair = RegExp(r'^([\u0621-\u064a]) — (.+)$').firstMatch(source);
+    if (letterPair != null) {
+      final letterName = localizeArabicLearningText(letterPair[2]!, locale);
+      if (letterName != null) return '${letterPair[1]} — $letterName';
+    }
+    return _strings[locale]?[source] ?? source;
+  }
 
   static String trackTitle(String track, String locale) {
     const labels = {
@@ -166,7 +188,8 @@ class LessonContentLocalization {
     return cache.putIfAbsent(locale, () {
       final localized = Lesson(
         id: original.id,
-        title: translateText(original.title, locale),
+        title: localizeLearningTitle(original.title, original.course, locale) ??
+            translateText(original.title, locale),
         subtitle: translateText(original.subtitle, locale),
         course: original.course,
         order: original.order,

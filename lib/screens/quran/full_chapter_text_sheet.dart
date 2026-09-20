@@ -29,7 +29,7 @@ class _FullChapterTextSheetState extends State<_FullChapterTextSheet> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  '${chapter.summary.number}. ${chapter.summary.latinName}',
+                  '${chapter.summary.number}. ${quranDisplayName(chapter.summary, state.locale.code)}',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontFamily: 'Nunito',
@@ -50,8 +50,8 @@ class _FullChapterTextSheetState extends State<_FullChapterTextSheet> {
                     ButtonSegment<bool>(
                       value: false,
                       icon: const Icon(Icons.translate_rounded),
-                      label: Text(
-                          state.tr(ru: 'Русский', kk: 'Орыс', en: 'Russian')),
+                      label: Text(state.tr(
+                          ru: 'Русский', kk: 'Қазақша', en: 'English')),
                     ),
                   ],
                   selected: {_showArabic},

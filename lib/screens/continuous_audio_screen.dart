@@ -153,8 +153,9 @@ class _ContinuousAudioScreenState extends State<ContinuousAudioScreen>
           kk: '${module.id} модулі. ${module.title}. Мақсат. ${module.objective}',
           en: 'Module ${module.id}. ${module.title}. Objective. ${module.objective}',
         );
-        await _tts.speak(intro);
+        final result = await _tts.speak(intro);
         if (!mounted || token != _runToken || !_playing || _paused) return;
+        if (result != 1) throw StateError('Speech did not start.');
         await Future<void>.delayed(const Duration(seconds: 2));
         if (!mounted || token != _runToken || !_playing || _paused) return;
         setState(() => _index = (_index + 1) % _modules.length);

@@ -139,7 +139,7 @@ class _LearningPathPanel extends StatelessWidget {
                       const SizedBox(height: 5),
                       Text(
                         title,
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontFamily: 'Nunito',
@@ -150,7 +150,7 @@ class _LearningPathPanel extends StatelessWidget {
                       ),
                       Text(
                         subtitle,
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontFamily: 'Nunito',
@@ -239,12 +239,14 @@ class _LearningPathPanel extends StatelessWidget {
               children: [
                 Positioned.fill(
                   child: _LearningPathWorld(
-                    motionEnabled: !MediaQuery.of(context).disableAnimations,
+                    mode: mode,
+                    controller: controller,
                   ),
                 ),
-                const Positioned.fill(child: _PathAtmosphere()),
                 AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 320),
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 240),
                   layoutBuilder: semanticSwitcherLayout,
                   switchInCurve: Curves.easeOutCubic,
                   switchOutCurve: Curves.easeInCubic,
@@ -286,35 +288,75 @@ class _LearningPathPanel extends StatelessWidget {
 }
 
 class _LearningPathWorld extends StatelessWidget {
-  final bool motionEnabled;
+  final _LearningMode mode;
+  final ScrollController controller;
 
-  const _LearningPathWorld({required this.motionEnabled});
+  const _LearningPathWorld({required this.mode, required this.controller});
 
   @override
   Widget build(BuildContext context) {
-    final image = Image.asset(
-      'assets/images/learning_path_world.webp',
-      key: const ValueKey('learning-path-world'),
-      fit: BoxFit.cover,
-      alignment: Alignment.topCenter,
-      color: Colors.white.withValues(alpha: 0.22),
-      colorBlendMode: BlendMode.srcATop,
+    final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    return ExcludeSemantics(
+      child: IgnorePointer(
+        child: RepaintBoundary(
+          child: LayoutBuilder(builder: (context, constraints) {
+            // A single compressed painting per course. Scroll reveals its
+            // ground-to-sky journey; no idle animation or per-lesson bitmaps.
+            final canvasHeight = (constraints.maxWidth * 2)
+                .clamp(constraints.maxHeight * 1.65, double.infinity);
+            final image = Image.asset(
+              'assets/images/world_${mode.name}.webp',
+              key: ValueKey('learning-world-${mode.name}'),
+              width: constraints.maxWidth,
+              height: canvasHeight,
+              fit: BoxFit.cover,
+              cacheWidth: (constraints.maxWidth *
+                      MediaQuery.devicePixelRatioOf(context))
+                  .round()
+                  .clamp(384, 768),
+              filterQuality: FilterQuality.medium,
+              errorBuilder: (_, error, stack) => const ColoredBox(
+                color: AppColors.skyLight,
+              ),
+            );
+            return AnimatedBuilder(
+              animation: controller,
+              child: image,
+              builder: (context, child) {
+                // Expansion may briefly retain the outgoing scrollable during
+                // its crossfade. The latest attached viewport owns the scene.
+                final position = controller.positions.isNotEmpty
+                    ? controller.positions.last
+                    : null;
+                final progress = !reducedMotion &&
+                        position != null &&
+                        position.hasContentDimensions &&
+                        position.maxScrollExtent > 0
+                    ? (position.pixels / position.maxScrollExtent)
+                        .clamp(0.0, 1.0)
+                    : 0.0;
+                return Stack(
+                  key: const ValueKey('learning-path-world'),
+                  clipBehavior: Clip.hardEdge,
+                  fit: StackFit.expand,
+                  children: [
+                    Positioned(
+                      top: -(canvasHeight - constraints.maxHeight) *
+                          (1 - progress),
+                      left: 0,
+                      right: 0,
+                      height: canvasHeight,
+                      child: child!,
+                    ),
+                    const ColoredBox(color: Color(0x22FFFFFF)),
+                  ],
+                );
+              },
+            );
+          }),
+        ),
+      ),
     );
-    if (!motionEnabled) return image;
-    return image
-        .animate(onPlay: (controller) => controller.repeat(reverse: true))
-        .scale(
-          begin: const Offset(1.0, 1.0),
-          end: const Offset(1.035, 1.035),
-          duration: 7000.ms,
-          curve: Curves.easeInOut,
-        )
-        .moveY(
-          begin: -3,
-          end: 3,
-          duration: 7000.ms,
-          curve: Curves.easeInOut,
-        );
   }
 }
 

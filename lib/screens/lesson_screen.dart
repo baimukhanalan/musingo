@@ -9,7 +9,6 @@ import 'package:speech_to_text/speech_to_text.dart';
 import '../models/lesson.dart';
 import '../models/speech_evaluation.dart';
 import '../services/app_state.dart';
-import '../services/backend_service.dart';
 import '../services/haptics_service.dart';
 import '../services/lesson_video_catalog.dart';
 import '../services/lesson_content_localization.dart';
@@ -46,6 +45,9 @@ const _lessonFontFallback = AppTheme.fontFallback;
 String _stepTypeLabel(LessonStep step, AppState state) {
   switch (step.type) {
     case LessonStepType.audio:
+      if (step.quranGlobalAyahNumber == null) {
+        return state.tr(ru: 'Звучание', kk: 'Дыбысталу', en: 'Sound');
+      }
       return state.tr(ru: 'Новый аят', kk: 'Жаңа аят', en: 'New ayah');
     case LessonStepType.text:
       return state.tr(

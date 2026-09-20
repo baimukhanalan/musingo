@@ -39,7 +39,7 @@ class _ChapterHeader extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '${chapter.revelationLabel} • ${chapter.ayahCount} ${state.tr(ru: 'аятов', kk: 'аят', en: 'verses')}',
+            '${chapter.revelationLabelForLocale(state.locale.code)} • ${chapter.ayahCount} ${state.tr(ru: 'аятов', kk: 'аят', en: 'verses')}',
             style: const TextStyle(
               fontFamily: 'Nunito',
               color: Colors.white70,

@@ -10,95 +10,75 @@ class _GuestSaveProgressCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF5FC3EE), Color(0xFF3FA9DC), AppColors.navy],
+    return PremiumCard(
+      padding: const EdgeInsets.fromLTRB(16, 16, 10, 8),
+      color: const Color(0xFFEEF8FD),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.80),
+                ),
+                child: const Icon(Icons.cloud_upload_rounded,
+                    color: AppColors.navy, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      state.tr(
+                          ru: 'Сохрани прогресс',
+                          kk: 'Прогресіңді сақта',
+                          en: 'Save your progress'),
+                      style: const TextStyle(
+                        fontFamily: 'Nunito',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.navyDark,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      state.tr(
+                          ru: 'Новый прогресс — в облаке. Гостевые уроки и награды останутся здесь.',
+                          kk: 'Жаңа прогресс бұлтта сақталады. Қонақ сабақтары мен марапаттары осында қалады.',
+                          en: 'Sync new progress to the cloud. Guest lessons and rewards stay here.'),
+                      style: const TextStyle(
+                        fontFamily: 'Nunito',
+                        fontSize: 13,
+                        height: 1.4,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textGrey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.sky.withValues(alpha: 0.38),
-              blurRadius: 24,
-              offset: const Offset(0, 12),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.22),
-                  ),
-                  child: const Icon(Icons.cloud_upload_rounded,
-                      color: Colors.white, size: 26),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        state.tr(
-                            ru: 'Сохрани прогресс',
-                            kk: 'Прогресіңді сақта',
-                            en: 'Save your progress'),
-                        style: const TextStyle(
-                          fontFamily: 'Nunito',
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        state.tr(
-                            ru: 'Аккаунт включит облачную синхронизацию для '
-                                'нового прогресса. Гостевые завершения и '
-                                'награды останутся на этом устройстве.',
-                            kk: 'Аккаунт жаңа прогресс үшін бұлттық '
-                                'синхрондауды қосады. Қонақ ретінде аяқталған '
-                                'сабақтар мен сыйлықтар осы құрылғыда қалады.',
-                            en: 'An account enables cloud sync for new '
-                                'progress. Guest completions and rewards stay '
-                                'on this device.'),
-                        style: const TextStyle(
-                          fontFamily: 'Nunito',
-                          fontSize: 12.5,
-                          height: 1.35,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white70,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            PremiumButton(
-              label: state.tr(
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: onTap,
+              style: TextButton.styleFrom(foregroundColor: AppColors.navy),
+              label: Text(state.tr(
                   ru: 'Создать аккаунт',
                   kk: 'Аккаунт жасау',
-                  en: 'Create account'),
-              variant: PremiumButtonVariant.gold,
-              icon: Icons.arrow_forward_rounded,
-              onPressed: onTap,
+                  en: 'Create account')),
+              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+              iconAlignment: IconAlignment.end,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

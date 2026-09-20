@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/hafiz_progress.dart';
@@ -70,6 +72,7 @@ class _MainTabScreenState extends State<MainTabScreen>
     ];
 
     return Scaffold(
+      extendBody: true,
       // IndexedStack держит все вкладки живыми, но НЕ глушит тикеры скрытых
       // детей: CatCharacter.repeat() в неактивных вкладках жёг бы CPU/батарею.
       // TickerMode(enabled: только у активной) замораживает анимации скрытых
@@ -95,16 +98,11 @@ class _MainTabScreenState extends State<MainTabScreen>
           ),
         ),
       ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.white,
-          border: Border(top: BorderSide(color: AppColors.border, width: 1)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            child: Row(
+      // Hide the dock while composing so it cannot crowd the keyboard or input.
+      bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom > 0
+          ? null
+          : _FloatingNavigationBar(
+              current: _current,
               children: [
                 _NavItem(
                     icon: Icons.home_outlined,
@@ -145,9 +143,6 @@ class _MainTabScreenState extends State<MainTabScreen>
                     onTap: _onTap),
               ],
             ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -159,6 +154,99 @@ class _MainTabScreenState extends State<MainTabScreen>
     } else {
       _tabMotion.forward(from: 0);
     }
+  }
+}
+
+class _FloatingNavigationBar extends StatelessWidget {
+  final int current;
+  final List<Widget> children;
+
+  const _FloatingNavigationBar({required this.current, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+      child: Center(
+        heightFactor: 1,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 470),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(34),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.navyDark.withValues(alpha: 0.12),
+                  blurRadius: 24,
+                  offset: const Offset(0, 7),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(34),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                child: Container(
+                  key: const ValueKey('floating-navigation-capsule'),
+                  height: 64,
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Colors.white.withValues(alpha: 0.90),
+                        const Color(0xFFE9F5FA).withValues(alpha: 0.78),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(34),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.95),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: AnimatedAlign(
+                          alignment: Alignment(-1 + current * 0.5, 0),
+                          duration: reducedMotion
+                              ? Duration.zero
+                              : const Duration(milliseconds: 320),
+                          curve: Curves.easeOutCubic,
+                          child: FractionallySizedBox(
+                            widthFactor: 1 / 5,
+                            heightFactor: 1,
+                            child: DecoratedBox(
+                              key: const ValueKey('bottom-nav-selected-pill'),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color(0xFFD7F1FF),
+                                    Color(0xFFBFE6F7)
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(27),
+                                border: Border.all(color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Row(children: children),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -192,6 +280,7 @@ class _NavItem extends StatelessWidget {
           selected: isActive,
           label: label,
           excludeSemantics: true,
+          onTap: () => onTap(index),
           child: Material(
             color: Colors.transparent,
             child: InkResponse(
@@ -209,30 +298,13 @@ class _NavItem extends StatelessWidget {
                         : const Duration(milliseconds: 200),
                     switchInCurve: Curves.easeOut,
                     switchOutCurve: Curves.easeIn,
-                    transitionBuilder: (child, animation) => ScaleTransition(
-                      scale: Tween<double>(begin: 0.94, end: 1).animate(
-                        CurvedAnimation(
-                          parent: animation,
-                          curve: Curves.easeOutCubic,
-                        ),
-                      ),
-                      child: FadeTransition(opacity: animation, child: child),
-                    ),
-                    child: DecoratedBox(
+                    transitionBuilder: (child, animation) =>
+                        FadeTransition(opacity: animation, child: child),
+                    child: Icon(
                       key: ValueKey(isActive),
-                      decoration: BoxDecoration(
-                        color:
-                            isActive ? AppColors.skyLight : Colors.transparent,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(7),
-                        child: Icon(
-                          isActive ? activeIcon : icon,
-                          color: isActive ? AppColors.navy : AppColors.textGrey,
-                          size: 25,
-                        ),
-                      ),
+                      isActive ? activeIcon : icon,
+                      color: isActive ? AppColors.navyDark : AppColors.textGrey,
+                      size: 25,
                     ),
                   ),
                 ),

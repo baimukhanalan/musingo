@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
 import '../models/lesson.dart';
@@ -146,6 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return Scaffold(
         backgroundColor: AppColors.ivory,
         body: PremiumBackground(
+          floatingLetters: false,
           child: SafeArea(
             bottom: false,
             child: SizedBox.expand(child: learningPath),
@@ -157,6 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.ivory,
       body: PremiumBackground(
+        floatingLetters: false,
         child: SafeArea(
           bottom: false,
           // CustomScrollView только со SliverList/SliverToBoxAdapter — без
@@ -230,7 +231,8 @@ class _HomeScreenState extends State<HomeScreen> {
               const SliverToBoxAdapter(child: DailyAyahCard()),
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+                  padding: EdgeInsets.fromLTRB(
+                      20, 12, 20, 32 + MediaQuery.paddingOf(context).bottom),
                   child: _DailyQuest(
                     completed: state.todayProgress,
                     goal: state.dailyGoal,

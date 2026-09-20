@@ -36,7 +36,8 @@ void main() {
       chapter.verses.single.audioUrl,
       'https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3',
     );
-    expect(chapter.verses.single.audioFallbackUrl, contains('islamic.network'));
+    expect(chapter.verses.single.audioFallbackUrl,
+        'https://everyayah.com/data/Alafasy_128kbps/001001.mp3');
     expect(chapter.fullAudioUrl, 'https://server8.mp3quran.net/afs/001.mp3');
 
     repository.dispose();

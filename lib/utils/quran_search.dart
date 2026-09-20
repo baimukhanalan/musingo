@@ -129,8 +129,50 @@ const quranRussianNames = <String>[
   'Ан-Нас',
 ];
 
+/// Kazakh spellings verified against the Religious Administration of Muslims
+/// of Kazakhstan. This is intentionally partial: retain the provider's name
+/// when a Kazakh spelling has not been source-checked, rather than translating
+/// a proper name as ordinary prose.
+/// https://www.muftyat.kz/kk/articles/sermons/2024-04-30/44583-randayi-lyi-sreler/
+/// https://www.muftyat.kz/kk/qa/duga/2024-04-15/44488-zirat-basyinda-andaj-ayattar-oyiladyi/
+const quranKazakhNames = <int, String>{
+  1: 'Фатиха',
+  2: 'Бақара',
+  3: 'Әли Имран',
+  5: 'Мәида',
+  6: 'Әнғам',
+  11: 'Һуд',
+  17: 'Исра',
+  18: 'Кәһф',
+  20: 'Таһа',
+  24: 'Нұр',
+  30: 'Рум',
+  36: 'Йәсин',
+  39: 'Зумәр',
+  40: 'Ғафир',
+  48: 'Фатх',
+  50: 'Қаф',
+  54: 'Қамар',
+  56: 'Уақиға',
+  67: 'Мүлік',
+  77: 'Мурсәләт',
+  78: 'Нәба',
+  81: 'Тәкуир',
+  99: 'Зілзала',
+  102: 'Тәкәсур',
+  109: 'Кәфирун',
+  112: 'Ықылас',
+  113: 'Фәлақ',
+  114: 'Нас',
+};
+
 String quranDisplayName(QuranChapterSummary chapter, String localeCode) {
-  if (localeCode == 'ru' && chapter.number <= quranRussianNames.length) {
+  if (localeCode == 'kk') {
+    return quranKazakhNames[chapter.number] ?? chapter.latinName;
+  }
+  if (localeCode == 'ru' &&
+      chapter.number > 0 &&
+      chapter.number <= quranRussianNames.length) {
     return quranRussianNames[chapter.number - 1];
   }
   return chapter.latinName;
@@ -146,12 +188,14 @@ bool quranChapterMatches(QuranChapterSummary chapter, String query) {
   }
 
   final needle = _normalizedVariants(trimmed);
-  final russianName = chapter.number <= quranRussianNames.length
-      ? quranRussianNames[chapter.number - 1]
-      : '';
+  final russianName =
+      chapter.number > 0 && chapter.number <= quranRussianNames.length
+          ? quranRussianNames[chapter.number - 1]
+          : '';
   final haystack = <String>{
     ..._normalizedVariants(chapter.latinName),
     ..._normalizedVariants(russianName),
+    ..._normalizedVariants(quranKazakhNames[chapter.number] ?? ''),
   };
   return needle.any((part) =>
       part.isNotEmpty && haystack.any((candidate) => candidate.contains(part)));

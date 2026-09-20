@@ -545,9 +545,16 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
   }
 
   Future<void> _open(String value) async {
+    if (_opening) return;
     setState(() => _opening = true);
     final uri = Uri.parse(value);
-    final opened = await (widget.opener ?? _openExternally)(uri);
+    var opened = false;
+    try {
+      opened = await (widget.opener ?? _openExternally)(uri);
+    } catch (_) {
+      // Browser/native launchers may throw when blocked or unavailable. Release
+      // the busy state so the learner can retry or use the study notes.
+    }
     if (!mounted) return;
     setState(() => _opening = false);
     if (opened) return;

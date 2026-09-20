@@ -61,6 +61,10 @@ flutter:
     - assets/images/cat_prayer_real.webp
     - assets/images/muslingo_cat.webp
     - assets/images/learning_path_world.webp
+    - assets/images/world_quran.webp
+    - assets/images/world_arabic.webp
+    - assets/images/world_basics.webp
+    - assets/images/world_tajwid.webp
     - assets/data/
     - docs/content/approved-570-curriculum-plan.json
 

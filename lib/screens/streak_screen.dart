@@ -43,8 +43,8 @@ class StreakScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 SectionLabel(
                     text: state.tr(
-                        ru: 'Бонусы за страйк',
-                        kk: 'Страйк бонустары',
+                        ru: 'Бонусы за серию',
+                        kk: 'Серия бонустары',
                         en: 'Streak bonuses')),
                 const SizedBox(height: 12),
                 _StreakBonusList(streak: streak),
@@ -83,7 +83,7 @@ class _TopBar extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Text(
-            state.tr(ru: 'Мой страйк', kk: 'Менің страйкым', en: 'My streak'),
+            state.tr(ru: 'Моя серия', kk: 'Менің сериям', en: 'My streak'),
             style: const TextStyle(
               fontFamily: 'Nunito',
               fontSize: 22,
@@ -120,8 +120,8 @@ class _CircleIconButton extends StatelessWidget {
         child: Tooltip(
           message: tooltip,
           child: SizedBox(
-            width: 42,
-            height: 42,
+            width: 48,
+            height: 48,
             child: Icon(icon, size: 22, color: AppColors.navyDark),
           ),
         ),
@@ -156,7 +156,7 @@ class _StreakHero extends StatelessWidget {
               Icon(
                 Icons.local_fire_department_rounded,
                 size: 56,
-                color: active ? AppColors.coral : AppColors.textLight,
+                color: active ? AppColors.coral : AppColors.navy,
               ),
               const SizedBox(width: 6),
               Text(
@@ -166,7 +166,7 @@ class _StreakHero extends StatelessWidget {
                   fontSize: 76,
                   height: 1.0,
                   fontWeight: FontWeight.w900,
-                  color: active ? AppColors.coral : AppColors.textGrey,
+                  color: active ? AppColors.coral : AppColors.navyDark,
                 ),
               ),
             ],
@@ -390,11 +390,12 @@ class _StreakBonusList extends StatelessWidget {
                       shape: BoxShape.circle,
                       color: unlocked
                           ? AppColors.gold.withValues(alpha: 0.16)
-                          : AppColors.backgroundGrey,
+                          : AppColors.skyLight,
                     ),
                     child: Icon(
                       unlocked ? Icons.check_rounded : b['icon'] as IconData,
-                      color: unlocked ? AppColors.gold : AppColors.textLight,
+                      color:
+                          unlocked ? const Color(0xFF9C721B) : AppColors.navy,
                       size: 22,
                     ),
                   ),
@@ -415,7 +416,7 @@ class _StreakBonusList extends StatelessWidget {
                       fontFamily: 'Nunito',
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.sky,
+                      color: AppColors.navy,
                     ),
                   ),
                 ],
@@ -442,11 +443,13 @@ class _StreakCalendar extends StatelessWidget {
       state.tr(ru: 'Ср', kk: 'Ср', en: 'Wed'),
       state.tr(ru: 'Чт', kk: 'Бс', en: 'Thu'),
       state.tr(ru: 'Пт', kk: 'Жм', en: 'Fri'),
-      state.tr(ru: 'Сб', kk: 'Сб', en: 'Sat'),
+      state.tr(ru: 'Сб', kk: 'Сн', en: 'Sat'),
       state.tr(ru: 'Вс', kk: 'Жс', en: 'Sun'),
     ];
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    final monday = today.subtract(Duration(days: today.weekday - 1));
+    final firstDay = monday.subtract(const Duration(days: 14));
     final lastDay = lastStudyDate == null
         ? null
         : DateTime(
@@ -480,33 +483,48 @@ class _StreakCalendar extends StatelessWidget {
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 7,
               mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              childAspectRatio: 1,
+              crossAxisSpacing: 4,
+              mainAxisExtent: 46 + MediaQuery.textScalerOf(context).scale(12),
             ),
             itemCount: daysToShow,
             itemBuilder: (ctx, i) {
-              final daysAgo = daysToShow - 1 - i;
-              final day = today.subtract(Duration(days: daysAgo));
-              final isToday = daysAgo == 0;
+              final day = firstDay.add(Duration(days: i));
+              final isToday = day == today;
               // День «изучен», только если он попадает в реальное окно стрика,
               // заканчивающееся на дне последнего занятия. Так сегодня получает
               // огонёк лишь когда занятие действительно было сегодня (а не
               // авансом), и мы не рисуем дни за пределами реального стрика.
               var isStudied = false;
-              if (lastDay != null && streak > 0) {
+              if (lastDay != null && streak > 0 && !day.isAfter(today)) {
                 final offsetFromLast = lastDay.difference(day).inDays;
                 isStudied = offsetFromLast >= 0 && offsetFromLast < streak;
               }
 
               return _CalendarCell(
-                day: day.day,
+                key: ValueKey(
+                    'streak-calendar-${day.toIso8601String().substring(0, 10)}'),
+                day: day,
                 isStudied: isStudied,
                 isToday: isToday,
+                isFuture: day.isAfter(today),
               );
             },
+          ),
+          const SizedBox(height: 16),
+          Text(
+            state.tr(
+              ru: 'Огоньки — дни текущей серии. Прошлые серии здесь не отображаются.',
+              kk: 'Жалындар — ағымдағы серия күндері. Бұрынғы сериялар мұнда көрсетілмейді.',
+              en: 'Flames mark your current streak. Earlier streaks are not shown here.',
+            ),
+            style: const TextStyle(
+              fontSize: 12,
+              height: 1.4,
+              color: AppColors.textGrey,
+            ),
           ),
         ],
       ),
@@ -515,54 +533,79 @@ class _StreakCalendar extends StatelessWidget {
 }
 
 class _CalendarCell extends StatelessWidget {
-  final int day;
+  final DateTime day;
   final bool isStudied;
   final bool isToday;
+  final bool isFuture;
   const _CalendarCell({
+    super.key,
     required this.day,
     required this.isStudied,
     required this.isToday,
+    required this.isFuture,
   });
 
   @override
   Widget build(BuildContext context) {
-    final Color bg = isStudied
-        ? AppColors.coral
-        : (isToday ? AppColors.skyLight : AppColors.backgroundGrey);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: bg,
-        shape: BoxShape.circle,
-        border: isToday && !isStudied
-            ? Border.all(color: AppColors.sky, width: 2)
-            : null,
-        boxShadow: isStudied
-            ? [
-                BoxShadow(
-                  color: AppColors.coral.withValues(alpha: 0.32),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ]
-            : null,
-      ),
-      child: Center(
-        child: isStudied
-            ? const Icon(
-                Icons.local_fire_department_rounded,
-                color: Colors.white,
-                size: 16,
-              )
-            : Text(
-                '$day',
-                style: TextStyle(
-                  fontFamily: 'Nunito',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: isToday ? AppColors.sky : AppColors.textGrey,
-                ),
+    final state = context.watch<AppState>();
+    final status = isStudied
+        ? state.tr(
+            ru: 'В текущей серии',
+            kk: 'Ағымдағы серияда',
+            en: 'In current streak')
+        : isToday
+            ? state.tr(ru: 'Сегодня', kk: 'Бүгін', en: 'Today')
+            : isFuture
+                ? state.tr(ru: 'Впереди', kk: 'Алда', en: 'Upcoming')
+                : state.tr(
+                    ru: 'Вне текущей серии',
+                    kk: 'Ағымдағы сериядан тыс',
+                    en: 'Outside current streak');
+    final icon = isStudied
+        ? Icons.local_fire_department_rounded
+        : isToday
+            ? Icons.play_arrow_rounded
+            : isFuture
+                ? Icons.schedule_rounded
+                : Icons.remove_rounded;
+    return Semantics(
+      label: '${day.day}.${day.month}.${day.year}, $status',
+      excludeSemantics: true,
+      child: Column(
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: isStudied
+                  ? AppColors.navy
+                  : isToday
+                      ? AppColors.skyLight
+                      : AppColors.backgroundGrey,
+              shape: BoxShape.circle,
+              border:
+                  isToday ? Border.all(color: AppColors.sky, width: 1.5) : null,
+            ),
+            child: Icon(icon,
+                size: 17, color: isStudied ? Colors.white : AppColors.textGrey),
+          ),
+          const SizedBox(height: 5),
+          // A two-digit date must not wrap into two rows in a seven-day grid.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '${day.day}',
+              maxLines: 1,
+              style: TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 12,
+                height: 1.2,
+                fontWeight: isToday ? FontWeight.w900 : FontWeight.w700,
+                color: isToday ? AppColors.navy : AppColors.textGrey,
               ),
+            ),
+          ),
+        ],
       ),
     );
   }

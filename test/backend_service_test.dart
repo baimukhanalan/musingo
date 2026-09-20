@@ -14,6 +14,31 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
+  test('server-owned best streak survives profile decoding', () async {
+    final service = await BackendService.create(client: MockClient((_) async {
+      return http.Response(
+          jsonEncode({
+            'token': 'test-token',
+            'profile': {
+              'user': 'user-award',
+              'displayName': 'A',
+              'email': 'a@example.test',
+              'streak': 1,
+              'bestStreak': 30,
+            },
+          }),
+          200);
+    }));
+    final profile = await service.login(
+      email: 'a@example.test',
+      password: 'Password123!',
+    );
+    expect(profile.user.streak, 1);
+    expect(profile.user.bestStreak, 30);
+    expect(profile.user.toJson()['bestStreak'], 30);
+    service.dispose();
+  });
+
   test('web never hides API failures behind a local-only account', () {
     expect(
       BackendService.shouldUseLocalAccountFallback(

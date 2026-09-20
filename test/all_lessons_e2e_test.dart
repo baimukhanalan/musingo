@@ -8,47 +8,77 @@ import 'package:muslingo/models/speech_evaluation.dart';
 import 'package:muslingo/screens/lesson_screen.dart';
 import 'package:muslingo/services/app_state.dart';
 import 'package:muslingo/services/lesson_data.dart';
+import 'package:muslingo/services/lesson_content_localization.dart';
+import 'package:muslingo/utils/app_locale.dart';
+
+import 'support/exhaustive_audit.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(LessonContentLocalization.load);
 
-  for (final course in LessonData.getCourses()) {
-    testWidgets(
-      '${course.title}: каждый шаг каждого урока можно пройти до результата',
-      (tester) async {
-        tester.view.physicalSize = const Size(402, 874);
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
+  for (final locale in AppLocale.values) {
+    for (final course in LessonData.getCourses()) {
+      testWidgets(
+        '${locale.code}/${course.id}: ${locale == AppLocale.ru || exhaustiveAudit ? 'every' : 'representative'} lesson reaches review with replay controls',
+        (tester) async {
+          final oldHandler = FlutterError.onError;
+          FlutterError.onError = (details) {
+            debugPrint(details.toString());
+            oldHandler?.call(details);
+          };
+          addTearDown(() => FlutterError.onError = oldHandler);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
 
-        final state = await _guestState(tester);
-        for (final lesson in course.lessons) {
-          await _pumpLesson(tester, state, lesson);
-
-          for (var stepIndex = 0;
-              stepIndex < lesson.steps.length;
-              stepIndex++) {
-            final step = lesson.steps[stepIndex];
-            await _completeStep(tester, step);
-            expect(
-              tester.takeException(),
-              isNull,
-              reason:
-                  '${course.id}/${lesson.id}, шаг $stepIndex (${step.type.name})',
+          final state = await _guestState(tester);
+          await state.setLocale(locale);
+          final lessons = LessonContentLocalization.localizeCourses(
+            [course],
+            locale.code,
+          ).single.lessons;
+          for (final lessonIndex in lessonAuditIndices(lessons, locale.code)) {
+            final lesson = lessons[lessonIndex];
+            tester.view.physicalSize = const [
+              Size(320, 568),
+              Size(390, 844),
+              Size(430, 932),
+            ][(lessonIndex + locale.index) % 3];
+            await _pumpLesson(
+              tester,
+              state,
+              lesson,
+              textScale: lessonIndex % 7 == 0 ? 1.3 : 1,
             );
-          }
 
-          await tester.pumpAndSettle(const Duration(milliseconds: 100));
-          expect(
-            find.byKey(const ValueKey('lesson_review_route')),
-            findsOneWidget,
-            reason: '${course.id}/${lesson.id} не открыл итог урока',
-          );
-          await tester.pumpWidget(const SizedBox.shrink());
-          await tester.pump();
-        }
-      },
-    );
+            for (var stepIndex = 0;
+                stepIndex < lesson.steps.length;
+                stepIndex++) {
+              final step = lesson.steps[stepIndex];
+              await _completeStep(tester, step);
+              expect(
+                tester.takeException(),
+                isNull,
+                reason:
+                    '${course.id}/${lesson.id}, шаг $stepIndex (${step.type.name})',
+              );
+            }
+
+            await tester.pumpAndSettle(const Duration(milliseconds: 100));
+            expect(
+              find.byKey(const ValueKey('lesson_review_route')),
+              findsOneWidget,
+              reason: '${course.id}/${lesson.id} не открыл итог урока',
+            );
+            await tester.pumpWidget(const SizedBox.shrink());
+            await tester.pump();
+          }
+          state.dispose();
+        },
+        timeout: const Timeout(Duration(minutes: 12)),
+      );
+    }
   }
 }
 
@@ -69,15 +99,24 @@ Future<AppState> _guestState(WidgetTester tester) async {
 Future<void> _pumpLesson(
   WidgetTester tester,
   AppState state,
-  Lesson lesson,
-) async {
+  Lesson lesson, {
+  double textScale = 1,
+}) async {
   await tester.pumpWidget(
     ChangeNotifierProvider<AppState>.value(
       value: state,
       child: MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: child!,
+        ),
         home: LessonScreen(
           lesson: lesson,
           speechSimulator: _simulatePerfectPronunciation,
+          // This proves UI sequencing only, not remote media availability.
+          audioPlaybackSimulator: (_) async {},
         ),
         onGenerateRoute: (settings) => MaterialPageRoute<void>(
           settings: settings,
@@ -95,6 +134,7 @@ Future<void> _completeStep(WidgetTester tester, LessonStep step) async {
   switch (step.type) {
     case LessonStepType.audio:
       await _tap(tester, const ValueKey('lesson_audio_play'));
+      await _tap(tester, const ValueKey('lesson_audio_play'));
       await _tap(tester, const ValueKey('lesson_primary_action'));
       return;
     case LessonStepType.text:
@@ -109,6 +149,7 @@ Future<void> _completeStep(WidgetTester tester, LessonStep step) async {
       await _tap(tester, const ValueKey('lesson_primary_action'));
       return;
     case LessonStepType.listenChoice:
+      await _tap(tester, const ValueKey('lesson_listen_play'));
       await _tap(tester, const ValueKey('lesson_listen_play'));
       await _tap(
         tester,

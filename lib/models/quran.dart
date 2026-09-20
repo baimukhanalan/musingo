@@ -13,8 +13,21 @@ class QuranChapterSummary {
     required this.revelationType,
   });
 
-  String get revelationLabel =>
-      revelationType == 'Medinan' ? 'Мединская' : 'Мекканская';
+  String get revelationLabel => revelationLabelForLocale('ru');
+
+  String revelationLabelForLocale(String localeCode) {
+    return switch ((revelationType, localeCode)) {
+      ('Meccan', 'kk') => 'Мекке',
+      ('Medinan', 'kk') => 'Мәдина',
+      ('Meccan', 'en') => 'Meccan',
+      ('Medinan', 'en') => 'Medinan',
+      ('Meccan', _) => 'Мекканская',
+      ('Medinan', _) => 'Мединская',
+      (_, 'kk') => 'Көрсетілмеген',
+      (_, 'en') => 'Unknown',
+      _ => 'Не указано',
+    };
+  }
 
   factory QuranChapterSummary.fromJson(Map<String, dynamic> json) {
     return QuranChapterSummary(

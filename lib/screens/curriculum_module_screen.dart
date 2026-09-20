@@ -226,6 +226,8 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
   bool _assessmentFailed = false;
   final List<int> _practiceOrder = [];
   String? _contentLocale;
+  String? _challengeLocale;
+  List<CurriculumChallenge>? _challengeCache;
 
   String get _learnerId =>
       context.read<AppState>().user?.id ?? 'anonymous-learner';
@@ -275,14 +277,24 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
     });
   }
 
-  List<CurriculumChallenge> get _challenges => buildCurriculumChallenges(
-        module: _module,
-        allModules: _allModules
-            .map((module) => LessonContentLocalization.localizeModule(
-                module, context.read<AppState>().locale.code))
-            .toList(growable: false),
-        locale: context.read<AppState>().locale.code,
-      );
+  List<CurriculumChallenge> get _challenges {
+    final locale = context.read<AppState>().locale.code;
+    if (_challengeCache != null && _challengeLocale == locale) {
+      return _challengeCache!;
+    }
+    _challengeLocale = locale;
+    // Answer selection must not rebuild five tasks from 570 modules for every
+    // answer card, button and feedback frame. The source set is fixed per route;
+    // only a language change requires a fresh set of localized challenges.
+    return _challengeCache = buildCurriculumChallenges(
+      module: _module,
+      allModules: _allModules
+          .map((module) =>
+              LessonContentLocalization.localizeModule(module, locale))
+          .toList(growable: false),
+      locale: locale,
+    );
+  }
 
   List<CurriculumChallenge> get _activeChallenges =>
       _step == 2 ? _challenges.take(2).toList() : _challenges.skip(2).toList();
@@ -450,6 +462,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
         child: Row(
           children: [
             IconButton(
+              key: const ValueKey('curriculum-close'),
               onPressed: () => Navigator.pop(context, _progress),
               tooltip: state.tr(ru: 'Назад', kk: 'Артқа', en: 'Back'),
               icon: const Icon(Icons.close_rounded),
@@ -502,20 +515,22 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
           children: [
             Row(
               children: [
-                Text(
-                  state.tr(
-                    ru: 'Этап ${_step + 1} из $_stepCount',
-                    kk: '${_step + 1}/$_stepCount кезең',
-                    en: 'Stage ${_step + 1} of $_stepCount',
-                  ),
-                  style: const TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textGrey,
+                Expanded(
+                  child: Text(
+                    state.tr(
+                      ru: 'Этап ${_step + 1} из $_stepCount',
+                      kk: '${_step + 1}/$_stepCount кезең',
+                      en: 'Stage ${_step + 1} of $_stepCount',
+                    ),
+                    style: const TextStyle(
+                      fontFamily: 'Nunito',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textGrey,
+                    ),
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 Text(
                   '${((_step + 1) / _stepCount * 100).round()}%',
                   style: const TextStyle(
@@ -1263,6 +1278,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
         border: const Border(top: BorderSide(color: AppColors.border)),
       ),
       child: PremiumButton(
+        key: const ValueKey('curriculum-primary-action'),
         label: _saving ? '…' : label,
         icon: isWrongRetry
             ? Icons.refresh_rounded
@@ -1327,11 +1343,15 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _resultMetric('$score%',
-                    state.tr(ru: 'мастерство', kk: 'меңгеру', en: 'mastery')),
+                Expanded(
+                  child: _resultMetric('$score%',
+                      state.tr(ru: 'мастерство', kk: 'меңгеру', en: 'mastery')),
+                ),
                 Container(width: 1, height: 42, color: AppColors.border),
-                _resultMetric('${_progress.completedCount}/570',
-                    state.tr(ru: 'пройдено', kk: 'аяқталды', en: 'complete')),
+                Expanded(
+                  child: _resultMetric('${_progress.completedCount}/570',
+                      state.tr(ru: 'пройдено', kk: 'аяқталды', en: 'complete')),
+                ),
               ],
             ),
           ),
@@ -1353,6 +1373,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
             ),
           const SizedBox(height: 10),
           TextButton.icon(
+            key: const ValueKey('curriculum-repeat-module'),
             onPressed: _replay,
             icon: const Icon(Icons.replay_rounded),
             label: Text(state.tr(
@@ -1362,6 +1383,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
             )),
           ),
           TextButton(
+            key: const ValueKey('curriculum-back-to-library'),
             onPressed: () => Navigator.pop(context, _progress),
             child: Text(state.tr(
               ru: 'Вернуться в библиотеку',
@@ -1387,6 +1409,7 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
           ),
           Text(
             label,
+            textAlign: TextAlign.center,
             style: const TextStyle(
               fontFamily: 'Nunito',
               fontSize: 11,

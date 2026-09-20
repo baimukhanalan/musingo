@@ -20,17 +20,24 @@ class _AudioStep extends StatefulWidget {
 class _AudioStepState extends State<_AudioStep> {
   late final SpeechSynthesizer _tts;
   late final QuranAudioPlayer _audioPlayer;
+  late final AudioPlaybackSession _session;
   StreamSubscription<QuranAudioPlaybackState>? _audioSubscription;
   bool _played = false;
   bool _speaking = false;
+  int _request = 0;
 
   @override
   void initState() {
     super.initState();
     _audioPlayer = QuranAudioPlayer();
+    _session = AudioPlaybackSession(
+      playUrl: _audioPlayer.playUrl,
+      stopPlayer: _audioPlayer.stop,
+    );
     _audioSubscription = _audioPlayer.playbackStateStream.listen((playback) {
       if (!mounted) return;
-      setState(() => _speaking = playback.playing);
+      if (_session.starting) return;
+      setState(() => _speaking = playback.playing || playback.buffering);
       if (playback.error != null) _showUnavailable();
     });
     _tts = SpeechSynthesizer();
@@ -43,18 +50,19 @@ class _AudioStepState extends State<_AudioStep> {
   }
 
   Future<void> _toggleSpeech() async {
+    final request = ++_request;
     HapticsService.tap();
     if (widget.playbackSimulator != null) {
       try {
         await widget.playbackSimulator!(widget.step);
-        if (!mounted) return;
+        if (!mounted || request != _request) return;
         widget.onListened();
         setState(() {
           _played = true;
           _speaking = false;
         });
       } catch (_) {
-        if (mounted) _showUnavailable();
+        if (mounted && request == _request) _showUnavailable();
       }
       return;
     }
@@ -67,6 +75,7 @@ class _AudioStepState extends State<_AudioStep> {
       return;
     }
     if (_speaking) {
+      _session.cancel();
       await _tts.stop();
       await _audioPlayer.stop();
       if (mounted) setState(() => _speaking = false);
@@ -87,6 +96,7 @@ class _AudioStepState extends State<_AudioStep> {
       await _tts.setPitch(1.0);
       await _tts.setVolume(1.0);
       await _tts.awaitSpeakCompletion(true);
+      if (!mounted || request != _request) return;
       if (mounted) {
         setState(() {
           _speaking = true;
@@ -94,14 +104,14 @@ class _AudioStepState extends State<_AudioStep> {
       }
       final result = await _tts.speak(text);
       if (result != 1) throw StateError('Text-to-speech did not start.');
-      if (!mounted) return;
+      if (!mounted || request != _request) return;
       widget.onListened();
       setState(() {
         _played = true;
         _speaking = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || request != _request) return;
       setState(() => _speaking = false);
       _showUnavailable();
     }
@@ -116,38 +126,17 @@ class _AudioStepState extends State<_AudioStep> {
       });
     }
 
-    Object? lastError;
-    for (final source in sources) {
-      try {
-        await _audioPlayer.playUrl(source);
-        if (mounted) {
-          widget.onListened();
-          setState(() {
-            _played = true;
-          });
-        }
-        return;
-      } catch (error) {
-        lastError = error;
-        await _audioPlayer.stop();
+    try {
+      final started = await _session.play(sources);
+      if (!mounted || !started) return;
+      widget.onListened();
+      setState(() => _played = true);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _speaking = false);
+        _showUnavailable();
       }
     }
-
-    if (!mounted) return;
-    setState(() => _speaking = false);
-    final state = context.read<AppState>();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          state.tr(
-            ru: 'Не удалось загрузить аудио аята $ayahNumber. $lastError',
-            kk: '$ayahNumber-аяттың аудиосын жүктеу мүмкін болмады. $lastError',
-            en: 'Could not load audio for ayah $ayahNumber. $lastError',
-          ),
-        ),
-        backgroundColor: AppColors.error,
-      ),
-    );
   }
 
   void _showUnavailable() {
@@ -155,9 +144,9 @@ class _AudioStepState extends State<_AudioStep> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(state.tr(
-          ru: 'Озвучивание недоступно на этом устройстве.',
-          kk: 'Бұл құрылғыда дыбыстау қолжетімсіз.',
-          en: 'Audio playback is unavailable on this device.',
+          ru: 'Аудио сейчас недоступно. Проверь соединение и попробуй ещё раз.',
+          kk: 'Аудио әзірге қолжетімсіз. Байланысты тексеріп, қайта көр.',
+          en: 'Audio is unavailable right now. Check your connection and retry.',
         )),
         backgroundColor: AppColors.error,
       ),
@@ -166,6 +155,8 @@ class _AudioStepState extends State<_AudioStep> {
 
   @override
   void dispose() {
+    _request++;
+    _session.cancel();
     if (!widget.simulatePlayback && widget.playbackSimulator == null) {
       _tts.stop();
     }
@@ -288,35 +279,45 @@ class _AudioStepState extends State<_AudioStep> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      _played
-                          ? (_speaking
+                      _session.starting
+                          ? Icons.hourglass_top_rounded
+                          : _speaking
                               ? Icons.stop_rounded
-                              : Icons.replay_rounded)
-                          : Icons.volume_up_rounded,
+                              : _played
+                                  ? Icons.replay_rounded
+                                  : Icons.volume_up_rounded,
                       color: AppColors.navy,
                       size: 24,
                     ),
                     const SizedBox(width: 10),
-                    Text(
-                      _speaking
-                          ? state.tr(
-                              ru: 'Слушаю...',
-                              kk: 'Тыңдап тұрмын...',
-                              en: 'Playing...')
-                          : (_played
-                              ? state.tr(
-                                  ru: 'Слушать ещё раз',
-                                  kk: 'Қайта тыңдау',
-                                  en: 'Listen again')
-                              : state.tr(
-                                  ru: 'Нажми и слушай',
-                                  kk: 'Басып тыңда',
-                                  en: 'Tap to listen')),
-                      style: const TextStyle(
-                        fontFamily: 'Nunito',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.navy,
+                    Flexible(
+                      child: Text(
+                        _session.starting
+                            ? state.tr(
+                                ru: 'Загружаем аудио…',
+                                kk: 'Аудио жүктелуде…',
+                                en: 'Loading audio…')
+                            : _speaking
+                                ? state.tr(
+                                    ru: 'Слушаю...',
+                                    kk: 'Тыңдап тұрмын...',
+                                    en: 'Playing...')
+                                : (_played
+                                    ? state.tr(
+                                        ru: 'Слушать ещё раз',
+                                        kk: 'Қайта тыңдау',
+                                        en: 'Listen again')
+                                    : state.tr(
+                                        ru: 'Нажми и слушай',
+                                        kk: 'Басып тыңда',
+                                        en: 'Tap to listen')),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontFamily: 'Nunito',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.navy,
+                        ),
                       ),
                     ),
                   ],

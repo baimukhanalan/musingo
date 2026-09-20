@@ -33,6 +33,7 @@ export function defaultProgress(user) {
     xp: 0,
     level: 1,
     streak: 0,
+    bestStreak: 0,
     hearts: 5,
     energy: 0,
     isPremium: false,
@@ -89,7 +90,18 @@ export function profile(document, user) {
     user: user.id,
     displayName: user.display_name,
     email: user.email,
+    bestStreak: bestKnownStreak(document),
   };
+}
+
+// Only pass a server-owned progress document here, never a client sync body.
+// Legacy documents prove their recorded streak, not an invented older record.
+export function bestKnownStreak(document, newStreak = 0) {
+  return Math.max(
+    safeInt(document?.streak, 0, 100_000),
+    safeInt(document?.bestStreak, 0, 100_000),
+    safeInt(newStreak, 0, 100_000),
+  );
 }
 
 function safeList(value) {
@@ -198,7 +210,7 @@ export function mergeCurriculumProgress(serverValue, incomingValue) {
 }
 
 export function mergeLearningState(server, incoming, { importGuest = false } = {}) {
-  const next = { ...server };
+  const next = { ...server, bestStreak: bestKnownStreak(server) };
   // Completed lessons are awarded by /api/progress/complete. A regular sync
   // must never let the client mint completions (and indirectly unlock course
   // content). The only exception is the explicit one-time guest import.

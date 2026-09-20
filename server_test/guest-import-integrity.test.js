@@ -12,6 +12,7 @@ test('guest import keeps personalization but never imports rewards or unlocks', 
     xp: 999999,
     level: 999,
     streak: 999,
+    bestStreak: 999,
     totalLessons: 999,
     totalMinutes: 999999,
     rewardHistory: ['forged'],
@@ -21,6 +22,7 @@ test('guest import keeps personalization but never imports rewards or unlocks', 
   assert.equal(value.xp, 0);
   assert.equal(value.level, 1);
   assert.equal(value.streak, 0);
+  assert.equal(value.bestStreak, 0);
   assert.equal(value.totalLessons, 0);
   assert.equal(value.totalMinutes, 0);
   assert.deepEqual(value.rewardHistory, []);

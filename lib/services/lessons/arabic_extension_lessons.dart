@@ -15,8 +15,13 @@ Lesson _buildLesson(_ArabicUnit unit, int unitIndex, int phase) {
     1 => 'Форма в слове',
     _ => 'Чтение без подсказки',
   };
-  final forms =
-      '${unit.letter}  ${unit.letter}ـ  ـ${unit.letter}ـ  ـ${unit.letter}';
+  // Unicode Joining_Type=R: these letters connect to the preceding letter only.
+  // Never teach fabricated initial/medial forms with a trailing tatweel.
+  // https://www.unicode.org/Public/17.0.0/ucd/ArabicShaping.txt
+  const rightJoining = {'ا', 'د', 'ذ', 'ر', 'ز', 'و'};
+  final forms = rightJoining.contains(unit.letter)
+      ? '${unit.letter}  ـ${unit.letter}'
+      : '${unit.letter}  ${unit.letter}ـ  ـ${unit.letter}ـ  ـ${unit.letter}';
   return Lesson(
     id: 'a$order',
     title: '${unit.name}: $phaseTitle',

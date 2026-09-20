@@ -2,6 +2,7 @@ import { requireUser, verifyLessonAttempt } from '../lib/auth.js';
 import { sql } from '../lib/db.js';
 import { ApiError, integer, method, readJson, text, withApi } from '../lib/http.js';
 import {
+  bestKnownStreak,
   isRewardReplay,
   leaderboardContribution,
   lessonAttemptEligibility,
@@ -253,6 +254,7 @@ export default withApi(async (request, response) => {
       xp,
       level: Math.floor(xp / 500) + 1,
       streak,
+      bestStreak: bestKnownStreak(current, streak),
       hearts: current.isPremium ? 5 : Math.max(0, Number(current.hearts ?? 5) - errors),
       energy: Math.min(999, Number(current.energy ?? 0) + energyEarned),
       lastStudyDay: today,

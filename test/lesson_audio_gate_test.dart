@@ -58,6 +58,10 @@ void main() {
     );
     await pumpLesson(tester, state, lesson);
 
+    // A letter or phonetic sample without an ayah address is not a new verse.
+    expect(find.text('ЗВУЧАНИЕ · СЛУШАЙ'), findsOneWidget);
+    expect(find.text('НОВЫЙ АЯТ · СЛУШАЙ'), findsNothing);
+
     await tester.tap(find.byKey(const ValueKey('lesson_audio_play')));
     await tester.pump(const Duration(milliseconds: 300));
 

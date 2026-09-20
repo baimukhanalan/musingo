@@ -72,7 +72,8 @@ void main() {
       final provider = image.image as ResizeImage;
       expect((provider.imageProvider as AssetImage).assetName, assetFor(mood));
       expect(provider.width, isNull, reason: 'Keep the artwork aspect ratio');
-      expect(provider.height, 180);
+      expect(provider.height, inInclusiveRange(180, 900),
+          reason: 'Decode enough pixels for the tightly framed full-body art');
       expect(tester.getSize(find.byType(CatCharacter)), const Size(180, 180));
     }
     expect(tester.takeException(), isNull);

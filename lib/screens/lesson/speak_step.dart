@@ -41,6 +41,7 @@ class _SpeakStepState extends State<_SpeakStep> {
   late final SpeechEvaluationService _speechEvaluation;
   late final SpeechSynthesizer _tts;
   late final QuranAudioPlayer _audioPlayer;
+  late final AudioPlaybackSession _sampleSession;
   StreamSubscription<QuranAudioPlaybackState>? _audioSubscription;
   bool _recording = false;
   bool _done = false;
@@ -52,6 +53,7 @@ class _SpeakStepState extends State<_SpeakStep> {
   bool _speechAvailable = false;
   bool _samplePlayed = false;
   bool _samplePlaying = false;
+  int _sampleRequest = 0;
   String _recognizedWords = '';
   String? _speechError;
   double _score = 0;
@@ -72,10 +74,15 @@ class _SpeakStepState extends State<_SpeakStep> {
   void initState() {
     super.initState();
     _audioPlayer = QuranAudioPlayer();
+    _sampleSession = AudioPlaybackSession(
+      playUrl: _audioPlayer.playUrl,
+      stopPlayer: _audioPlayer.stop,
+    );
     _audioSubscription = _audioPlayer.playbackStateStream.listen((playback) {
       if (!mounted) return;
+      if (_sampleSession.starting) return;
       setState(() {
-        _samplePlaying = playback.playing;
+        _samplePlaying = playback.playing || playback.buffering;
         if (playback.error != null) {
           _samplePlayed = false;
           _speechError = context.read<AppState>().tr(
@@ -132,6 +139,8 @@ class _SpeakStepState extends State<_SpeakStep> {
     // Never start the microphone while the reference is still audible: it
     // contaminates ASR input and makes the pronunciation score meaningless.
     if (_samplePlaying) {
+      _sampleRequest++;
+      _sampleSession.cancel();
       await _tts.stop();
       await _audioPlayer.stop();
       if (mounted) setState(() => _samplePlaying = false);
@@ -328,6 +337,7 @@ class _SpeakStepState extends State<_SpeakStep> {
   Future<void> _toggleSample() async {
     HapticsService.tap();
     if (_recording || _evaluating || _initializing) return;
+    final request = ++_sampleRequest;
     final state = context.read<AppState>();
 
     if (widget.speechSimulator != null) {
@@ -340,6 +350,7 @@ class _SpeakStepState extends State<_SpeakStep> {
     }
 
     if (_samplePlaying) {
+      _sampleSession.cancel();
       await _tts.stop();
       await _audioPlayer.stop();
       if (mounted) setState(() => _samplePlaying = false);
@@ -361,16 +372,19 @@ class _SpeakStepState extends State<_SpeakStep> {
       await _tts.setPitch(1.0);
       await _tts.setVolume(1.0);
       await _tts.awaitSpeakCompletion(true);
+      if (!mounted || request != _sampleRequest) return;
       if (mounted) {
         setState(() {
-          _samplePlayed = true;
           _samplePlaying = true;
           _speechError = null;
         });
       }
-      await _tts.speak(text);
+      final result = await _tts.speak(text);
+      if (result != 1) throw StateError('Text-to-speech did not start.');
+      if (!mounted || request != _sampleRequest) return;
+      setState(() => _samplePlayed = true);
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || request != _sampleRequest) return;
       setState(() {
         _samplePlaying = false;
         _speechError = state.tr(
@@ -384,29 +398,21 @@ class _SpeakStepState extends State<_SpeakStep> {
 
   Future<void> _playQuranSample(int ayahNumber) async {
     final state = context.read<AppState>();
-    final sources = <String>[
-      if (BackendService.hasConfiguredApiUrl)
-        '${BackendService.apiBaseUrl}/api/muslingo/quran/audio/$ayahNumber',
-      'https://cdn.islamic.network/quran/audio/128/ar.alafasy/$ayahNumber.mp3',
-    ];
+    final sources = quranAudioSources(ayahNumber);
 
     if (mounted) {
       setState(() {
-        _samplePlayed = true;
         _samplePlaying = true;
         _speechError = null;
       });
     }
 
-    Object? lastError;
-    for (final source in sources) {
-      try {
-        await _audioPlayer.playUrl(source);
-        return;
-      } catch (error) {
-        lastError = error;
-        await _audioPlayer.stop();
-      }
+    try {
+      final started = await _sampleSession.play(sources);
+      if (mounted && started) setState(() => _samplePlayed = true);
+      return;
+    } catch (_) {
+      // Only the final failure is surfaced; a mirror retry is not an error.
     }
 
     if (!mounted) return;
@@ -414,9 +420,9 @@ class _SpeakStepState extends State<_SpeakStep> {
       _samplePlaying = false;
       _samplePlayed = false;
       _speechError = state.tr(
-        ru: 'Не удалось загрузить образец. $lastError',
-        kk: 'Үлгіні жүктеу мүмкін болмады. $lastError',
-        en: 'Could not load the sample. $lastError',
+        ru: 'Не удалось загрузить образец. Проверь соединение и попробуй ещё раз.',
+        kk: 'Үлгі жүктелмеді. Байланысты тексеріп, қайта көр.',
+        en: 'Could not load the sample. Check your connection and retry.',
       );
     });
   }
@@ -509,6 +515,8 @@ class _SpeakStepState extends State<_SpeakStep> {
 
   @override
   void dispose() {
+    _sampleRequest++;
+    _sampleSession.cancel();
     _speech.cancel();
     _tts.stop();
     _audioSubscription?.cancel();

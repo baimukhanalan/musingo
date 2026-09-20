@@ -17,6 +17,7 @@ import 'package:muslingo/screens/rules_screen.dart';
 import 'package:muslingo/screens/settings_screen.dart';
 import 'package:muslingo/screens/streak_screen.dart';
 import 'package:muslingo/services/app_state.dart';
+import 'package:muslingo/utils/app_locale.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -56,40 +57,44 @@ void main() {
     const configurations = <({Size size, double textScale})>[
       (size: Size(320, 568), textScale: 1),
       (size: Size(390, 844), textScale: 1.5),
+      (size: Size(430, 932), textScale: 1),
       (size: Size(844, 390), textScale: 1),
     ];
 
-    for (final configuration in configurations) {
-      tester.view.physicalSize = configuration.size;
-      tester.view.devicePixelRatio = 1;
-      for (final entry in pages.entries) {
-        await tester.pumpWidget(
-          ChangeNotifierProvider<AppState>.value(
-            value: state,
-            child: MaterialApp(
-              builder: (context, child) => MediaQuery(
-                data: MediaQuery.of(context).copyWith(
-                  textScaler: TextScaler.linear(configuration.textScale),
+    for (final locale in AppLocale.values) {
+      await state.setLocale(locale);
+      for (final configuration in configurations) {
+        tester.view.physicalSize = configuration.size;
+        tester.view.devicePixelRatio = 1;
+        for (final entry in pages.entries) {
+          await tester.pumpWidget(
+            ChangeNotifierProvider<AppState>.value(
+              value: state,
+              child: MaterialApp(
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    textScaler: TextScaler.linear(configuration.textScale),
+                  ),
+                  child: child!,
                 ),
-                child: child!,
-              ),
-              home: entry.value,
-              onGenerateRoute: (settings) => MaterialPageRoute<void>(
-                settings: settings,
-                builder: (_) => const Scaffold(body: Text('route-target')),
+                home: entry.value,
+                onGenerateRoute: (settings) => MaterialPageRoute<void>(
+                  settings: settings,
+                  builder: (_) => const Scaffold(body: Text('route-target')),
+                ),
               ),
             ),
-          ),
-        );
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 80));
-        final exception = tester.takeException();
-        expect(
-          exception,
-          isNull,
-          reason:
-              '${entry.key} at ${configuration.size} x${configuration.textScale}',
-        );
+          );
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 80));
+          final exception = tester.takeException();
+          expect(
+            exception,
+            isNull,
+            reason:
+                '${locale.code}/${entry.key} at ${configuration.size} x${configuration.textScale}',
+          );
+        }
       }
     }
 

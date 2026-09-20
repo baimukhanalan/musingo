@@ -886,9 +886,9 @@ class _JuzTile extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         state.tr(
-                          ru: '${chapter.latinName}, аят ${entry.ayahNumber}',
-                          kk: '${chapter.latinName}, ${entry.ayahNumber}-аят',
-                          en: '${chapter.latinName}, verse ${entry.ayahNumber}',
+                          ru: '${quranDisplayName(chapter, state.locale.code)}, аят ${entry.ayahNumber}',
+                          kk: '${quranDisplayName(chapter, state.locale.code)}, ${entry.ayahNumber}-аят',
+                          en: '${quranDisplayName(chapter, state.locale.code)}, verse ${entry.ayahNumber}',
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1065,7 +1065,7 @@ class _ChapterTile extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${chapter.revelationLabel} · ${chapter.ayahCount} ${state.tr(ru: 'аятов', kk: 'аят', en: 'verses')}',
+                          '${chapter.revelationLabelForLocale(state.locale.code)} · ${chapter.ayahCount} ${state.tr(ru: 'аятов', kk: 'аят', en: 'verses')}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(

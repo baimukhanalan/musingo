@@ -31,14 +31,14 @@ class _LessonPath extends StatelessWidget {
             final mascotOffset = nodeOffset <= 0
                 ? nodeOffset + (compact ? 1.08 : 0.8)
                 : nodeOffset - (compact ? 1.08 : 0.8);
-            final mascotSize = compact ? 82.0 : 94.0;
+            final mascotSize = compact ? 98.0 : 112.0;
             final isCurrent = lesson.status == LessonStatus.available ||
                 lesson.status == LessonStatus.inProgress;
             final nextOffset = offsets[(index + 1) % offsets.length];
             return SizedBox(
               // Узел урока (круг 70 + отступ 12 + плашка названия ~29 ≈ 111px)
               // не влезал в 104 → Column переполнялся на 7px. Даём запас.
-              height: (isCurrent ? 134 : 116) +
+              height: (isCurrent ? 154 : 124) +
                   (MediaQuery.textScalerOf(context).scale(12) - 12)
                       .clamp(0, 36),
               child: Stack(
@@ -64,7 +64,7 @@ class _LessonPath extends StatelessWidget {
                   ),
                   if (isCurrent)
                     Align(
-                      alignment: Alignment(mascotOffset, compact ? 0.55 : 0.72),
+                      alignment: Alignment(mascotOffset, 0.6),
                       child: SizedBox(
                         width: mascotSize,
                         height: mascotSize,
@@ -213,9 +213,8 @@ class _PathNode extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.border)),
+                    color: AppColors.white.withValues(alpha: 0.96),
+                    borderRadius: BorderRadius.circular(12)),
                 child: Text(lesson.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -231,19 +230,7 @@ class _PathNode extends StatelessWidget {
       ),
     );
 
-    if (lesson.status != LessonStatus.available &&
-        lesson.status != LessonStatus.inProgress) {
-      return node;
-    }
-    if (MediaQuery.of(context).disableAnimations) return node;
-    return node
-        .animate(onPlay: (controller) => controller.repeat(reverse: true))
-        .scale(
-          begin: const Offset(1, 1),
-          end: const Offset(1.045, 1.045),
-          duration: 1100.ms,
-          curve: Curves.easeInOut,
-        );
+    return node;
   }
 }
 
@@ -293,62 +280,6 @@ class _PathTrailPainter extends CustomPainter {
       oldDelegate.from != from ||
       oldDelegate.to != to ||
       oldDelegate.completed != completed;
-}
-
-class _PathAtmosphere extends StatelessWidget {
-  const _PathAtmosphere();
-
-  @override
-  Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.of(context).disableAnimations;
-    Widget sparkle(IconData icon, double size, Color color) => Icon(
-          icon,
-          size: size,
-          color: color.withValues(alpha: 0.46),
-        );
-
-    final first = sparkle(Icons.auto_awesome_rounded, 22, AppColors.gold);
-    final second = sparkle(Icons.cloud_rounded, 34, AppColors.white);
-    final third = sparkle(Icons.star_rounded, 17, AppColors.coral);
-
-    return IgnorePointer(
-      child: Stack(
-        children: [
-          Positioned(
-            left: 22,
-            top: 34,
-            child: reduceMotion
-                ? first
-                : first
-                    .animate(onPlay: (c) => c.repeat(reverse: true))
-                    .fade(begin: 0.35, end: 0.9, duration: 1600.ms)
-                    .scale(
-                      begin: const Offset(0.88, 0.88),
-                      end: const Offset(1.08, 1.08),
-                    ),
-          ),
-          Positioned(
-            right: 18,
-            top: 112,
-            child: reduceMotion
-                ? second
-                : second
-                    .animate(onPlay: (c) => c.repeat(reverse: true))
-                    .moveX(begin: -7, end: 7, duration: 3200.ms),
-          ),
-          Positioned(
-            right: 42,
-            bottom: 40,
-            child: reduceMotion
-                ? third
-                : third
-                    .animate(onPlay: (c) => c.repeat(reverse: true))
-                    .rotate(begin: -0.04, end: 0.04, duration: 2100.ms),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _DailyQuest extends StatelessWidget {

@@ -16,7 +16,7 @@ class _ProfileHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _Avatar(isPremium: user.isPremium),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,27 +93,20 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 74,
-      height: 74,
+      width: 96,
+      height: 108,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           Container(
-            width: 74,
-            height: 74,
+            width: 96,
+            height: 108,
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.skyLight,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.sky.withValues(alpha: 0.28),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
-                ),
-              ],
+              borderRadius: BorderRadius.circular(28),
+              color: AppColors.skyLight.withValues(alpha: 0.6),
             ),
             alignment: Alignment.center,
-            child: const CatCharacter(mood: CatMood.idle, size: 62),
+            child: const CatCharacter(mood: CatMood.idle, size: 96),
           ),
           if (isPremium)
             Positioned(
@@ -177,45 +170,98 @@ class _StatsRow extends StatelessWidget {
     final state = context.watch<AppState>();
     return PremiumCard(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 18),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: StatBadge(
-              icon: Icons.local_fire_department_rounded,
-              value: '${user.streak}',
-              label: state.tr(ru: 'Серия', kk: 'Серия', en: 'Streak'),
-              accent: AppColors.coral,
-            ),
+      child: LayoutBuilder(builder: (context, constraints) {
+        final useTwoColumns = constraints.maxWidth < 300 ||
+            MediaQuery.textScalerOf(context).scale(14) > 18 ||
+            user.xp > 99999;
+        final stats = <Widget>[
+          _ProfileStat(
+            icon: Icons.local_fire_department_rounded,
+            value: '${user.streak}',
+            label: state.tr(ru: 'Серия', kk: 'Серия', en: 'Streak'),
+            accent: AppColors.coral,
           ),
-          Expanded(
-            child: StatBadge(
-              icon: Icons.bolt_rounded,
-              value: '${user.xp}',
-              label: 'XP',
-              accent: AppColors.gold,
-            ),
+          _ProfileStat(
+            icon: Icons.bolt_rounded,
+            value: '${user.xp}',
+            label: 'XP',
+            accent: AppColors.gold,
           ),
-          Expanded(
-            child: StatBadge(
-              icon: Icons.menu_book_rounded,
-              value: '$suras',
-              label: state.tr(ru: 'Суры', kk: 'Сүрелер', en: 'Suras'),
-              accent: AppColors.sky,
-            ),
+          _ProfileStat(
+            icon: Icons.menu_book_rounded,
+            value: '$suras',
+            label: state.tr(
+                ru: 'Уроки Корана', kk: 'Құран сабақтары', en: 'Quran lessons'),
+            accent: AppColors.sky,
           ),
-          Expanded(
-            child: StatBadge(
-              icon: Icons.track_changes_rounded,
-              value: '$accuracy%',
-              label: state.tr(ru: 'Точность', kk: 'Дәлдік', en: 'Accuracy'),
-              accent: AppColors.success,
-            ),
+          _ProfileStat(
+            icon: Icons.track_changes_rounded,
+            value: '$accuracy%',
+            label:
+                state.tr(ru: 'Запоминание', kk: 'Есте сақтау', en: 'Retention'),
+            accent: AppColors.success,
           ),
-        ],
-      ),
+        ];
+        return useTwoColumns
+            ? Wrap(
+                runSpacing: 20,
+                children: [
+                  for (final stat in stats)
+                    SizedBox(width: constraints.maxWidth / 2, child: stat),
+                ],
+              )
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [for (final stat in stats) Expanded(child: stat)],
+              );
+      }),
     );
   }
+}
+
+class _ProfileStat extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color accent;
+
+  const _ProfileStat({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Icon(icon, color: accent, size: 23),
+          ),
+          const SizedBox(height: 8),
+          Text(value,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                color: AppColors.navyDark,
+              )),
+          const SizedBox(height: 3),
+          Text(label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textGrey,
+              )),
+        ],
+      );
 }
 
 class _WeekStrip extends StatelessWidget {
@@ -239,20 +285,61 @@ class _WeekStrip extends StatelessWidget {
     final now = DateTime.now();
     final todayIndex = now.weekday - 1; // 0..6
 
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: PremiumCard(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: List.generate(7, (i) {
-            return _DayDot(
-              label: labels[i],
-              active: week[i],
-              isToday: i == todayIndex,
-            );
-          }),
+    return PremiumCard(
+      padding: EdgeInsets.zero,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: const ValueKey('profile-week-details'),
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(22),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+            child: Column(
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: List.generate(
+                      7,
+                      (i) => Expanded(
+                            child: _DayDot(
+                              key: ValueKey('profile-week-day-$i'),
+                              label: labels[i],
+                              active: week[i],
+                              isToday: i == todayIndex,
+                              isFuture: i > todayIndex,
+                            ),
+                          )),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.local_fire_department_rounded,
+                        size: 17, color: AppColors.navy),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: Text(
+                        state.tr(
+                          ru: 'Цветом — дни текущей серии',
+                          kk: 'Түспен — ағымдағы серия күндері',
+                          en: 'Colour marks your current streak',
+                        ),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          height: 1.35,
+                          color: AppColors.textGrey,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded,
+                        size: 18, color: AppColors.textGrey),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -263,17 +350,21 @@ class _DayDot extends StatelessWidget {
   final String label;
   final bool active;
   final bool isToday;
+  final bool isFuture;
 
   const _DayDot({
+    super.key,
     required this.label,
     required this.active,
     required this.isToday,
+    required this.isFuture,
   });
 
   @override
   Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
     late final BoxDecoration decoration;
-    late final Widget dotChild;
+    late final IconData icon;
 
     if (active) {
       decoration = const BoxDecoration(
@@ -281,43 +372,69 @@ class _DayDot extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF5FC3EE), Color(0xFF3FA9DC)],
+          colors: [Color(0xFF479BC2), AppColors.navy],
         ),
       );
-      dotChild = const Icon(Icons.check_rounded, size: 20, color: Colors.white);
+      icon = Icons.local_fire_department_rounded;
     } else {
       decoration = BoxDecoration(
         shape: BoxShape.circle,
-        color: AppColors.backgroundGrey,
+        color: isToday ? AppColors.skyLight : AppColors.backgroundGrey,
         border: Border.all(
           color: isToday ? AppColors.sky : AppColors.border,
           width: isToday ? 2 : 1,
         ),
       );
-      dotChild = const SizedBox.shrink();
+      icon = isToday
+          ? Icons.play_arrow_rounded
+          : (isFuture ? Icons.schedule_rounded : Icons.remove_rounded);
     }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 34,
-          height: 34,
-          alignment: Alignment.center,
-          decoration: decoration,
-          child: dotChild,
-        ),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'Nunito',
-            fontSize: 11,
-            fontWeight: isToday ? FontWeight.w900 : FontWeight.w700,
-            color: isToday ? AppColors.navyDark : AppColors.textLight,
+    final status = active
+        ? state.tr(
+            ru: 'В текущей серии',
+            kk: 'Ағымдағы серияда',
+            en: 'In current streak')
+        : isToday
+            ? state.tr(
+                ru: 'Сегодня, урок ещё не завершён',
+                kk: 'Бүгін сабақ әлі аяқталмады',
+                en: 'Today, lesson not yet completed')
+            : isFuture
+                ? state.tr(ru: 'Впереди', kk: 'Алда', en: 'Upcoming')
+                : state.tr(
+                    ru: 'Вне текущей серии',
+                    kk: 'Ағымдағы сериядан тыс',
+                    en: 'Outside current streak');
+    return Semantics(
+      label: '$label, $status',
+      excludeSemantics: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            alignment: Alignment.center,
+            decoration: decoration,
+            child: Icon(icon,
+                size: 19,
+                color: active
+                    ? Colors.white
+                    : (isToday ? AppColors.navy : AppColors.textGrey)),
           ),
-        ),
-      ],
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Nunito',
+              fontSize: 10.5,
+              fontWeight: isToday ? FontWeight.w900 : FontWeight.w700,
+              color: isToday ? AppColors.navyDark : AppColors.textLight,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -7,7 +7,6 @@ export '../models/daily_ayah.dart';
 
 import '../models/daily_ayah.dart';
 import '../services/app_state.dart';
-import '../services/backend_service.dart';
 import '../services/haptics_service.dart';
 import '../services/quran_audio_player.dart';
 import '../utils/colors.dart';
@@ -110,8 +109,7 @@ class _DailyAyahCardState extends State<DailyAyahCard>
   AyahOfDay? get _ayah => DailyAyahData.ofDay(_currentDate(), pool: _pool);
 
   String _cdnSource(AyahOfDay ayah) =>
-      'https://cdn.islamic.network/quran/audio/128/ar.alafasy/'
-      '${ayah.globalAyahNumber}.mp3';
+      quranAudioSources(ayah.globalAyahNumber).first;
 
   QuranAudioPlayer get _player {
     if (_audioPlayer case final player?) return player;
@@ -172,13 +170,8 @@ class _DailyAyahCardState extends State<DailyAyahCard>
       return;
     }
 
-    // Start the already warmed CDN directly. The proxy is a fallback, so a
-    // server cold start is no longer on the normal playback path.
-    final sources = <String>[
-      _cdnSource(ayah),
-      if (BackendService.hasConfiguredApiUrl)
-        '${BackendService.apiBaseUrl}/api/muslingo/quran/audio/${ayah.globalAyahNumber}',
-    ];
+    // Start the warmed CDN directly, then an independent recitation mirror.
+    final sources = quranAudioSources(ayah.globalAyahNumber);
 
     final request = ++_request;
     setState(() => _loading = true);

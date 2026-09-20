@@ -6,6 +6,7 @@ import '../utils/colors.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_card.dart';
 import '../widgets/section_label.dart';
+import 'profile/achievement_presentation.dart';
 
 class AchievementsScreen extends StatefulWidget {
   const AchievementsScreen({super.key});
@@ -44,7 +45,7 @@ class _AchievementsScreenState extends State<AchievementsScreen>
       state.tr(ru: 'Уроки', kk: 'Сабақтар', en: 'Lessons'),
       state.tr(ru: 'Коран', kk: 'Құран', en: 'Quran'),
       state.tr(ru: 'Правила', kk: 'Ережелер', en: 'Rules'),
-      state.tr(ru: 'Страйк', kk: 'Страйк', en: 'Streak'),
+      state.tr(ru: 'Серия', kk: 'Серия', en: 'Streak'),
     ];
 
     final totalUnlocked = achievements.where((a) => a.isUnlocked).length;
@@ -100,10 +101,43 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 6, 18, 2),
+    final title = Text(
+      state.tr(ru: 'Достижения', kk: 'Жетістіктер', en: 'Achievements'),
+      style: const TextStyle(
+        fontFamily: 'Nunito',
+        fontSize: 22,
+        fontWeight: FontWeight.w900,
+        color: AppColors.navyDark,
+      ),
+    );
+    final counter = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.navyDark,
+        borderRadius: BorderRadius.circular(24),
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.emoji_events_rounded,
+              color: AppColors.gold, size: 15),
+          const SizedBox(width: 5),
+          Text(
+            '$unlocked / $total',
+            style: const TextStyle(
+              fontFamily: 'Nunito',
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: AppColors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(6, 6, 18, 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           IconButton(
             onPressed: onBack,
@@ -112,49 +146,22 @@ class _Header extends StatelessWidget {
                 const Icon(Icons.arrow_back_rounded, color: AppColors.navyDark),
           ),
           Expanded(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                state.tr(
-                  ru: 'Достижения',
-                  kk: 'Жетістіктер',
-                  en: 'Achievements',
-                ),
-                maxLines: 1,
-                style: const TextStyle(
-                  fontFamily: 'Nunito',
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.navyDark,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: AppColors.navyDark,
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.emoji_events_rounded,
-                    color: AppColors.gold, size: 15),
-                const SizedBox(width: 5),
-                Text(
-                  '$unlocked / $total',
-                  style: const TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.white,
+            child: MediaQuery.textScalerOf(context).scale(14) > 18
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      title,
+                      const SizedBox(height: 8),
+                      counter,
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Expanded(child: title),
+                      const SizedBox(width: 10),
+                      counter,
+                    ],
                   ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -187,7 +194,8 @@ class _CategoryPills extends StatelessWidget {
       ),
       child: TabBar(
         controller: controller,
-        isScrollable: false,
+        isScrollable: true,
+        tabAlignment: TabAlignment.start,
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
         indicatorColor: Colors.transparent,
@@ -199,7 +207,7 @@ class _CategoryPills extends StatelessWidget {
         ),
         labelColor: AppColors.white,
         unselectedLabelColor: AppColors.textLight,
-        labelPadding: const EdgeInsets.symmetric(vertical: 9, horizontal: 2),
+        labelPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
         labelStyle: const TextStyle(
           fontFamily: 'Nunito',
           fontSize: 12.5,
@@ -262,7 +270,11 @@ class _CategoryView extends StatelessWidget {
         LayoutBuilder(
           builder: (context, constraints) {
             const spacing = 12.0;
-            final itemWidth = (constraints.maxWidth - spacing) / 2;
+            final singleColumn = constraints.maxWidth < 340 ||
+                MediaQuery.textScalerOf(context).scale(14) > 18;
+            final itemWidth = singleColumn
+                ? constraints.maxWidth
+                : (constraints.maxWidth - spacing) / 2;
             return Wrap(
               spacing: spacing,
               runSpacing: spacing,
@@ -270,7 +282,10 @@ class _CategoryView extends StatelessWidget {
                 for (final a in achievements)
                   SizedBox(
                     width: itemWidth,
-                    child: _AchievementBadgeCard(achievement: a),
+                    child: _AchievementBadgeCard(
+                      achievement: a,
+                      horizontal: singleColumn,
+                    ),
                   ),
               ],
             );
@@ -296,80 +311,31 @@ class _SummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     return PremiumCard(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SectionLabel(
-                        text: state.tr(
-                            ru: 'Получено', kk: 'Алынды', en: 'Earned')),
-                    const SizedBox(height: 6),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text(
-                          '$unlocked',
-                          style: const TextStyle(
-                            fontFamily: 'Nunito',
-                            fontSize: 30,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.navyDark,
-                            height: 1,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          state.tr(
-                              ru: 'из $total',
-                              kk: '$total ішінен',
-                              en: 'of $total'),
-                          style: const TextStyle(
-                            fontFamily: 'Nunito',
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textLight,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.skyLight,
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Text(
-                  '${(percent * 100).round()}%',
-                  style: const TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.navy,
-                  ),
-                ),
-              ),
-            ],
+          SectionLabel(
+            text: state.tr(ru: 'Получено', kk: 'Алынды', en: 'Earned'),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '$unlocked / $total',
+            style: const TextStyle(
+              fontFamily: 'Nunito',
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              color: AppColors.navyDark,
+            ),
           ),
           const SizedBox(height: 14),
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
               value: percent,
-              minHeight: 8,
+              minHeight: 7,
               backgroundColor: AppColors.backgroundGrey,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.sky),
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.navy),
             ),
           ),
         ],
@@ -378,129 +344,76 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
-/// Premium achievement badge card: gold-gradient badge when unlocked (with an
-/// Arabic-numeral glyph like the profile grid), muted + locked otherwise, plus
-/// a получено/заблокировано status row.
+/// Full requirements stay readable at every text scale; no fixed text heights.
 class _AchievementBadgeCard extends StatelessWidget {
   final Achievement achievement;
-  const _AchievementBadgeCard({required this.achievement});
+  final bool horizontal;
+  const _AchievementBadgeCard({
+    required this.achievement,
+    required this.horizontal,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final bool unlocked = achievement.isUnlocked;
-    final String glyph = achievement.category == AchievementCategory.quran
-        ? 'ق'
-        : _toArabicDigits(achievement.requiredValue);
-
+    final state = context.watch<AppState>();
+    final title = achievementTitle(state, achievement);
+    final description = achievementDescription(state, achievement);
+    final caption = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontFamily: 'Nunito',
+            fontSize: 16,
+            height: 1.2,
+            fontWeight: FontWeight.w900,
+            color: AppColors.textDark,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          description,
+          style: const TextStyle(
+            fontFamily: 'Nunito',
+            fontSize: 13,
+            height: 1.4,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textGrey,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _StatusChip(achievement: achievement),
+      ],
+    );
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: unlocked
-              ? AppColors.gold.withValues(alpha: 0.5)
-              : AppColors.border,
-          width: unlocked ? 1.5 : 1,
+          color: achievement.isUnlocked
+              ? AppColors.gold.withValues(alpha: 0.45)
+              : AppColors.border.withValues(alpha: 0.6),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.navyDark.withValues(alpha: 0.05),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
-          ),
-        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              Container(
-                width: 58,
-                height: 58,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: unlocked
-                      ? const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Color(0xFFF8CA6B), Color(0xFFEFAE2E)],
-                        )
-                      : null,
-                  color: unlocked ? null : AppColors.backgroundGrey,
-                  border: unlocked
-                      ? null
-                      : Border.all(color: AppColors.border, width: 1.5),
-                  boxShadow: unlocked
-                      ? [
-                          BoxShadow(
-                            color: AppColors.gold.withValues(alpha: 0.35),
-                            blurRadius: 14,
-                            offset: const Offset(0, 6),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Text(
-                  glyph,
-                  style: TextStyle(
-                    fontFamily: 'Amiri',
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: unlocked ? Colors.white : AppColors.textLight,
-                  ),
-                ),
-              ),
-              if (!unlocked)
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: AppColors.navyDark,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.lock_rounded,
-                        color: Colors.white, size: 12),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            achievement.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontFamily: 'Nunito',
-              fontSize: 15.5,
-              fontWeight: FontWeight.w900,
-              color: unlocked ? AppColors.textDark : AppColors.textGrey,
+      child: horizontal
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AchievementEmblem(achievement: achievement),
+                const SizedBox(width: 18),
+                Expanded(child: caption),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AchievementEmblem(achievement: achievement),
+                const SizedBox(height: 18),
+                caption,
+              ],
             ),
-          ),
-          const SizedBox(height: 4),
-          SizedBox(
-            height: 34,
-            child: Text(
-              achievement.description,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontFamily: 'Nunito',
-                fontSize: 12.5,
-                height: 1.25,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textGrey,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          _StatusChip(achievement: achievement),
-        ],
-      ),
     );
   }
 }
@@ -514,15 +427,15 @@ class _StatusChip extends StatelessWidget {
     final state = context.watch<AppState>();
     final bool unlocked = achievement.isUnlocked;
 
-    final Color bg = unlocked ? AppColors.goldLight : AppColors.backgroundGrey;
-    final Color fg = unlocked ? const Color(0xFF8A6410) : AppColors.textLight;
+    final Color bg = unlocked ? AppColors.goldLight : AppColors.skyLight;
+    final Color fg = unlocked ? const Color(0xFF8A6410) : AppColors.navy;
     final IconData icon =
-        unlocked ? Icons.check_circle_rounded : Icons.lock_outline_rounded;
+        unlocked ? Icons.check_circle_rounded : Icons.flag_outlined;
     final String label = unlocked
         ? (achievement.unlockedAt != null
             ? _formatDate(achievement.unlockedAt!)
             : state.tr(ru: 'Получено', kk: 'Алынды', en: 'Earned'))
-        : state.tr(ru: 'Заблокировано', kk: 'Жабық', en: 'Locked');
+        : '${achievementProgress(state, achievement)} / ${achievement.requiredValue}';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -538,8 +451,6 @@ class _StatusChip extends StatelessWidget {
           Flexible(
             child: Text(
               label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontFamily: 'Nunito',
                 fontSize: 11.5,
@@ -555,12 +466,4 @@ class _StatusChip extends StatelessWidget {
 
   String _formatDate(DateTime d) =>
       '${d.day}.${d.month.toString().padLeft(2, '0')}.${d.year}';
-}
-
-String _toArabicDigits(int n) {
-  const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-  return n.toString().split('').map((ch) {
-    final code = ch.codeUnitAt(0) - 48;
-    return (code >= 0 && code <= 9) ? digits[code] : ch;
-  }).join();
 }

@@ -127,11 +127,3 @@ class _TopBar extends StatelessWidget {
     );
   }
 }
-
-/// Источники аудио аята по порядку попыток: свой бэкенд (если настроен),
-/// затем публичный CDN. Общие для «Нового аята» и шага аудирования.
-List<String> quranAudioSources(int ayahNumber) => <String>[
-      if (BackendService.hasConfiguredApiUrl)
-        '${BackendService.apiBaseUrl}/api/muslingo/quran/audio/$ayahNumber',
-      'https://cdn.islamic.network/quran/audio/128/ar.alafasy/$ayahNumber.mp3',
-    ];

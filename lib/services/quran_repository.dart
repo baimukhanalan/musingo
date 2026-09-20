@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/quran.dart';
+import 'quran_audio_sources.dart';
 
 class QuranRepositoryException implements Exception {
   final String message;
@@ -258,10 +259,7 @@ class QuranRepository {
         translation: translatedAyah['text'] as String,
         transliteration: transliteratedAyah['text'] as String,
         audioUrl: _proxiedAudioUrl(arabicAyah['number'] as int),
-        audioFallbackUrl:
-            (audioAyah['audio'] as String?)?.trim().isNotEmpty == true
-                ? (audioAyah['audio'] as String).trim()
-                : null,
+        audioFallbackUrl: quranAudioSources(arabicAyah['number'] as int).last,
         juz: arabicAyah['juz'] as int,
         page: arabicAyah['page'] as int,
       );
@@ -328,7 +326,7 @@ class QuranRepository {
         translation: verse['translation'] as String,
         transliteration: verse['transliteration'] as String,
         audioUrl: _proxiedAudioUrl(globalNumber),
-        audioFallbackUrl: null,
+        audioFallbackUrl: quranAudioSources(globalNumber).last,
         juz: verse['juz'] as int,
         page: verse['page'] as int,
       );
@@ -354,17 +352,8 @@ class QuranRepository {
       _fullChapterAudioUrl(chapterNumber);
 
   String _proxiedAudioUrl(int globalAyahNumber) {
-    // Всегда публичный CDN. Прокси-маршрута `/api/muslingo/quran/audio/...`
-    // нет ни на localhost, ни на Vercel: `/api/:route*` уходит в общий роутер,
-    // где такого маршрута нет → 404 на каждый аят. Через MUSLINGO_API_URL
-    // (это адрес прод-API для auth/progress) роутить аудио тоже нельзя — там
-    // тот же 404. Поэтому источник аята — только CDN.
-    return _cdnAyahAudioUrl(globalAyahNumber);
+    return quranAudioSources(globalAyahNumber).first;
   }
-
-  String _cdnAyahAudioUrl(int globalAyahNumber) =>
-      'https://cdn.islamic.network/quran/audio/128/ar.alafasy/'
-      '$globalAyahNumber.mp3';
 
   Future<Map<int, List<String>>> _loadCanonicalArabic() {
     return _canonicalArabicFuture ??= _readCanonicalArabic();

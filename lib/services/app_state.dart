@@ -90,6 +90,7 @@ class AppState extends ChangeNotifier {
   UserModel? _user;
   List<Course> _courses = [];
   final List<Achievement> _achievements = Achievement.defaults();
+  String? _achievementUserId;
   bool _isLoading = false;
   bool _isInitialized = false;
   String? _error;
@@ -255,6 +256,10 @@ class AppState extends ChangeNotifier {
 
   void updateCurriculumProgress(Map<String, dynamic> progress) {
     _curriculumProgress = Map<String, dynamic>.from(progress);
+    // Screens must refresh immediately after a stage or module is saved.
+    // This client-owned map is not a server completion receipt: never derive
+    // rewards, daily activity or streak milestones from a sync payload here.
+    notifyListeners();
     if (isBackendUser) unawaited(_syncBackendProgress());
   }
 
@@ -488,7 +493,8 @@ class AppState extends ChangeNotifier {
   LearningGoal? get learningGoal => _learningGoal;
   int get placementLevel => _placementLevel;
   String? get learningRecommendation =>
-      LearningRecommendationLocalization.localize(_learningRecommendation, _locale.code);
+      LearningRecommendationLocalization.localize(
+          _learningRecommendation, _locale.code);
   LearningSkillProfile? get learningSkillProfile => _learningSkillProfile;
 
   /// Дневная цель пользователя (сколько уроков за день). Дефолт — 3.
@@ -1142,32 +1148,41 @@ class AppState extends ChangeNotifier {
         'user': user.toJson(),
       };
       await preferences.setString(_localAccountsKey, jsonEncode(accounts));
-      final guestLessons = preferences.getStringList('completed_lessons_guest');
-      if (guestLessons != null) {
-        await preferences.setStringList(
-          'completed_lessons_$userId',
-          guestLessons,
-        );
-      }
-      final guestMemory = preferences.getString('${_memoryEnginePrefix}guest');
-      if (guestMemory != null) {
-        await preferences.setString('$_memoryEnginePrefix$userId', guestMemory);
-      }
-      final guestHafiz = preferences.getString('${_hafizProgressPrefix}guest');
-      if (guestHafiz != null) {
-        await preferences.setString(
-          '$_hafizProgressPrefix$userId',
-          guestHafiz,
-        );
-      }
-      final guestLeagueXp = preferences.getInt('${_leagueXpPrefix}guest');
-      if (guestLeagueXp != null) {
-        await preferences.setInt('$_leagueXpPrefix$userId', guestLeagueXp);
-      }
-      final guestMentor = preferences.getString('${_mentorProfilePrefix}guest');
-      if (guestMentor != null) {
-        await preferences.setString(
-            '$_mentorProfilePrefix$userId', guestMentor);
+      // Import only the guest who is actively registering, not leftover guest
+      // storage while a different local account is being created.
+      if (guestProgress != null) {
+        final guestLessons =
+            preferences.getStringList('completed_lessons_guest');
+        if (guestLessons != null) {
+          await preferences.setStringList(
+            'completed_lessons_$userId',
+            guestLessons,
+          );
+        }
+        final guestMemory =
+            preferences.getString('${_memoryEnginePrefix}guest');
+        if (guestMemory != null) {
+          await preferences.setString(
+              '$_memoryEnginePrefix$userId', guestMemory);
+        }
+        final guestHafiz =
+            preferences.getString('${_hafizProgressPrefix}guest');
+        if (guestHafiz != null) {
+          await preferences.setString(
+            '$_hafizProgressPrefix$userId',
+            guestHafiz,
+          );
+        }
+        final guestLeagueXp = preferences.getInt('${_leagueXpPrefix}guest');
+        if (guestLeagueXp != null) {
+          await preferences.setInt('$_leagueXpPrefix$userId', guestLeagueXp);
+        }
+        final guestMentor =
+            preferences.getString('${_mentorProfilePrefix}guest');
+        if (guestMentor != null) {
+          await preferences.setString(
+              '$_mentorProfilePrefix$userId', guestMentor);
+        }
       }
       await _backend?.logout();
       _user = user;
@@ -2169,7 +2184,10 @@ class AppState extends ChangeNotifier {
   }
 
   void _checkAchievements() {
-    final previous = {for (final item in _achievements) item.id: item};
+    final previous = _achievementUserId == _user?.id
+        ? {for (final item in _achievements) item.id: item}
+        : <String, Achievement>{};
+    _achievementUserId = _user?.id;
     final rebuilt = Achievement.defaults();
     if (_user == null) {
       _achievements
@@ -2197,7 +2215,7 @@ class AppState extends ChangeNotifier {
               a.requiredValue;
           break;
         case AchievementCategory.streak:
-          unlock = _user!.streak >= a.requiredValue;
+          unlock = _user!.bestStreak >= a.requiredValue;
           break;
       }
       if (unlock) {

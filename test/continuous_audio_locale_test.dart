@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class _RecordingSpeech implements SpeechSynthesizer {
   final languages = <String>[];
   final spoken = <String>[];
+  int? immediateResult;
   Completer<int>? _completion;
   @override
   void setCompletionHandler(void Function() handler) {}
@@ -33,6 +34,7 @@ class _RecordingSpeech implements SpeechSynthesizer {
   @override
   Future<int> speak(String text) {
     spoken.add(text);
+    if (immediateResult != null) return Future.value(immediateResult);
     _completion = Completer<int>();
     return _completion!.future;
   }
@@ -89,6 +91,24 @@ void main() {
     expect(speech.languages.last, 'en-US');
     expect(speech.spoken.last, contains(en.objective));
     expect(speech.spoken, hasLength(2));
+
+    // User pause cancels the pending utterance with result 0, without an error
+    // or a stale completion advancing the playlist.
+    await tester.ensureVisible(toggle);
+    await tester.tap(toggle);
+    await tester.pump();
+    expect(speech.spoken, hasLength(2));
+    expect(find.textContaining('Не удалось'), findsNothing);
+    expect(find.textContaining('could not'), findsNothing);
+
+    // A genuine no-start result must not silently move to the next module.
+    speech.immediateResult = 0;
+    await tester.tap(toggle);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 3));
+    expect(speech.spoken, hasLength(3));
+    expect(find.text(en.title), findsOneWidget);
+    expect(find.textContaining('Playback could not continue'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
     expect(tester.takeException(), isNull);

@@ -9,10 +9,9 @@ import '../utils/colors.dart';
 import '../widgets/cat_character.dart';
 import '../widgets/language_pills.dart';
 import '../widgets/premium_background.dart';
-import '../widgets/premium_button.dart';
 import '../widgets/premium_card.dart';
 import '../widgets/section_label.dart';
-import '../widgets/stat_badge.dart';
+import 'profile/achievement_presentation.dart';
 
 part 'profile/profile_header.dart';
 part 'profile/profile_achievements.dart';
@@ -60,8 +59,10 @@ class ProfileScreen extends StatelessWidget {
       backgroundColor: Colors.transparent,
       body: PremiumBackground(
         child: SafeArea(
+          bottom: false,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+            padding: EdgeInsets.fromLTRB(
+                16, 12, 16, MediaQuery.paddingOf(context).bottom + 28),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -96,20 +97,13 @@ class ProfileScreen extends StatelessWidget {
                   onSeeAll: () => Navigator.pushNamed(context, '/achievements'),
                 ),
                 const SizedBox(height: 12),
-                _AchievementsGrid(achievements: state.achievements),
+                _AchievementsGrid(
+                  achievements: state.achievements,
+                  onSeeAll: () => Navigator.pushNamed(context, '/achievements'),
+                ),
                 const SizedBox(height: 22),
                 _MenuSection(
                   items: [
-                    if (!state.isBackendUser)
-                      _MenuItem(
-                        icon: Icons.cloud_upload_rounded,
-                        label: state.tr(
-                            ru: 'Создать аккаунт',
-                            kk: 'Аккаунт жасау',
-                            en: 'Create account'),
-                        color: AppColors.navy,
-                        onTap: () => Navigator.pushNamed(context, '/login'),
-                      ),
                     _MenuItem(
                       icon: Icons.groups_rounded,
                       label:
@@ -205,17 +199,14 @@ class ProfileScreen extends StatelessWidget {
                 Text(
                   state.isBackendUser
                       ? state.tr(
-                          ru: 'Прогресс синхронизируется с твоим аккаунтом. Внешние сервисы '
-                              'получают только данные, нужные для выбранной функции; подробности есть в политике конфиденциальности.',
-                          kk: 'Прогресс аккаунтыңызбен синхрондалады. Сыртқы сервистер тек '
-                              'таңдалған функцияға қажет деректерді алады; толық ақпарат құпиялық саясатында.',
-                          en: 'Progress is synced with your account. External services receive '
-                              'only data needed for the selected feature; see the privacy policy for details.',
+                          ru: 'Прогресс синхронизируется с твоим аккаунтом.',
+                          kk: 'Прогресс аккаунтыңызбен синхрондалады.',
+                          en: 'Progress is synced with your account.',
                         )
                       : state.tr(
-                          ru: 'Прогресс пока хранится только на этом устройстве. Создай аккаунт, чтобы сохранить его и продолжать на других устройствах.',
-                          kk: 'Прогресс әзірге тек осы құрылғыда сақталады. Оны сақтау және басқа құрылғыларда жалғастыру үшін аккаунт жасаңыз.',
-                          en: 'Progress is currently stored only on this device. Create an account to keep it and continue on other devices.',
+                          ru: 'Гостевой прогресс хранится только на этом устройстве.',
+                          kk: 'Қонақ прогресі тек осы құрылғыда сақталады.',
+                          en: 'Guest progress is stored only on this device.',
                         ),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
@@ -281,14 +272,28 @@ class ProfileScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(state.tr(ru: 'Выйти?', kk: 'Шығасыз ба?', en: 'Log out?'),
+        title: Text(
+            state.isGuest
+                ? state.tr(
+                    ru: 'Сбросить прогресс?',
+                    kk: 'Прогресті қалпына келтіру керек пе?',
+                    en: 'Reset your progress?')
+                : state.tr(ru: 'Выйти?', kk: 'Шығасыз ба?', en: 'Log out?'),
             style: const TextStyle(
                 fontFamily: 'Nunito', fontWeight: FontWeight.w800)),
         content: Text(
-            state.tr(
-                ru: 'Твой прогресс сохранится',
-                kk: 'Прогресіңіз сақталады',
-                en: 'Your progress will be saved'),
+            state.isGuest
+                ? state.tr(
+                    ru:
+                        'Гостевой прогресс и награды будут удалены с этого устройства. Перед сбросом можно сохранить резервную копию в настройках.',
+                    kk:
+                        'Қонақ прогресі мен марапаттары осы құрылғыдан жойылады. Қалпына келтірмес бұрын баптауларда сақтық көшірме сақтауға болады.',
+                    en:
+                        'Guest progress and rewards will be removed from this device. You can save a backup in Settings before resetting.')
+                : state.tr(
+                    ru: 'Твой прогресс сохранится в аккаунте',
+                    kk: 'Прогресіңіз аккаунтта сақталады',
+                    en: 'Your progress will be saved in your account'),
             style: const TextStyle(fontFamily: 'Nunito')),
         actions: [
           TextButton(
@@ -304,7 +309,11 @@ class ProfileScreen extends StatelessWidget {
                 Navigator.pushReplacementNamed(context, '/onboarding');
               }
             },
-            child: Text(state.tr(ru: 'Выйти', kk: 'Шығу', en: 'Log out'),
+            child: Text(
+                state.isGuest
+                    ? state.tr(
+                        ru: 'Сбросить', kk: 'Қалпына келтіру', en: 'Reset')
+                    : state.tr(ru: 'Выйти', kk: 'Шығу', en: 'Log out'),
                 style: const TextStyle(
                     fontFamily: 'Nunito', color: AppColors.error)),
           ),
@@ -334,10 +343,4 @@ String _levelTitle(AppState state, int level) {
         ru: 'Ученик Корана', kk: 'Құран шәкірті', en: 'Quran student');
   }
   return state.tr(ru: 'Первые шаги', kk: 'Алғашқы қадамдар', en: 'First steps');
-}
-
-/// Перевод целого числа в арабо-индийские цифры для декоративных бейджей.
-String _toArabicDigits(int n) {
-  const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-  return n.toString().split('').map((c) => digits[int.tryParse(c) ?? 0]).join();
 }

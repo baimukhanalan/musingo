@@ -179,8 +179,7 @@ class _StatBadgesRow extends StatelessWidget {
               child: _CompactStatCard(
                 icon: Icons.local_fire_department_rounded,
                 value: '$streak',
-                label: state.tr(
-                    ru: 'дней подряд', kk: 'қатарынан күн', en: 'day streak'),
+                label: state.tr(ru: 'серия', kk: 'серия', en: 'streak'),
                 accent: AppColors.gold,
               ),
             ),
@@ -249,7 +248,8 @@ class _CompactStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 66,
+      height:
+          72 + (MediaQuery.textScalerOf(context).scale(40) - 40).clamp(0, 60),
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         color: AppColors.white,
@@ -281,15 +281,15 @@ class _CompactStatCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  label.toUpperCase(),
+                  label,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontFamily: 'Nunito',
-                    fontSize: 8.5,
-                    height: 1,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textLight,
+                    fontSize: 11,
+                    height: 1.2,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textGrey,
                   ),
                 ),
               ],

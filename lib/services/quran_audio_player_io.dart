@@ -17,18 +17,35 @@ class QuranAudioPlaybackState {
 }
 
 class QuranAudioPlayer {
-  final AudioPlayer _player = AudioPlayer();
+  final AudioPlayer _player;
+  final _states = StreamController<QuranAudioPlaybackState>.broadcast();
+  late final StreamSubscription<PlayerState> _stateSubscription;
+  late final StreamSubscription<PlayerException> _errorSubscription;
   int _generation = 0;
+  bool _starting = false;
 
-  Stream<QuranAudioPlaybackState> get playbackStateStream =>
-      _player.playerStateStream.map(
-        (state) => QuranAudioPlaybackState(
-          playing: state.playing,
+  QuranAudioPlayer({AudioPlayer? player}) : _player = player ?? AudioPlayer() {
+    _stateSubscription = _player.playerStateStream.listen((state) {
+      if (!_states.isClosed) {
+        _states.add(QuranAudioPlaybackState(
+          playing: state.playing &&
+              state.processingState != ProcessingState.completed,
           completed: state.processingState == ProcessingState.completed,
           buffering: state.processingState == ProcessingState.loading ||
               state.processingState == ProcessingState.buffering,
-        ),
-      );
+        ));
+      }
+    });
+    // just_audio reports decoder/network interruptions separately from its
+    // player state. Forward late errors, but let startup futures own retries.
+    _errorSubscription = _player.errorStream.listen((error) {
+      if (!_starting && !_states.isClosed) {
+        _states.add(QuranAudioPlaybackState(playing: false, error: error));
+      }
+    });
+  }
+
+  Stream<QuranAudioPlaybackState> get playbackStateStream => _states.stream;
 
   Future<void> setUrl(String url) {
     _generation++;
@@ -42,16 +59,26 @@ class QuranAudioPlayer {
 
   Future<void> playUrl(String url) async {
     final request = ++_generation;
-    await _player.setUrl(url);
-    if (request != _generation) return;
-    await play();
+    _starting = true;
+    try {
+      await _player.setUrl(url);
+      if (request != _generation) return;
+      await play();
+    } finally {
+      if (request == _generation) _starting = false;
+    }
   }
 
   Future<void> playFile(String path) async {
     final request = ++_generation;
-    await _player.setFilePath(path);
-    if (request != _generation) return;
-    await play();
+    _starting = true;
+    try {
+      await _player.setFilePath(path);
+      if (request != _generation) return;
+      await play();
+    } finally {
+      if (request == _generation) _starting = false;
+    }
   }
 
   Future<void> play() async {
@@ -85,11 +112,15 @@ class QuranAudioPlayer {
 
   Future<void> stop() {
     _generation++;
+    _starting = false;
     return _player.stop();
   }
 
   void dispose() {
     _generation++;
+    _stateSubscription.cancel();
+    _errorSubscription.cancel();
+    _states.close();
     _player.dispose();
   }
 }

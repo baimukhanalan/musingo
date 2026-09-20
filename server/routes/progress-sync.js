@@ -14,6 +14,7 @@ export function sanitizeGuestImport(incoming) {
     xp: 0,
     level: 1,
     streak: 0,
+    bestStreak: 0,
     totalLessons: 0,
     totalMinutes: 0,
     lessonAttempts: 0,

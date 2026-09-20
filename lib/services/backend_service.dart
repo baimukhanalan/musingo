@@ -681,6 +681,7 @@ class BackendService {
         xp: (progress['xp'] as num?)?.toInt() ?? 0,
         level: (progress['level'] as num?)?.toInt() ?? 1,
         streak: (progress['streak'] as num?)?.toInt() ?? 0,
+        bestStreak: (progress['bestStreak'] as num?)?.toInt() ?? 0,
         hearts: (progress['hearts'] as num?)?.toInt() ?? 5,
         energy: (progress['energy'] as num?)?.toInt() ?? 0,
         isPremium: progress['isPremium'] as bool? ?? false,

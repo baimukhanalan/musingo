@@ -128,13 +128,16 @@ void main() {
     // Виден премиум-хедер с приветствием (стабильно при любом гейтинге секций).
     expect(find.textContaining('Ассаляму алейкум'), findsOneWidget);
     // Три компактные карточки статистики и голубой daily plan из референса.
-    expect(find.text('ДНЕЙ ПОДРЯД'), findsOneWidget);
+    expect(find.text('серия'), findsOneWidget);
     expect(find.text('XP'), findsOneWidget);
-    expect(find.text('ЖИЗНИ'), findsOneWidget);
+    expect(find.text('жизни'), findsOneWidget);
     expect(find.text('Начать урок'), findsOneWidget);
     expect(
       find.byWidgetPredicate(
-        (widget) => widget is CatCharacter && widget.mood == CatMood.learning,
+        (widget) =>
+            widget is CatCharacter &&
+            widget.mood == CatMood.greet &&
+            widget.size == 108,
       ),
       findsOneWidget,
     );
@@ -180,6 +183,19 @@ void main() {
     expect(find.byKey(const ValueKey('learning-path-panel')), findsOneWidget);
     expect(find.byKey(const ValueKey('course-path-quran')), findsOneWidget);
     expect(find.byKey(const ValueKey('learning-path-world')), findsOneWidget);
+    final quranWorld = find.byKey(const ValueKey('learning-world-quran'));
+    expect(quranWorld, findsOneWidget);
+    final worldStart = tester.getTopLeft(quranWorld);
+    final pathController = tester
+        .widget<CustomScrollView>(
+            find.byKey(const ValueKey('course-path-quran')))
+        .controller!;
+    pathController.jumpTo(pathController.position.maxScrollExtent);
+    await tester.pump();
+    expect(tester.getTopLeft(quranWorld).dy, greaterThan(worldStart.dy),
+        reason: 'Scrolling deeper reveals the higher part of the world');
+    pathController.jumpTo(0);
+    await tester.pump();
     expect(find.byType(CustomScrollView), findsNWidgets(2));
     expect(find.text('100 уроков'), findsOneWidget);
 
@@ -189,6 +205,8 @@ void main() {
 
     expect(find.byKey(const ValueKey('course-path-quran')), findsNothing);
     expect(find.byKey(const ValueKey('course-path-arabic')), findsOneWidget);
+    expect(find.byKey(const ValueKey('learning-world-arabic')), findsOneWidget);
+    expect(quranWorld, findsNothing);
     expect(find.text('100 уроков'), findsOneWidget);
     expect(
         find.byKey(const ValueKey('choose-native-language')), findsOneWidget);
@@ -202,10 +220,14 @@ void main() {
 
     expect(find.byKey(const ValueKey('course-path-arabic')), findsNothing);
     expect(find.byKey(const ValueKey('course-path-tajwid')), findsOneWidget);
+    expect(find.byKey(const ValueKey('learning-world-tajwid')), findsOneWidget);
     expect(find.text('36 уроков'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     // Академия стоит сразу после фиксированной панели, а не после 68 узлов.
+    await tester.tap(find.byKey(const ValueKey('course-mode-basics')));
+    await tester.pump(const Duration(milliseconds: 450));
+    expect(find.byKey(const ValueKey('learning-world-basics')), findsOneWidget);
     await tester.drag(outerScroll, const Offset(0, -440));
     await tester.pump(const Duration(milliseconds: 150));
     expect(find.text('Академия'), findsOneWidget);

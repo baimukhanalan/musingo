@@ -6,6 +6,11 @@ class UserModel {
   final int xp;
   final int level;
   final int streak;
+  final int _bestStreak;
+
+  /// A broken current streak must not revoke a milestone already earned.
+  /// Legacy profiles can prove at least their recorded current streak.
+  int get bestStreak => streak > _bestStreak ? streak : _bestStreak;
   final int hearts;
   final int energy;
   final bool isPremium;
@@ -33,6 +38,7 @@ class UserModel {
     this.xp = 0,
     this.level = 1,
     this.streak = 0,
+    int bestStreak = 0,
     this.hearts = 5,
     this.energy = 0,
     this.isPremium = false,
@@ -48,7 +54,7 @@ class UserModel {
     this.speechAttempts = 0,
     this.rewardChestsOpened = 0,
     this.rewardHistory = const [],
-  });
+  }) : _bestStreak = bestStreak;
 
   int get xpForNextLevel => (level * 500) - xp;
   double get levelProgress => (xp % 500) / 500.0;
@@ -61,6 +67,7 @@ class UserModel {
     int? xp,
     int? level,
     int? streak,
+    int? bestStreak,
     int? hearts,
     int? energy,
     bool? isPremium,
@@ -88,6 +95,9 @@ class UserModel {
       xp: xp ?? this.xp,
       level: level ?? this.level,
       streak: streak ?? this.streak,
+      bestStreak: bestStreak != null && bestStreak > this.bestStreak
+          ? bestStreak
+          : this.bestStreak,
       hearts: hearts ?? this.hearts,
       energy: energy ?? this.energy,
       isPremium: isPremium ?? this.isPremium,
@@ -116,6 +126,7 @@ class UserModel {
         'xp': xp,
         'level': level,
         'streak': streak,
+        'bestStreak': bestStreak,
         'hearts': hearts,
         'energy': energy,
         'isPremium': isPremium,
@@ -141,6 +152,9 @@ class UserModel {
         xp: json['xp'] ?? 0,
         level: json['level'] ?? 1,
         streak: json['streak'] ?? 0,
+        bestStreak: json['bestStreak'] is num
+            ? (json['bestStreak'] as num).toInt().clamp(0, 100000)
+            : 0,
         hearts: json['hearts'] ?? 5,
         energy: json['energy'] ?? 0,
         isPremium: json['isPremium'] ?? false,

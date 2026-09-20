@@ -11,6 +11,9 @@ class SpeechSynthesizer {
   bool _awaitCompletion = false;
   void Function()? _completionHandler;
   void Function(String message)? _errorHandler;
+  web.SpeechSynthesisUtterance? _utterance;
+  Completer<int>? _pending;
+  int _generation = 0;
 
   void setCompletionHandler(void Function() handler) {
     _completionHandler = handler;
@@ -42,30 +45,57 @@ class SpeechSynthesizer {
 
   Future<int> speak(String text) async {
     if (text.trim().isEmpty) return 0;
-    final completer = Completer<int>();
+    _cancelCurrent();
+    final request = ++_generation;
+    final completer = _awaitCompletion ? Completer<int>() : null;
+    _pending = completer;
     final utterance = web.SpeechSynthesisUtterance(text)
       ..lang = _language
       ..rate = _rate
       ..pitch = _pitch
       ..volume = _volume;
     utterance.onend = ((web.SpeechSynthesisEvent _) {
+      if (request != _generation) return;
+      _releaseCurrent();
       _completionHandler?.call();
-      if (!completer.isCompleted) completer.complete(1);
+      if (completer != null && !completer.isCompleted) completer.complete(1);
     }).toJS;
     utterance.onerror = ((web.SpeechSynthesisErrorEvent event) {
+      if (request != _generation) return;
+      _releaseCurrent();
       final message = event.error;
       _errorHandler?.call(message);
-      if (!completer.isCompleted) {
+      if (completer != null && !completer.isCompleted) {
         completer
             .completeError(StateError('Speech synthesis failed: $message'));
       }
     }).toJS;
+    // Keep a strong reference while speaking. Some browsers can otherwise
+    // collect an utterance before delivering its completion callback.
+    _utterance = utterance;
     web.window.speechSynthesis.speak(utterance);
-    if (_awaitCompletion) return await completer.future;
+    if (completer != null) return await completer.future;
     return 1;
   }
 
   Future<void> stop() async {
-    web.window.speechSynthesis.cancel();
+    _cancelCurrent();
+  }
+
+  void _releaseCurrent() {
+    _utterance?.onend = null;
+    _utterance?.onerror = null;
+    _utterance = null;
+    _pending = null;
+  }
+
+  void _cancelCurrent() {
+    _generation++;
+    final hadUtterance = _utterance != null;
+    final pending = _pending;
+    // Detach callbacks before cancel(): an intentional stop is not an error.
+    _releaseCurrent();
+    if (pending != null && !pending.isCompleted) pending.complete(0);
+    if (hadUtterance) web.window.speechSynthesis.cancel();
   }
 }

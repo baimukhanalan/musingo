@@ -25,17 +25,24 @@ class _ListenChoiceStep extends StatefulWidget {
 class _ListenChoiceStepState extends State<_ListenChoiceStep> {
   late final SpeechSynthesizer _tts;
   late final QuranAudioPlayer _audioPlayer;
+  late final AudioPlaybackSession _session;
   StreamSubscription<QuranAudioPlaybackState>? _audioSubscription;
   bool _playing = false;
   int _plays = 0;
+  int _request = 0;
 
   @override
   void initState() {
     super.initState();
     _audioPlayer = QuranAudioPlayer();
+    _session = AudioPlaybackSession(
+      playUrl: _audioPlayer.playUrl,
+      stopPlayer: _audioPlayer.stop,
+    );
     _audioSubscription = _audioPlayer.playbackStateStream.listen((playback) {
       if (!mounted) return;
-      setState(() => _playing = playback.playing);
+      if (_session.starting) return;
+      setState(() => _playing = playback.playing || playback.buffering);
       if (playback.error != null) _showUnavailable(null);
     });
     _tts = SpeechSynthesizer();
@@ -49,6 +56,8 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
 
   @override
   void dispose() {
+    _request++;
+    _session.cancel();
     if (!widget.simulatePlayback && widget.playbackSimulator == null) {
       _tts.stop();
     }
@@ -58,18 +67,19 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
   }
 
   Future<void> _play() async {
+    final request = ++_request;
     HapticsService.tap();
     if (widget.playbackSimulator != null) {
       try {
         await widget.playbackSimulator!(widget.step);
-        if (mounted) {
+        if (mounted && request == _request) {
           setState(() {
             _playing = false;
             _plays++;
           });
         }
       } catch (_) {
-        if (!mounted) return;
+        if (!mounted || request != _request) return;
         setState(() => _playing = false);
         _showUnavailable(null);
       }
@@ -83,6 +93,7 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
       return;
     }
     if (_playing) {
+      _session.cancel();
       await _tts.stop();
       await _audioPlayer.stop();
       if (mounted) setState(() => _playing = false);
@@ -95,24 +106,15 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
 
     final ayahNumber = widget.step.quranGlobalAyahNumber;
     if (ayahNumber != null) {
-      Object? lastError;
-      for (final source in quranAudioSources(ayahNumber)) {
-        try {
-          await _audioPlayer.playUrl(source);
-          if (mounted) {
-            setState(() {
-              _plays++;
-            });
-          }
-          return;
-        } catch (error) {
-          lastError = error;
-          await _audioPlayer.stop();
+      try {
+        final started = await _session.play(quranAudioSources(ayahNumber));
+        if (mounted && started) setState(() => _plays++);
+      } catch (_) {
+        if (mounted) {
+          setState(() => _playing = false);
+          _showUnavailable(null);
         }
       }
-      if (!mounted) return;
-      setState(() => _playing = false);
-      _showUnavailable('$lastError');
       return;
     }
 
@@ -127,16 +129,17 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
       await _tts.setPitch(1.0);
       await _tts.setVolume(1.0);
       await _tts.awaitSpeakCompletion(true);
+      if (!mounted || request != _request) return;
       final result = await _tts.speak(text);
       if (result != 1) throw StateError('Text-to-speech did not start.');
-      if (mounted) {
+      if (mounted && request == _request) {
         setState(() {
           _playing = false;
           _plays++;
         });
       }
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || request != _request) return;
       setState(() => _playing = false);
       _showUnavailable(null);
     }
@@ -215,15 +218,20 @@ class _ListenChoiceStepState extends State<_ListenChoiceStep> {
         ),
         const SizedBox(height: 10),
         Text(
-            _plays == 0
+            _session.starting
                 ? state.tr(
-                    ru: 'Нажми, чтобы прослушать',
-                    kk: 'Тыңдау үшін бас',
-                    en: 'Tap to listen')
-                : state.tr(
-                    ru: 'Можно слушать сколько нужно',
-                    kk: 'Қалағаныңша тыңдай аласың',
-                    en: 'Listen as many times as you need'),
+                    ru: 'Загружаем аудио…',
+                    kk: 'Аудио жүктелуде…',
+                    en: 'Loading audio…')
+                : _plays == 0
+                    ? state.tr(
+                        ru: 'Нажми, чтобы прослушать',
+                        kk: 'Тыңдау үшін бас',
+                        en: 'Tap to listen')
+                    : state.tr(
+                        ru: 'Можно слушать сколько нужно',
+                        kk: 'Қалағаныңша тыңдай аласың',
+                        en: 'Listen as many times as you need'),
             style: const TextStyle(
                 fontFamily: 'Nunito',
                 fontFamilyFallback: _lessonFontFallback,
