@@ -50,7 +50,17 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/
+    # Keep the archived Blender experiments out of the app download.
+    - assets/images/cat_idle_real.webp
+    - assets/images/cat_success_real.webp
+    - assets/images/cat_error_real.webp
+    - assets/images/cat_greet_real.webp
+    - assets/images/cat_thinking_real.webp
+    - assets/images/cat_praise_real.webp
+    - assets/images/cat_learning_real.webp
+    - assets/images/cat_prayer_real.webp
+    - assets/images/muslingo_cat.webp
+    - assets/images/learning_path_world.webp
     - assets/data/
     - docs/content/approved-570-curriculum-plan.json
 

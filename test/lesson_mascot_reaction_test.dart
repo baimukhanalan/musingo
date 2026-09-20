@@ -93,7 +93,7 @@ void main() {
     final second = mascot(tester);
     expect(second.mood, CatMood.error);
     expect(second.reactionId, isNot(first.reactionId),
-        reason: 'A second mistake must restart the finite animation');
+        reason: 'A second mistake must remain a distinct learner event');
     expect(state.user!.hearts, 3);
 
     for (var index = 0; index < 2; index++) {
