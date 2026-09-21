@@ -13,6 +13,22 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(LessonContentLocalization.load);
 
+  test('Kazakh daily ayah 85:10 preserves the source meaning of punishment',
+      () async {
+    // Khalifa Altai, Al-Buruj 85:10:
+    // https://quranenc.com/en/browse/kazakh_altai/85
+    final catalog =
+        jsonDecode(await rootBundle.loadString('assets/data/learning_kk.json'))
+            as Map;
+    const source =
+        'Тем, кто подвергал искушению верующих мужчин и женщин и не раскаялся, уготованы мучения в Геенне и мучения от обжигающего Огня';
+    final text = (catalog['translations'] as Map)[source] as String;
+    expect(text, contains('тозақтың азабы'));
+    expect(text, contains('жапа беріп'));
+    expect(text, isNot(contains('жәннәт')));
+    expect(text, isNot(contains('жәннат')));
+  });
+
   test('persisted onboarding recommendation switches from any saved language',
       () {
     const original =
