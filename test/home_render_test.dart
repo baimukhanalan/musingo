@@ -474,6 +474,56 @@ void main() {
     await teardown(tester);
   });
 
+  testWidgets(
+      'coach composer stays above the dock and remains usable with keyboard',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetViewInsets);
+    final state = await guestState(tester);
+    for (final size in [
+      const Size(320, 568),
+      const Size(390, 844),
+      const Size(430, 932)
+    ]) {
+      tester.view.physicalSize = size;
+      await tester.pumpWidget(ChangeNotifierProvider<AppState>.value(
+        value: state,
+        child: const MaterialApp(home: MainTabScreen(initialIndex: 2)),
+      ));
+      await tester.pump();
+      final composer = find.byType(TextField);
+      final dock = find.byKey(const ValueKey('floating-navigation-capsule'));
+      expect(tester.getBottomLeft(composer).dy,
+          lessThan(tester.getTopLeft(dock).dy));
+      expect(tester.getBottomLeft(find.byTooltip('Отправить')).dy,
+          lessThan(tester.getTopLeft(dock).dy));
+      expect(composer.hitTestable(), findsOneWidget);
+      await tester.enterText(composer, 'Проверка ввода');
+      tester.view.viewInsets = const FakeViewPadding(bottom: 220);
+      await tester.pump();
+      expect(dock, findsNothing);
+      expect(tester.getBottomLeft(composer).dy,
+          lessThanOrEqualTo(size.height - 220));
+      expect(composer.hitTestable(), findsOneWidget);
+      expect(find.text('Проверка ввода'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      tester.view.resetViewInsets();
+      await teardown(tester);
+    }
+    await tester.pumpWidget(ChangeNotifierProvider<AppState>.value(
+      value: state,
+      child: const MaterialApp(home: CoachScreen(showBackButton: true)),
+    ));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('floating-navigation-capsule')),
+        findsNothing);
+    expect(find.byType(TextField).hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await teardown(tester);
+  });
+
   testWidgets('Экран «Друзья» рендерится (гость → предложение аккаунта)',
       (tester) async {
     final state = await guestState(tester);

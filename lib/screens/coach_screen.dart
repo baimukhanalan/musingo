@@ -529,7 +529,6 @@ class _CoachScreenState extends State<CoachScreen> {
       body: PremiumBackground(
         floatingLetters: false,
         child: SafeArea(
-          bottom: false,
           child: Column(
             children: [
               _CoachHeader(
