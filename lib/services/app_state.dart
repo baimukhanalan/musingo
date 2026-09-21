@@ -16,6 +16,7 @@ import '../models/knowledge_state.dart';
 import '../models/hafiz_progress.dart';
 import '../models/daily_ayah.dart';
 import '../models/mentor_profile.dart';
+import '../models/mentor_tip.dart';
 import '../utils/app_locale.dart';
 import 'backend_service.dart';
 import 'lesson_data.dart';
@@ -496,6 +497,28 @@ class AppState extends ChangeNotifier {
       LearningRecommendationLocalization.localize(
           _learningRecommendation, _locale.code);
   LearningSkillProfile? get learningSkillProfile => _learningSkillProfile;
+
+  MentorTip mentorTipAt(DateTime now) => MentorTip.build(
+        now: now,
+        locale: _locale,
+        profile: _mentorProfile,
+        learnerName: isGuest ? '' : _user?.name ?? '',
+        goal: _learningGoal,
+        nextLesson: recommendedLesson?.title,
+        weakestSkill: (_user?.totalLessons ?? 0) == 0 &&
+                _learningSkillProfile != null &&
+                _learningSkillProfile!
+                        .scoreFor(_learningSkillProfile!.weakestSkill) <
+                    70
+            ? _learningSkillProfile?.weakestSkill
+            : null,
+        dueReviews: dueReviewCount,
+        weakItems: weakKnowledgeCount,
+        todayProgress: todayProgress,
+        dailyGoal: dailyGoal,
+        streak: _user?.streak ?? 0,
+        lastStudyDate: _user?.lastStudyDate,
+      );
 
   /// Дневная цель пользователя (сколько уроков за день). Дефолт — 3.
   int get dailyGoal => _user?.dailyGoal ?? 3;

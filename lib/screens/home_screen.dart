@@ -8,14 +8,13 @@ import '../services/haptics_service.dart';
 import '../utils/colors.dart';
 import '../widgets/cat_character.dart';
 import '../widgets/daily_ayah.dart';
-import '../widgets/language_pills.dart';
+import '../widgets/mentor_tip_card.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
 import '../widgets/premium_card.dart';
 import '../widgets/pressable_scale.dart';
 import '../widgets/progress_ring.dart';
 import '../widgets/section_label.dart';
-import '../widgets/semantic_switcher_layout.dart';
 
 part 'home/home_header.dart';
 part 'home/daily_cards.dart';
@@ -34,9 +33,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   _LearningMode _mode = _LearningMode.quran;
-  bool _languagePromptOpen = false;
-  bool _learningPathExpanded = false;
   final Map<String, ScrollController> _pathControllers = {};
+  final PageStorageBucket _courseScrollStorage = PageStorageBucket();
 
   static const _quranIcons = [
     Icons.auto_awesome_rounded,
@@ -84,14 +82,25 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  void _changeLearningMode(_LearningMode mode) {
+  void _openCourse(_LearningMode mode) {
     HapticsService.tap();
     setState(() => _mode = mode);
-  }
-
-  void _toggleLearningPath() {
-    HapticsService.tap();
-    setState(() => _learningPathExpanded = !_learningPathExpanded);
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        // Fullscreen is a home view; refreshing its URL remains a valid entry.
+        settings: const RouteSettings(name: '/home'),
+        fullscreenDialog: true,
+        builder: (context) => PageStorage(
+          bucket: _courseScrollStorage,
+          child: _CoursePathScreen(
+            mode: mode,
+            controller: _pathControllerFor(
+                mode == _LearningMode.basics ? 'rules' : mode.name),
+            onOpenLesson: _openLesson,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -100,22 +109,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = state.user;
     if (user == null) return const SizedBox.shrink();
 
-    final quranCourse = state.getCourse(CourseType.quran);
-    final arabicCourse = state.getCourse(CourseType.arabic);
-    final rulesCourse = state.getCourse(CourseType.rules);
-    final tajwidCourse = state.getCourse(CourseType.tajwid);
-    final activeCourse = switch (_mode) {
-      _LearningMode.basics => rulesCourse,
-      _LearningMode.quran => quranCourse,
-      _LearningMode.arabic => arabicCourse,
-      _LearningMode.tajwid => tajwidCourse,
-    };
-    final activeIcons = switch (_mode) {
-      _LearningMode.basics => _rulesIcons,
-      _LearningMode.quran => _quranIcons,
-      _LearningMode.arabic => _arabicIcons,
-      _LearningMode.tajwid => _tajwidIcons,
-    };
     // recommendedLesson делает where().toList()..sort() и проходы по курсам —
     // считаем его один раз за build и переиспользуем во всех местах ниже,
     // чтобы не гонять расчёт 4 раза и исключить рассинхрон между вызовами.
@@ -125,34 +118,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final double memoryAccuracy = memory.isEmpty
         ? 0
         : memory.map((k) => k.strength).reduce((a, b) => a + b) / memory.length;
-
-    final learningPath = activeCourse == null
-        ? null
-        : _LearningPathPanel(
-            mode: _mode,
-            course: activeCourse,
-            icons: activeIcons,
-            nativeLanguage: state.nativeLanguage,
-            controller: _pathControllerFor(activeCourse.id),
-            expanded: _learningPathExpanded,
-            onToggleExpanded: _toggleLearningPath,
-            onModeChanged: _changeLearningMode,
-            onChooseNativeLanguage: () => _askNativeLanguage(context),
-            onOpenLesson: _openLesson,
-          );
-
-    if (_learningPathExpanded && learningPath != null) {
-      return Scaffold(
-        backgroundColor: AppColors.ivory,
-        body: PremiumBackground(
-          floatingLetters: false,
-          child: SafeArea(
-            bottom: false,
-            child: SizedBox.expand(child: learningPath),
-          ),
-        ),
-      );
-    }
 
     return Scaffold(
       backgroundColor: AppColors.ivory,
@@ -166,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
           // слайверы самоизмеряемые, поэтому такой проблемы нет.
           child: CustomScrollView(
             slivers: [
-              // (1) Топ: дата + приветствие по имени из AppState + языковые пилюли.
+              // Keep the greeting; language selection remains in Profile.
               SliverToBoxAdapter(
                 child: _GreetingHeader(name: user.name),
               ),
@@ -210,25 +175,23 @@ class _HomeScreenState extends State<HomeScreen> {
                         : () => _openLesson(context, recommendedLesson),
                   ),
                 ),
-              // (5) Совет наставника.
+              const SliverToBoxAdapter(child: DailyAyahCard()),
               SliverToBoxAdapter(
-                child: _MentorTipCard(
-                  text: state.learningRecommendation,
-                  onTap: () => Navigator.pushNamed(context, '/coach'),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                  child: _ModeSwitch(mode: _mode, onChanged: _openCourse),
                 ),
               ),
-              // Один компактный учебный экран с собственной прокруткой. Даже
-              // при сотне уроков следующие разделы остаются рядом, а не после
-              // десятков экранов длинного пути.
-              if (learningPath != null) SliverToBoxAdapter(child: learningPath),
               SliverToBoxAdapter(
                 child: _AcademyEntryCard(
                   onTap: () => Navigator.pushNamed(context, '/academy'),
                 ),
               ),
-              // (8) Аят дня. У карточки собственные внешние отступы (16px),
-              // поэтому дополнительный Padding не оборачиваем.
-              const SliverToBoxAdapter(child: DailyAyahCard()),
+              SliverToBoxAdapter(
+                child: MentorTipCard(
+                  onTap: () => Navigator.pushNamed(context, '/coach'),
+                ),
+              ),
               SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(
@@ -333,31 +296,4 @@ class _HomeScreenState extends State<HomeScreen> {
       Navigator.pushNamed(context, '/lesson', arguments: lesson);
     }
   }
-
-  Future<void> _askNativeLanguage(BuildContext context) async {
-    if (_languagePromptOpen) return;
-    _languagePromptOpen = true;
-    try {
-      await showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        useSafeArea: true,
-        isDismissible: true,
-        enableDrag: true,
-        backgroundColor: Colors.transparent,
-        builder: (sheetContext) => _NativeLanguageSheet(
-          onSelected: (language) async {
-            HapticsService.reward();
-            await context.read<AppState>().setNativeLanguage(language);
-            if (sheetContext.mounted) Navigator.pop(sheetContext);
-          },
-        ),
-      );
-    } finally {
-      _languagePromptOpen = false;
-    }
-  }
 }
-
-/// Top block: small date label, «Ассаляму алейкум, {имя}» headline and the
-/// RU/KZ/EN language pills.

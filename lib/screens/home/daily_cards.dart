@@ -224,85 +224,6 @@ class _MemoryEngineCard extends StatelessWidget {
   }
 }
 
-/// Mentor tip card with the mascot and a link into the AI Coach.
-class _MentorTipCard extends StatelessWidget {
-  final String? text;
-  final VoidCallback onTap;
-
-  const _MentorTipCard({required this.text, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 6),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(22),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(22),
-          child: PremiumCard(
-            padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 64,
-                  height: 76,
-                  decoration: BoxDecoration(
-                    color: AppColors.skyLight,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: const CatCharacter(mood: CatMood.support, size: 64),
-                ),
-                const SizedBox(width: 13),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SectionLabel(
-                          text: state.tr(
-                              ru: 'Совет наставника',
-                              kk: 'Ұстаз кеңесі',
-                              en: 'Mentor tip')),
-                      const SizedBox(height: 5),
-                      Text(
-                        text?.trim().isNotEmpty == true
-                            ? text!
-                            : state.tr(
-                                ru: 'Учись понемногу каждый день — пять минут регулярно '
-                                    'работают лучше часа раз в неделю.',
-                                kk: 'Күн сайын аз-аздан үйрен — тұрақты бес минут '
-                                    'аптасына бір сағаттан тиімдірек.',
-                                en: 'Learn a little every day — five regular minutes '
-                                    'beat an hour once a week.',
-                              ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: 'Nunito',
-                          fontSize: 14,
-                          height: 1.4,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textDark,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 6),
-                const Icon(Icons.chevron_right_rounded,
-                    color: AppColors.textGrey),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 String _reviewDateLabel(DateTime? date, AppState state) {
   if (date == null) {
     return state.tr(
@@ -315,17 +236,4 @@ String _reviewDateLabel(DateTime? date, AppState state) {
   if (days <= 0) return state.tr(ru: 'сегодня', kk: 'бүгін', en: 'today');
   if (days == 1) return state.tr(ru: 'завтра', kk: 'ертең', en: 'tomorrow');
   return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}';
-}
-
-String _lessonCountRu(int count) {
-  final mod100 = count % 100;
-  final mod10 = count % 10;
-  final word = mod100 >= 11 && mod100 <= 14
-      ? 'уроков'
-      : switch (mod10) {
-          1 => 'урок',
-          2 || 3 || 4 => 'урока',
-          _ => 'уроков',
-        };
-  return '$count $word';
 }

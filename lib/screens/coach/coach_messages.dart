@@ -58,31 +58,6 @@ class _CoachHeader extends StatelessWidget {
                     color: AppColors.navyDark,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    const Icon(Icons.verified_rounded,
-                        size: 13, color: AppColors.success),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        state.tr(
-                            ru: 'знает твой прогресс · отвечает по источникам',
-                            kk: 'сенің прогресіңді біледі · дереккөздер бойынша жауап береді',
-                            en: 'knows your progress · answers from sources'),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: 'Nunito',
-                          fontSize: 11.5,
-                          height: 1.25,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textGrey,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),

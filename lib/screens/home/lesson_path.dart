@@ -28,17 +28,30 @@ class _LessonPath extends StatelessWidget {
             const offsets = [-0.42, -0.1, 0.28, 0.02, -0.34];
             final nodeOffset = offsets[index % offsets.length];
             final compact = MediaQuery.sizeOf(context).width < 430;
-            final mascotOffset = nodeOffset <= 0
-                ? nodeOffset + (compact ? 1.08 : 0.8)
-                : nodeOffset - (compact ? 1.08 : 0.8);
+            final mascotOffset = (nodeOffset <= 0
+                    ? nodeOffset + (compact ? 1.08 : 0.8)
+                    : nodeOffset - (compact ? 1.08 : 0.8))
+                .clamp(-0.82, 0.82);
             final mascotSize = compact ? 98.0 : 112.0;
             final isCurrent = lesson.status == LessonStatus.available ||
                 lesson.status == LessonStatus.inProgress;
+            // Occasional companions along every course, not a mascot on every
+            // node and not a timer-driven distraction while choosing a lesson.
+            final showMascot = isCurrent || index % 6 == 3;
+            final mood = isCurrent
+                ? CatMood.greet
+                : lesson.status == LessonStatus.completed
+                    ? CatMood.praise
+                    : const [
+                        CatMood.learning,
+                        CatMood.support,
+                        CatMood.prayer
+                      ][(index ~/ 6) % 3];
             final nextOffset = offsets[(index + 1) % offsets.length];
             return SizedBox(
               // Узел урока (круг 70 + отступ 12 + плашка названия ~29 ≈ 111px)
               // не влезал в 104 → Column переполнялся на 7px. Даём запас.
-              height: (isCurrent ? 154 : 124) +
+              height: (showMascot ? 154 : 124) +
                   (MediaQuery.textScalerOf(context).scale(12) - 12)
                       .clamp(0, 36),
               child: Stack(
@@ -62,14 +75,15 @@ class _LessonPath extends StatelessWidget {
                       onTap: () => onOpenLesson(context, lesson),
                     ),
                   ),
-                  if (isCurrent)
+                  if (showMascot)
                     Align(
                       alignment: Alignment(mascotOffset, 0.6),
                       child: SizedBox(
                         width: mascotSize,
                         height: mascotSize,
                         child: CatCharacter(
-                          mood: CatMood.greet,
+                          key: ValueKey('course-ayn-$index'),
+                          mood: mood,
                           size: mascotSize,
                         ),
                       ),

@@ -575,9 +575,7 @@ class _CoachScreenState extends State<CoachScreen> {
                 enabled: !_sending,
                 onSend: () => _send(),
               ),
-              _SpecialistBanner(
-                onTap: () => _openUrl(CoachService.specialistUrl),
-              ),
+              const SizedBox(height: 8),
             ],
           ),
         ),

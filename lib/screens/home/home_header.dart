@@ -16,28 +16,6 @@ class _GreetingHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    _todayLabel(state.locale.code),
-                    style: const TextStyle(
-                      fontFamily: 'Nunito',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textGrey,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              const LanguagePills(),
-            ],
-          ),
-          const SizedBox(height: 12),
           Text(
             '${state.tr(ru: 'Ассаляму алейкум,', kk: 'Ассаламу әлейкум,', en: 'Assalamu alaikum,')}\n$firstName',
             maxLines: 2,
@@ -59,86 +37,6 @@ class _GreetingHeader extends StatelessWidget {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return 'друг';
     return trimmed.split(RegExp(r'\s+')).first;
-  }
-
-  static String _todayLabel(String localeCode) {
-    const weekdaysByLocale = {
-      'ru': [
-        'понедельник',
-        'вторник',
-        'среда',
-        'четверг',
-        'пятница',
-        'суббота',
-        'воскресенье'
-      ],
-      'kk': [
-        'дүйсенбі',
-        'сейсенбі',
-        'сәрсенбі',
-        'бейсенбі',
-        'жұма',
-        'сенбі',
-        'жексенбі'
-      ],
-      'en': [
-        'Monday',
-        'Tuesday',
-        'Wednesday',
-        'Thursday',
-        'Friday',
-        'Saturday',
-        'Sunday'
-      ],
-    };
-    const monthsByLocale = {
-      'ru': [
-        'января',
-        'февраля',
-        'марта',
-        'апреля',
-        'мая',
-        'июня',
-        'июля',
-        'августа',
-        'сентября',
-        'октября',
-        'ноября',
-        'декабря'
-      ],
-      'kk': [
-        'қаңтар',
-        'ақпан',
-        'наурыз',
-        'сәуір',
-        'мамыр',
-        'маусым',
-        'шілде',
-        'тамыз',
-        'қыркүйек',
-        'қазан',
-        'қараша',
-        'желтоқсан'
-      ],
-      'en': [
-        'January',
-        'February',
-        'March',
-        'April',
-        'May',
-        'June',
-        'July',
-        'August',
-        'September',
-        'October',
-        'November',
-        'December'
-      ],
-    };
-    final weekdays = weekdaysByLocale[localeCode] ?? weekdaysByLocale['ru']!;
-    final months = monthsByLocale[localeCode] ?? monthsByLocale['ru']!;
-    final now = DateTime.now();
-    return '${weekdays[now.weekday - 1]} · ${now.day} ${months[now.month - 1]}';
   }
 }
 
