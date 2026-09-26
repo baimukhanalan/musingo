@@ -30,6 +30,13 @@ first, middle, last, and longest text in each course/track (deduplicated).
 | Major-page initial renders | 288 | 288 |
 
 The default totals are **1,191 guided-lesson journeys and 64 module journeys**.
+The guided-lesson audit runs in groups of at most 50 lessons so each test has
+bounded state and a useful failure location. The 2026-09-26 local release run
+completed all 478 default Flutter tests, including every Russian lesson
+(``/tmp/muslingo-release-full-sharded-20260926.log``).
+Vercel's smaller builder runs every other Flutter test and the API suite before
+building the site; the full guided-lesson walkthrough must also pass locally
+before a production release.
 Kazakh and English select 4 Quran + 4 Arabic + 3 Tajwid + 3 basics lessons;
 Arabic selects 4 + 4 + 3 + 4. The longest-copy sample can change when translations
 change. `audit_coverage_selection_test.dart` loads the complete catalog, checks
