@@ -18,69 +18,90 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(LessonContentLocalization.load);
 
+  const lessonsPerCase = 50;
   for (final locale in AppLocale.values) {
     for (final course in LessonData.getCourses()) {
-      testWidgets(
-        '${locale.code}/${course.id}: ${locale == AppLocale.ru || exhaustiveAudit ? 'every' : 'representative'} lesson reaches review with replay controls',
-        (tester) async {
-          final oldHandler = FlutterError.onError;
-          FlutterError.onError = (details) {
-            debugPrint(details.toString());
-            oldHandler?.call(details);
-          };
-          addTearDown(() => FlutterError.onError = oldHandler);
-          tester.view.devicePixelRatio = 1;
-          addTearDown(tester.view.resetPhysicalSize);
-          addTearDown(tester.view.resetDevicePixelRatio);
+      // Tests are registered before the async Quran asset loads. Its 902 new
+      // units plus the 100 legacy units need 21 bounded cases. Other courses
+      // are already available at registration time.
+      final allLessons = locale == AppLocale.ru || exhaustiveAudit;
+      final caseCount = allLessons
+          ? (course.id == 'quran'
+              ? 21
+              : (course.lessons.length + lessonsPerCase - 1) ~/ lessonsPerCase)
+          : 1;
+      for (var caseIndex = 0; caseIndex < caseCount; caseIndex++) {
+        testWidgets(
+          '${locale.code}/${course.id} part ${caseIndex + 1}/$caseCount: ${allLessons ? 'every' : 'representative'} lesson reaches review with replay controls',
+          (tester) async {
+            final oldHandler = FlutterError.onError;
+            FlutterError.onError = (details) {
+              debugPrint(details.toString());
+              oldHandler?.call(details);
+            };
+            addTearDown(() => FlutterError.onError = oldHandler);
+            tester.view.devicePixelRatio = 1;
+            addTearDown(tester.view.resetPhysicalSize);
+            addTearDown(tester.view.resetDevicePixelRatio);
 
-          final state = await _guestState(tester);
-          await state.setLocale(locale);
-          final lessons = LessonContentLocalization.localizeCourses(
-            // AppState has now loaded the canonical full-Quran asset. Do not
-            // retain the smaller pre-initialization registry from test setup.
-            [state.getCourse(course.type)!],
-            locale.code,
-          ).single.lessons;
-          for (final lessonIndex in lessonAuditIndices(lessons, locale.code)) {
-            final lesson = lessons[lessonIndex];
-            tester.view.physicalSize = const [
-              Size(320, 568),
-              Size(390, 844),
-              Size(430, 932),
-            ][(lessonIndex + locale.index) % 3];
-            await _pumpLesson(
-              tester,
-              state,
-              lesson,
-              textScale: lessonIndex % 7 == 0 ? 1.3 : 1,
-            );
-
-            for (var stepIndex = 0;
-                stepIndex < lesson.steps.length;
-                stepIndex++) {
-              final step = lesson.steps[stepIndex];
-              await _completeStep(tester, step);
+            final state = await _guestState(tester);
+            await state.setLocale(locale);
+            final lessons = LessonContentLocalization.localizeCourses(
+              // AppState has now loaded the canonical full-Quran asset. Do not
+              // retain the smaller pre-initialization registry from test setup.
+              [state.getCourse(course.type)!],
+              locale.code,
+            ).single.lessons;
+            final indices = lessonAuditIndices(lessons, locale.code);
+            if (allLessons) {
+              expect(caseCount * lessonsPerCase,
+                  greaterThanOrEqualTo(indices.length));
               expect(
-                tester.takeException(),
-                isNull,
-                reason:
-                    '${course.id}/${lesson.id}, шаг $stepIndex (${step.type.name})',
-              );
+                  (caseCount - 1) * lessonsPerCase, lessThan(indices.length));
             }
+            final start = caseIndex * lessonsPerCase;
+            for (final lessonIndex
+                in indices.skip(start).take(lessonsPerCase)) {
+              final lesson = lessons[lessonIndex];
+              tester.view.physicalSize = const [
+                Size(320, 568),
+                Size(390, 844),
+                Size(430, 932),
+              ][(lessonIndex + locale.index) % 3];
+              await _pumpLesson(
+                tester,
+                state,
+                lesson,
+                textScale: lessonIndex % 7 == 0 ? 1.3 : 1,
+              );
 
-            await tester.pumpAndSettle(const Duration(milliseconds: 100));
-            expect(
-              find.byKey(const ValueKey('lesson_review_route')),
-              findsOneWidget,
-              reason: '${course.id}/${lesson.id} не открыл итог урока',
-            );
-            await tester.pumpWidget(const SizedBox.shrink());
-            await tester.pump();
-          }
-          state.dispose();
-        },
-        timeout: const Timeout(Duration(minutes: 12)),
-      );
+              for (var stepIndex = 0;
+                  stepIndex < lesson.steps.length;
+                  stepIndex++) {
+                final step = lesson.steps[stepIndex];
+                await _completeStep(tester, step);
+                expect(
+                  tester.takeException(),
+                  isNull,
+                  reason:
+                      '${course.id}/${lesson.id}, шаг $stepIndex (${step.type.name})',
+                );
+              }
+
+              await tester.pumpAndSettle(const Duration(milliseconds: 100));
+              expect(
+                find.byKey(const ValueKey('lesson_review_route')),
+                findsOneWidget,
+                reason: '${course.id}/${lesson.id} не открыл итог урока',
+              );
+              await tester.pumpWidget(const SizedBox.shrink());
+              await tester.pump();
+            }
+            state.dispose();
+          },
+          timeout: const Timeout(Duration(minutes: 4)),
+        );
+      }
     }
   }
 }
