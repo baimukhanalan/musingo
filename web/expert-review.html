@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Muslingo · Экспертная проверка 570 тем</title>
+  <style>
+    :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #123b59; background: #eaf5fa; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 0 0, #d4f2ff, transparent 40%), #edf5f8; }
+    a { color: #075c92; }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .shell { max-width: 1320px; margin: auto; padding: 24px; }
+    header { display: flex; align-items: center; gap: 18px; margin-bottom: 22px; }
+    .mark { width: 62px; height: 62px; border-radius: 18px; box-shadow: 0 12px 25px #115c8740; }
+    h1 { margin: 0; font-size: clamp(24px, 3vw, 36px); letter-spacing: -.03em; }
+    p { line-height: 1.5; }
+    .muted { color: #5b768a; }
+    .intro { max-width: 920px; margin: 7px 0 0; }
+    .notice { padding: 16px 18px; background: #fff8e9; border: 1px solid #efd8a0; border-radius: 18px; margin: 0 0 22px; line-height: 1.5; }
+    .stats { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+    .stat { background: #fff; border: 1px solid #d5e7ef; border-radius: 14px; padding: 10px 15px; }
+    .stat strong { display: block; font-size: 22px; }
+    .layout { display: grid; grid-template-columns: minmax(280px, 370px) minmax(0, 1fr); gap: 18px; align-items: start; }
+    .panel { background: #fffffff2; border: 1px solid #d5e7ef; border-radius: 22px; box-shadow: 0 18px 45px #164c6612; overflow: hidden; }
+    .picker { position: sticky; top: 12px; }
+    .controls { display: grid; gap: 10px; padding: 16px; border-bottom: 1px solid #e0edf2; }
+    input, select, textarea { width: 100%; border: 1px solid #bcd4e0; border-radius: 11px; background: #fff; color: #123b59; padding: 11px 12px; }
+    input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid #69beef; outline-offset: 2px; }
+    .items { max-height: min(68vh, 850px); overflow-y: auto; }
+    .item { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid #e6eff3; padding: 13px 16px; color: #123b59; background: transparent; }
+    .item:hover, .item[aria-current="true"] { background: #e7f5fc; }
+    .item small { display: block; color: #607b8e; margin-bottom: 3px; font-weight: 700; }
+    .item span { display: block; line-height: 1.32; font-weight: 650; }
+    .more { margin: 12px 16px 16px; border: 1px solid #a9d1e6; background: #eff9fe; border-radius: 10px; padding: 10px; width: calc(100% - 32px); color: #0b547e; font-weight: 700; }
+    .detail { padding: clamp(18px, 3vw, 30px); min-height: 500px; }
+    .eyebrow { color: #377ca5; text-transform: uppercase; font-size: 12px; font-weight: 800; letter-spacing: .12em; }
+    h2 { font-size: clamp(24px, 2.7vw, 34px); margin: 7px 0 10px; line-height: 1.15; }
+    h3 { font-size: 18px; margin: 26px 0 8px; }
+    .pill { display: inline-block; background: #e9f3fa; color: #18587c; border-radius: 99px; padding: 6px 10px; font-size: 12px; font-weight: 700; margin: 3px 5px 3px 0; }
+    .pill.warn { background: #fff0d6; color: #875100; }
+    .box { border: 1px solid #d9e8ee; border-radius: 14px; padding: 13px 15px; margin: 10px 0; background: #f8fcfe; overflow-wrap: anywhere; }
+    .box p { margin: 6px 0; }
+    .source-list { padding-left: 20px; }
+    .source-list li { margin: 6px 0; overflow-wrap: anywhere; }
+    .paragraph { border-left: 3px solid #9bcee8; padding-left: 14px; margin: 14px 0; line-height: 1.6; }
+    .draft { background: #f7fbfd; border: 1px solid #cfe4ef; border-radius: 16px; padding: 14px 18px; margin: 12px 0; }
+    label { display: block; font-weight: 700; margin: 13px 0 5px; }
+    textarea { min-height: 115px; resize: vertical; }
+    .action { margin-top: 14px; border: 0; border-radius: 12px; background: #105d88; color: #fff; font-weight: 750; padding: 12px 16px; }
+    .empty { padding: 18px; color: #617d8f; }
+    @media (max-width: 780px) { .shell { padding: 14px; } .layout { grid-template-columns: 1fr; } .picker { position: static; } .items { max-height: 280px; } header { align-items: flex-start; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <img class="mark" src="icons/Icon-192.png?v=20260926" alt="">
+      <div><h1>Экспертная проверка материалов</h1><p class="intro muted">570 тем Muslingo · план, заявленные источники, редакторские черновики и открытые вопросы в одном месте.</p></div>
+    </header>
+    <div class="notice"><strong>Важно:</strong> открытые интерактивные модули не равны утверждённым лекциям. Ссылки из плана не доказывают автоматически каждый тезис. Этот экран нужен для проверки; он не меняет уроки и не публикует религиозное заключение от имени эксперта. Отзыв сохраняется файлом на устройстве — автоматической отправки нет.</div>
+    <div class="stats" id="stats" aria-live="polite"></div>
+    <div class="layout">
+      <section class="panel picker" aria-label="Список модулей">
+        <div class="controls">
+          <input id="query" type="search" placeholder="Поиск по ID, теме, источнику" aria-label="Поиск модулей">
+          <select id="track" aria-label="Направление"><option value="">Все направления</option><option value="Quran">Коран</option><option value="Arabic">Арабский</option><option value="Tajwid">Таджвид</option><option value="Foundations/Academy">Основы / Академия</option></select>
+          <select id="status" aria-label="Статус"><option value="">Все статусы</option><option value="draft">Есть черновик лекции</option><option value="curated">Источник разобран вручную</option><option value="gap">Есть нерешённые вопросы</option></select>
+        </div>
+        <div class="items" id="items"></div>
+        <button class="more" id="more" type="button" hidden>Показать ещё</button>
+      </section>
+      <article class="panel detail" id="detail" aria-live="polite"><p class="muted">Загрузка материалов…</p></article>
+    </div>
+  </main>
+  <script>
+    (() => {
+      'use strict';
+      const byId = (id) => document.getElementById(id);
+      const state = { modules: [], selected: null, shown: 60 };
+      const labels = {
+        additional_named_edition_or_locator_pending: 'Нужно назвать точное издание или место в источнике',
+        canonical_text_checksum_and_recitation_rights_required: 'Нужны контроль текста Корана и права на запись чтения',
+        draft_manuscript_not_expert_reviewed: 'Черновик лекции ещё не проверен экспертом',
+        exact_tajwid_chapter_page_and_example_mapping_missing: 'Для таджвида не указаны точные глава, страница и пример',
+        full_lecture_manuscript_missing: 'Полный текст лекции ещё не подготовлен',
+        human_religious_and_language_review_required: 'Нужны религиозная и языковая редактура человеком',
+        module_claims_not_individually_verified: 'Тезисы модуля не сверены по одному с источниками',
+        module_specific_quran_word_or_example_locators_not_recorded: 'Нет точных аятов или слов для примеров этого модуля',
+        qualified_tajwid_teacher_and_audio_review_required: 'Нужна проверка преподавателем таджвида и аудиоредактором',
+        quran_examples_not_yet_selected_or_checked: 'Примеры из Корана ещё не выбраны и не проверены',
+        source_url_or_exact_verse_locator_missing: 'Нет прямой ссылки на источник или точного аята',
+        translation_and_tafsir_edition_not_selected: 'Не выбраны конкретные издания перевода и тафсира',
+        book_landing_page_only_exact_chapter_page_missing: 'Есть только страница книги, без главы и страницы',
+        exact_verse_range_declared_meaning_source_not_selected: 'Диапазон аятов известен; источник толкования не выбран',
+        linguistic_documentation_or_example_locator_pending: 'Есть языковой справочник; точные примеры ещё нужны',
+        strand_shared_verse_locator_not_module_claim_mapping: 'Ссылка общая для раздела, не для тезиса этой темы',
+        api_or_rights_documentation_not_verse_evidence: 'Документация API или прав, не доказательство смысла аята',
+        canonical_text_project_or_license_not_a_verified_verse_extract: 'Источник текста или лицензии, не сверенный фрагмент аята',
+        linguistic_reference_not_independent_religious_ruling: 'Языковой справочник, не религиозное решение',
+        pedagogical_benchmark_not_a_primary_religious_source: 'Учебный ориентир, не религиозный первоисточник',
+        tajwid_book_landing_page_not_a_chapter_page_locator: 'Страница книги таджвида без точной главы и страницы',
+        reachable_official_page: 'страница доступна; тезис ещё не подтверждён',
+        timeout_unverified_not_confirmed_broken: 'доступность не подтверждена из-за тайм-аута',
+        not_completed_for_new_manuscript: 'не завершена для новой лекции',
+      };
+      const describe = (code) => labels[code] ?? code.replaceAll('_', ' ');
+      const text = (tag, value, className) => {
+        const node = document.createElement(tag);
+        node.textContent = value ?? '';
+        if (className) node.className = className;
+        return node;
+      };
+      const appendText = (parent, tag, value, className) => parent.appendChild(text(tag, value, className));
+      const safeLink = (url, label) => {
+        try {
+          const parsed = new URL(url);
+          if (parsed.protocol !== 'https:') return text('span', label);
+          const link = document.createElement('a');
+          link.href = parsed.href;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.textContent = label;
+          return link;
+        } catch (_) { return text('span', label); }
+      };
+      function matches(module) {
+        const query = byId('query').value.trim().toLocaleLowerCase();
+        const track = byId('track').value;
+        const status = byId('status').value;
+        if (track && module.track !== track) return false;
+        if (status === 'draft' && !module.lecture_drafts.length) return false;
+        if (status === 'curated' && !module.curated_next_batch) return false;
+        if (status === 'gap' && !module.open_gates.length) return false;
+        return !query || [module.id, module.title, module.strand, module.objective, module.source_locator]
+          .some((field) => field.toLocaleLowerCase().includes(query));
+      }
+      function renderItems() {
+        const items = byId('items');
+        items.replaceChildren();
+        const found = state.modules.filter(matches);
+        for (const module of found.slice(0, state.shown)) {
+          const button = document.createElement('button');
+          button.className = 'item';
+          button.type = 'button';
+          button.setAttribute('aria-current', String(state.selected?.id === module.id));
+          button.append(text('small', `${module.id} · ${module.strand}`), text('span', module.title));
+          button.addEventListener('click', () => {
+            location.hash = module.id;
+            select(module.id);
+            if (innerWidth < 780) byId('detail').scrollIntoView({ behavior: 'smooth' });
+          });
+          items.appendChild(button);
+        }
+        if (!found.length) items.appendChild(text('p', 'Ничего не найдено.', 'empty'));
+        const more = byId('more');
+        more.hidden = found.length <= state.shown;
+        more.textContent = `Показать ещё · ${state.shown} из ${found.length}`;
+      }
+      function section(parent, heading, body) {
+        appendText(parent, 'h3', heading);
+        if (body) appendText(parent, 'p', body);
+      }
+      function renderDetail(module) {
+        const root = byId('detail');
+        root.replaceChildren();
+        appendText(root, 'div', `${module.id} · ${module.track} · ${module.strand}`, 'eyebrow');
+        appendText(root, 'h2', module.title);
+        root.appendChild(text('span', 'Интерактивный модуль открыт', 'pill'));
+        root.appendChild(text('span', module.lecture_drafts.length ? 'Есть редакторский черновик' : 'Полной лекции пока нет', 'pill warn'));
+        section(root, 'Учебная цель', module.objective);
+        section(root, 'Входное условие', module.prerequisite);
+        section(root, 'Заявленная опора в плане');
+        const locator = text('div', module.source_locator, 'box');
+        root.appendChild(locator);
+        appendText(root, 'p', `Точность: ${describe(module.locator_precision)} · этот локатор повторён в ${module.locator_reused_by_modules_in_same_track} темах направления.`, 'muted');
+        const links = [...module.declared_urls.map((item) => ({url: item.url, label: `${item.url} · ${describe(item.role)} · ${describe(item.page_availability)}`})),
+          ...module.declared_quran_locators.map((item) => ({url: item.url, label: `Коран ${item.locator}`}))];
+        if (links.length) {
+          const list = document.createElement('ul');
+          list.className = 'source-list';
+          for (const item of links) { const li = document.createElement('li'); li.appendChild(safeLink(item.url, item.label)); list.appendChild(li); }
+          root.appendChild(list);
+        }
+        section(root, 'Права и исходная проверка');
+        const rights = document.createElement('div');
+        rights.className = 'box';
+        appendText(rights, 'p', module.rights_status);
+        appendText(rights, 'p', module.review_status);
+        appendText(rights, 'p', `Проверка новой лекции: ${describe(module.editorial_review.lecture_religious_expert)}. Это отдельный статус от прежнего подтверждения плана.`);
+        root.appendChild(rights);
+        section(root, `Что ещё не проверено · ${module.open_gates.length}`);
+        const gaps = document.createElement('ul');
+        for (const gap of module.open_gates) appendText(gaps, 'li', describe(gap));
+        root.appendChild(gaps);
+        if (module.curated_next_batch) {
+          section(root, 'Ручная проверка источников');
+          for (const source of module.curated_next_batch.sources_checked ?? []) {
+            const box = document.createElement('div'); box.className = 'box';
+            box.appendChild(safeLink(source.url, `${source.locator} · ${source.role}`));
+            for (const claim of source.supported_claims ?? []) appendText(box, 'p', `Подтверждено источником: ${claim}`);
+            for (const claim of source.not_supported ?? []) appendText(box, 'p', `Не подтверждено: ${claim}`);
+            root.appendChild(box);
+          }
+          appendText(root, 'p', `Открытый вопрос: ${module.curated_next_batch.remaining_gate}`);
+        }
+        section(root, `Черновики лекции · ${module.lecture_drafts.length}`);
+        if (!module.lecture_drafts.length) appendText(root, 'p', 'Полного рукописного текста для экспертной проверки ещё нет.', 'muted');
+        for (const draft of module.lecture_drafts) {
+          const card = document.createElement('div'); card.className = 'draft';
+          appendText(card, 'strong', `${draft.locale.toUpperCase()} · ${draft.title} · не утверждено`);
+          for (const part of draft.sections ?? []) {
+            appendText(card, 'h3', part.heading);
+            for (const paragraph of part.paragraphs ?? []) appendText(card, 'p', paragraph.text, 'paragraph');
+          }
+          for (const source of draft.sources ?? []) card.appendChild(safeLink(source.url, `${source.locator} · ${source.type}`));
+          root.appendChild(card);
+        }
+        section(root, 'Отзыв эксперта по этой теме');
+        appendText(root, 'p', 'Этот файл — заметки для редакции, а не автоматическое утверждение религиозного материала.', 'muted');
+        const reviewerLabel = text('label', 'Имя и специализация проверяющего'); reviewerLabel.htmlFor = 'reviewer'; root.appendChild(reviewerLabel);
+        const reviewer = document.createElement('input'); reviewer.id = 'reviewer'; reviewer.autocomplete = 'name'; root.appendChild(reviewer);
+        const verdictLabel = text('label', 'Результат просмотра'); verdictLabel.htmlFor = 'verdict'; root.appendChild(verdictLabel);
+        const verdict = document.createElement('select'); verdict.id = 'verdict';
+        for (const [value, label] of [['needs_revision', 'Требуются правки'], ['source_reviewed', 'Источники проверены, текст ещё не утверждён'], ['blocked', 'Не подходит для публикации']]) {
+          const option = document.createElement('option'); option.value = value; option.textContent = label; verdict.appendChild(option);
+        }
+        root.appendChild(verdict);
+        const notesLabel = text('label', 'Замечания с точными локаторами'); notesLabel.htmlFor = 'notes'; root.appendChild(notesLabel);
+        const notes = document.createElement('textarea'); notes.id = 'notes'; notes.placeholder = 'Например: тезис, источник, страница / аят, предлагаемая правка'; root.appendChild(notes);
+        const download = text('button', 'Скачать отзыв JSON', 'action'); download.type = 'button';
+        download.addEventListener('click', () => {
+          if (!reviewer.value.trim() || !notes.value.trim()) { alert('Укажите проверяющего и замечания.'); return; }
+          const payload = {schema_version: 1, scope: 'editorial_feedback_not_publication_approval', module_id: module.id,
+            reviewer: reviewer.value.trim(), verdict: verdict.value, notes: notes.value.trim(), created_at: new Date().toISOString()};
+          const blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
+          const url = URL.createObjectURL(blob); const link = document.createElement('a');
+          link.href = url; link.download = `muslingo-review-${module.id}.json`; link.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        });
+        root.appendChild(download);
+      }
+      function select(id) {
+        const module = state.modules.find((item) => item.id === id) ?? state.modules[0];
+        if (!module) return;
+        state.selected = module;
+        renderDetail(module);
+        renderItems();
+      }
+      for (const id of ['query', 'track', 'status']) byId(id).addEventListener(id === 'query' ? 'input' : 'change', () => { state.shown = 60; renderItems(); });
+      byId('more').addEventListener('click', () => { state.shown += 60; renderItems(); });
+      addEventListener('hashchange', () => select(decodeURIComponent(location.hash.slice(1))));
+      fetch('expert-review-data.json?v=20260927', {cache: 'no-cache'})
+        .then((response) => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
+        .then((data) => {
+          if (data.module_count !== 570 || data.modules.length !== 570) throw new Error('Неполный пакет данных');
+          state.modules = data.modules;
+          const draftCount = data.modules.filter((item) => item.lecture_drafts.length).length;
+          const draftLabel = draftCount === 1 ? 'черновик лекции' : draftCount < 5 ? 'черновика лекций' : 'черновиков лекций';
+          for (const [value, label] of [[570, 'тем в плане'], [draftCount, draftLabel], [0, 'утверждённых новых лекций']]) {
+            const box = document.createElement('div'); box.className = 'stat';
+            appendText(box, 'strong', value); appendText(box, 'span', label); byId('stats').appendChild(box);
+          }
+          select(decodeURIComponent(location.hash.slice(1)));
+        })
+        .catch((error) => { byId('detail').replaceChildren(text('p', `Не удалось загрузить пакет проверки: ${error.message}`)); });
+    })();
+  </script>
+</body>
+</html>

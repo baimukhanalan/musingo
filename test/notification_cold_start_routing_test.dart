@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:muslingo/main.dart';
 import 'package:muslingo/screens/lesson_screen.dart';
 import 'package:muslingo/screens/onboarding_screen.dart';
+import 'package:muslingo/widgets/daily_ayah.dart';
 import 'package:muslingo/services/app_state.dart';
 import 'package:muslingo/services/notification_service_io.dart';
 import 'package:provider/provider.dart';
@@ -61,6 +62,33 @@ void main() {
     expect(find.byType(OnboardingScreen), findsNothing);
     expect(tester.takeException(), isNull);
 
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 500));
+  });
+
+  testWidgets('daily ayah notification opens its dedicated screen',
+      (tester) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const MuslingoApp());
+    final state = tester.element(find.byType(MaterialApp)).read<AppState>();
+    await tester.runAsync(() async {
+      final deadline = DateTime.now().add(const Duration(seconds: 10));
+      while (!state.isInitialized && DateTime.now().isBefore(deadline)) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+    });
+    expect(state.isInitialized, isTrue);
+    NotificationPlatform.onOpenRoute!('/daily-ayah');
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(DailyAyahCard), findsOneWidget);
+    expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 500));
   });

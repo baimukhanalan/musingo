@@ -13,6 +13,13 @@ class HomeWidgetPlatform {
 
   bool get isSupported => Platform.isAndroid || Platform.isIOS;
 
+  Future<Uri?> initiallyLaunchedFromHomeWidget() => isSupported
+      ? HomeWidget.initiallyLaunchedFromHomeWidget()
+      : Future.value();
+
+  Stream<Uri?> get widgetClicked =>
+      isSupported ? HomeWidget.widgetClicked : const Stream.empty();
+
   Future<void> update(
       {required String localeCode, String coachLine = ''}) async {
     if (!isSupported) return;

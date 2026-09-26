@@ -38,10 +38,10 @@ void main() {
       expect(source, contains('@Environment(\\.widgetFamily)'));
       expect(source, contains('entry.arabic'));
       expect(source, contains('entry.translation'));
-      expect(source, contains('URL(string: "muslingo:///home")'));
+      expect(source, contains('URL(string: "muslingo:///daily-ayah")'));
       expect(
           source, isNot(contains('https://muslingo-mobile.vercel.app/#/home')));
-      expect(Uri.parse('muslingo:///home').path, '/home');
+      expect(Uri.parse('muslingo:///daily-ayah').path, '/daily-ayah');
     });
 
     test('declares Android keyguard compatibility', () {

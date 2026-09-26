@@ -3,6 +3,7 @@ package com.muslingo.app
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.Uri
 import android.view.View
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
@@ -27,7 +28,7 @@ class MuslingoAyahWidgetProvider : HomeWidgetProvider() {
                 setInt(R.id.ayah_widget_container, "setLayoutDirection", direction)
                 setOnClickPendingIntent(
                     R.id.ayah_widget_container,
-                    HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java),
+                    HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java, Uri.parse("muslingo:///daily-ayah")),
                 )
                 setTextViewText(R.id.ayah_widget_number, entry.number)
                 setTextViewText(R.id.ayah_widget_arabic, entry.arabic)

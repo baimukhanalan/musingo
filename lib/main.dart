@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'services/app_state.dart';
+import 'services/home_widget_service.dart';
 import 'utils/theme.dart';
 import 'utils/colors.dart';
 import 'screens/carousel_screen.dart';
@@ -32,6 +33,7 @@ import 'screens/curriculum_module_screen.dart';
 import 'models/lesson.dart';
 import 'models/curriculum_module.dart';
 import 'widgets/cat_character.dart';
+import 'widgets/daily_ayah.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,29 +58,59 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
   // наблюдатель жизненного цикла.
   final AppState _appState = AppState();
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  final HomeWidgetService _homeWidget = HomeWidgetService();
+  StreamSubscription<Uri?>? _widgetClickSubscription;
+  String? _pendingExternalRoute;
+  bool _externalRouteScheduled = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _appState.setNotificationOpenHandler((route) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final navigator = _navigatorKey.currentState;
-        if (route == '/daily-plan' && _appState.recommendedLesson != null) {
-          navigator?.pushNamedAndRemoveUntil(
-            '/lesson',
-            (existing) => false,
-            arguments: _appState.recommendedLesson,
-          );
-          return;
-        }
-        navigator?.pushNamedAndRemoveUntil('/home', (existing) => false);
-      });
-      // A notification may arrive while no animation/frame is pending.
-      // addPostFrameCallback alone does not request a frame to run it.
-      WidgetsBinding.instance.ensureVisualUpdate();
+    _appState.addListener(_flushExternalRoute);
+    _appState.setNotificationOpenHandler(_queueExternalRoute);
+    if (_homeWidget.isSupported) {
+      _widgetClickSubscription =
+          _homeWidget.widgetClicked.listen(_onWidgetClick);
+      unawaited(
+          _homeWidget.initiallyLaunchedFromHomeWidget().then(_onWidgetClick));
+    }
+  }
+
+  void _onWidgetClick(Uri? uri) {
+    if (uri?.path == '/daily-ayah') _queueExternalRoute('/daily-ayah');
+  }
+
+  void _queueExternalRoute(String route) {
+    if (route != '/daily-plan' && route != '/daily-ayah') return;
+    _pendingExternalRoute = route;
+    _flushExternalRoute();
+  }
+
+  void _flushExternalRoute() {
+    if (!mounted ||
+        !_appState.isInitialized ||
+        _pendingExternalRoute == null ||
+        _externalRouteScheduled) {
+      return;
+    }
+    _externalRouteScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _externalRouteScheduled = false;
+      if (!mounted || !_appState.isInitialized) return;
+      final route = _pendingExternalRoute;
+      final navigator = _navigatorKey.currentState;
+      if (route == null || navigator == null) return;
+      _pendingExternalRoute = null;
+      if (route == '/daily-plan' && _appState.recommendedLesson != null) {
+        navigator.pushNamedAndRemoveUntil('/lesson', (_) => false,
+            arguments: _appState.recommendedLesson);
+      } else {
+        navigator.pushNamedAndRemoveUntil(
+            route == '/daily-ayah' ? '/daily-ayah' : '/home', (_) => false);
+      }
     });
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   @override
@@ -97,6 +129,8 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _widgetClickSubscription?.cancel();
+    _appState.removeListener(_flushExternalRoute);
     _appState.dispose();
     super.dispose();
   }
@@ -179,6 +213,9 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
         break;
       case '/home':
         page = const MainTabScreen();
+        break;
+      case '/daily-ayah':
+        page = const _DailyAyahScreen();
         break;
       case '/quran':
         page = const MainTabScreen(initialIndex: 1);
@@ -408,6 +445,38 @@ class _RouteFallbackScreen extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DailyAyahScreen extends StatelessWidget {
+  const _DailyAyahScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final title = switch (context.watch<AppState>().locale.code) {
+      'kk' => 'Күн аяты',
+      'en' => 'Ayah of the day',
+      'ar' => 'آية اليوم',
+      _ => 'Аят дня',
+    };
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Text(title),
+        backgroundColor: AppColors.background,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.of(context)
+              .pushNamedAndRemoveUntil('/home', (_) => false),
+        ),
+      ),
+      body: const SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(20),
+          child: DailyAyahCard(),
         ),
       ),
     );

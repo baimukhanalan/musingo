@@ -309,7 +309,7 @@ class NotificationPlatform {
             _visibleBody(message.body, showOnLockScreen),
             scheduled,
             _detailsFor(message.body, showOnLockScreen: showOnLockScreen),
-            payload: '/home',
+            payload: '/daily-ayah',
             androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
             uiLocalNotificationDateInterpretation:
                 UILocalNotificationDateInterpretation.absoluteTime,
@@ -432,7 +432,7 @@ class NotificationPlatform {
           _visibleTitle(message.title, showOnLockScreen),
           _visibleBody(message.body, showOnLockScreen),
           _detailsFor(message.body, showOnLockScreen: showOnLockScreen),
-          payload: '/home',
+          payload: '/daily-plan',
         );
         return true;
       });

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/curriculum_module.dart';
 import '../services/app_state.dart';
 import '../utils/colors.dart';
 import '../widgets/premium_background.dart';
@@ -10,7 +11,9 @@ import 'curriculum_library_screen.dart';
 /// Two ways into the same 570-topic catalogue. Switching modes never awards
 /// completion: study requires practice, listening is a separate activity.
 class AcademyModesScreen extends StatefulWidget {
-  const AcademyModesScreen({super.key});
+  final Future<List<CurriculumModule>>? modulesFuture;
+
+  const AcademyModesScreen({super.key, @visibleForTesting this.modulesFuture});
 
   @override
   State<AcademyModesScreen> createState() => _AcademyModesScreenState();
@@ -81,10 +84,17 @@ class _AcademyModesScreenState extends State<AcademyModesScreen> {
               ),
               Expanded(
                 child: _mode == 0
-                    ? const CurriculumLibraryScreen(
-                        key: ValueKey('academy-learn-mode'), embedded: true)
-                    : const ContinuousAudioScreen(
-                        key: ValueKey('academy-listen-mode'), embedded: true),
+                    ? CurriculumLibraryScreen(
+                        key: const ValueKey('academy-learn-mode'),
+                        // Forward the test-only catalogue fixture unchanged.
+                        // ignore: invalid_use_of_visible_for_testing_member
+                        modulesFuture: widget.modulesFuture,
+                        embedded: true)
+                    : ContinuousAudioScreen(
+                        key: const ValueKey('academy-listen-mode'),
+                        // ignore: invalid_use_of_visible_for_testing_member
+                        modulesFuture: widget.modulesFuture,
+                        embedded: true),
               ),
             ],
           ),

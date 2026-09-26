@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'home_widget_service_stub.dart'
     if (dart.library.io) 'home_widget_service_io.dart' as platform;
 
@@ -12,4 +14,9 @@ class HomeWidgetService {
   Future<void> clear() => _platform.clear();
 
   Future<bool> requestPin() => _platform.requestPin();
+
+  Future<Uri?> initiallyLaunchedFromHomeWidget() =>
+      _platform.initiallyLaunchedFromHomeWidget();
+
+  Stream<Uri?> get widgetClicked => _platform.widgetClicked;
 }

@@ -1,0 +1,65 @@
+{
+  "meaning": "Availability of shared plan URLs checked on official publisher pages; this does not approve any module-specific claim or content rights.",
+  "urls": [
+    {
+      "url": "https://api-docs.quran.com/docs/api-reference/",
+      "status": "reachable_official_page",
+      "checked_at": "2026-09-27"
+    },
+    {
+      "url": "https://corpus.quran.com/documentation/",
+      "status": "reachable_official_page",
+      "checked_at": "2026-09-27"
+    },
+    {
+      "url": "https://corpus.quran.com/documentation/grammar.jsp",
+      "status": "reachable_official_page",
+      "checked_at": "2026-09-27"
+    },
+    {
+      "url": "https://corpus.quran.com/documentation/morphologicalfeatures.jsp",
+      "status": "reachable_official_page",
+      "checked_at": "2026-09-27"
+    },
+    {
+      "url": "https://corpus.quran.com/documentation/phonetic.jsp",
+      "status": "reachable_official_page",
+      "checked_at": "2026-09-27"
+    },
+    {
+      "url": "https://corpus.quran.com/documentation/tagset.jsp",
+      "status": "reachable_official_page",
+      "checked_at": "2026-09-27"
+    },
+    {
+      "url": "https://corpus.quran.com/morphologicalsearch.jsp",
+      "status": "reachable_official_page",
+      "checked_at": "2026-09-27"
+    },
+    {
+      "url": "https://corpus.quran.com/treebank.jsp",
+      "status": "reachable_official_page",
+      "checked_at": "2026-09-27"
+    },
+    {
+      "url": "https://qurancomplex.gov.sa/en/techquran/dev/",
+      "status": "timeout_unverified_not_confirmed_broken",
+      "checked_at": "2026-09-27"
+    },
+    {
+      "url": "https://tanzil.net/docs/download",
+      "status": "reachable_official_page",
+      "checked_at": "2026-09-27"
+    },
+    {
+      "url": "https://www.cambridgeinternational.org/programmes-and-qualifications/cambridge-igcse-islamiyat-0493/",
+      "status": "reachable_official_page",
+      "checked_at": "2026-09-27"
+    },
+    {
+      "url": "https://yaqeeninstitute.org/curriculum",
+      "status": "reachable_official_page",
+      "checked_at": "2026-09-27"
+    }
+  ]
+}

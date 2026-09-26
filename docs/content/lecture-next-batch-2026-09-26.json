@@ -52,14 +52,27 @@
             "A complete lesson on isolated and connected glyph shapes from this transcription page alone.",
             "A teacher-level pronunciation or Tajwid score from an ASR transcript."
           ]
+        },
+        {
+          "url": "https://www.unicode.org/versions/Unicode17.0.0/core-spec/chapter-9/",
+          "locator": "Arabic Cursive Joining, tables 9-3 and 9-8",
+          "role": "primary writing-system standard",
+          "checked_at": "2026-09-27",
+          "supported_claims": [
+            "Unicode classifies alef as right-joining with isolated and final contextual forms.",
+            "Unicode distinguishes alef's joining behaviour from dual-joining letters such as lam."
+          ],
+          "not_supported": [
+            "A teacher-validated Quran example set or assessment of a learner's pronunciation."
+          ]
         }
       ],
       "lecture_outline": [
         "Introduce alif as the target symbol and show the corpus transcription chart as a reference, not a copied course page.",
-        "Defer connected-form examples until a licensed script reference and human-selected exact Quran examples are recorded.",
+        "Use original practice letter pairs to explain Unicode joining; defer Quran examples until exact locators and rights are recorded.",
         "Keep recognition practice separate from pronunciation assessment."
       ],
-      "remaining_gate": "Find an authoritative contextual-shapes source and exact licensed examples; Arabic teacher and rights review."
+      "remaining_gate": "Exact licensed Quran examples, Arabic teacher review of the letter pairs and rights review."
     },
     {
       "module_id": "TAJ-001",

@@ -63,6 +63,7 @@ void main() {
     for (final call in scheduled) {
       final arguments = call.arguments as Map;
       expect(arguments['timeZoneName'], 'Asia/Almaty');
+      expect(arguments['payload'], '/daily-plan');
       expect(arguments['scheduledDateTime'].toString(), contains('T19:30:00'));
       expect(arguments['title'], 'Muslingo');
       expect(arguments['body'],
@@ -92,6 +93,7 @@ void main() {
     final shown =
         calls.lastWhere((call) => call.method == 'show').arguments as Map;
     expect(shown['title'], 'Muslingo');
+    expect(shown['payload'], '/daily-plan');
     expect(shown['body'], 'Open Muslingo to see your personal reminder.');
     final initialization =
         calls.lastWhere((call) => call.method == 'initialize').arguments as Map;
@@ -123,6 +125,7 @@ void main() {
         .toList();
     expect(scheduled.map((args) => args['id']),
         [4100, 4101, 4102, 4103, 4104, 4105, 4106, 4300]);
+    expect(scheduled.last['payload'], '/daily-ayah');
     for (final args in scheduled.take(7)) {
       expect(args['scheduledDateTime'].toString(), contains('T23:59:00'));
     }

@@ -2,7 +2,7 @@ import SwiftUI
 import WidgetKit
 
 private let appGroupId = "group.com.muslingo.app"
-private let openAppURL = URL(string: "muslingo:///home")
+private let openAppURL = URL(string: "muslingo:///daily-ayah")
 
 private struct WidgetCopy {
   let localeCode: String
