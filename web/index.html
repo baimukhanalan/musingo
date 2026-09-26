@@ -30,13 +30,13 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Muslingo">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png?v=20260926">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/png" href="favicon.png?v=20260926"/>
 
   <title>Muslingo — учи Коран каждый день</title>
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="manifest.json?v=20260926">
   <style>
     /* Брендовый лоадер: виден до загрузки Flutter web, скрывается на первом кадре */
     #muslingo-splash {
@@ -315,8 +315,8 @@
             const worker = await registration();
             await worker.showNotification(title, {
               body,
-              icon: '/icons/Icon-192.png',
-              badge: '/icons/Icon-192.png',
+              icon: '/icons/Icon-192.png?v=20260926',
+              badge: '/icons/Icon-192.png?v=20260926',
               tag: 'muslingo-test-reminder',
               data: { url: '/#/home' },
             });
@@ -333,7 +333,7 @@
 <body>
   <!-- Брендовый экран загрузки: перекрывается Flutter при старте, не мешает bootstrap -->
   <div id="muslingo-splash" role="status" aria-live="polite" aria-label="Загрузка Muslingo">
-    <img class="muslingo-splash__logo" src="icons/Icon-192.png" alt="Muslingo" />
+    <img class="muslingo-splash__logo" src="icons/Icon-192.png?v=20260926" alt="Muslingo" />
     <div class="muslingo-splash__title">Muslingo</div>
     <div class="muslingo-splash__subtitle">учи Коран каждый день</div>
     <div class="muslingo-splash__spinner"></div>

@@ -34,18 +34,19 @@ dev_dependencies:
   flutter_lints: ^4.0.0
   flutter_launcher_icons: ^0.14.1
 
-# Нативные иконки приложения (Android mipmap + adaptive, iOS AppIcon) из бренда.
+# Нативные иконки приложения (Android mipmap + adaptive, iOS AppIcon).
 # Генерация: dart run flutter_launcher_icons
 flutter_launcher_icons:
-  image_path: "web/icons/Icon-512.png"
+  image_path: "assets/branding/app_icon_master.png"
   android: "ic_launcher"
   min_sdk_android: 21
   remove_alpha_ios: true
   ios: true
-  # Adaptive: сплошной брендовый фон + маскот с безопасными полями (не срежется
-  # при круглой/квадратной обрезке лаунчера).
-  adaptive_icon_background: "#155B88"
+  # Голубой фон исходного логотипа закрывает края адаптивной маски Android.
+  adaptive_icon_background: "#5DC5F5"
   adaptive_icon_foreground: "web/icons/Icon-maskable-512.png"
+  # Исходник уже содержит отступы; дополнительный inset дал бы видимую рамку.
+  adaptive_icon_foreground_inset: 0
 
 flutter:
   # Keep native plugins on one dependency path until notifications, secure
