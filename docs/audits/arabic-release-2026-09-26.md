@@ -56,6 +56,13 @@ plugin registrant. Both have been added; native retesting is required after
 rebuilding. Simulator delivery does not establish physical-iPhone reliability,
 multi-day delivery, Focus-mode behavior, or widget installation by the user.
 
+Cold-start routing now guards against the splash timer replacing an opened
+lesson, and the notification handler explicitly requests a frame. A regression
+opens the production handler at 1450 ms: it passes with the guard and fails
+after the splash timeout without it. At 23:59, a coincident evening reminder
+is skipped while the independent ayah schedule is preserved. The combined
+routing, schedule, and onboarding suite passes all 15 tests.
+
 ## Release-candidate checks
 
 - Static analysis: no issues.

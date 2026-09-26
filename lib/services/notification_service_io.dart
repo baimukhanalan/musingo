@@ -248,8 +248,10 @@ class NotificationPlatform {
 
         // Второе — вечерний нудж «не потеряй серию». Планируем только если серия
         // идёт, позже основного и не раньше 20:30. В сумме не более 2 в день.
-        if (streak > 0) {
-          final eveningMinutes = _eveningMinutes(hour, minute);
+        final eveningMinutes = _eveningMinutes(hour, minute);
+        // At 23:59 there is no later time today. Do not deliver two different
+        // learning reminders at the same instant.
+        if (streak > 0 && eveningMinutes > hour * 60 + minute) {
           final eveningHour = eveningMinutes ~/ 60;
           final eveningMinute = eveningMinutes % 60;
           final streakMessage = buildStreakReminder(

@@ -63,6 +63,7 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _appState.setNotificationOpenHandler((route) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         final navigator = _navigatorKey.currentState;
         if (route == '/daily-plan' && _appState.recommendedLesson != null) {
           navigator?.pushNamedAndRemoveUntil(
@@ -74,6 +75,9 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
         }
         navigator?.pushNamedAndRemoveUntil('/home', (existing) => false);
       });
+      // A notification may arrive while no animation/frame is pending.
+      // addPostFrameCallback alone does not request a frame to run it.
+      WidgetsBinding.instance.ensureVisualUpdate();
     });
   }
 
@@ -438,7 +442,9 @@ class _SplashScreenState extends State<_SplashScreen>
   }
 
   void _navigate() {
-    if (!mounted) {
+    // A notification may already be pushing a lesson. Removed routes stay
+    // mounted until its transition finishes; the splash must not replace it.
+    if (!mounted || ModalRoute.of(context)?.isCurrent != true) {
       return;
     }
     final state = context.read<AppState>();

@@ -107,6 +107,47 @@ void main() {
     expect(visible['body'], 'Visible body');
   });
 
+  test('23:59 primary skips the coincident evening reminder but keeps ayahs',
+      () async {
+    final platform = NotificationPlatform(supportedOverride: true);
+    await platform.scheduleDaily(
+      hour: 23,
+      minute: 59,
+      streak: 5,
+      messages: const [ReminderMessage('Lesson', 'Continue learning')],
+      ayahMessages: const [ReminderMessage('Ayah', 'Daily ayah')],
+    );
+    final scheduled = calls
+        .where((call) => call.method == 'zonedSchedule')
+        .map((call) => call.arguments as Map)
+        .toList();
+    expect(scheduled.map((args) => args['id']),
+        [4100, 4101, 4102, 4103, 4104, 4105, 4106, 4300]);
+    for (final args in scheduled.take(7)) {
+      expect(args['scheduledDateTime'].toString(), contains('T23:59:00'));
+    }
+  });
+
+  test('23:58 primary retains a strictly later evening reminder', () async {
+    final platform = NotificationPlatform(supportedOverride: true);
+    await platform.scheduleDaily(
+      hour: 23,
+      minute: 58,
+      streak: 5,
+      messages: const [ReminderMessage('Lesson', 'Continue learning')],
+    );
+    final scheduled = calls
+        .where((call) => call.method == 'zonedSchedule')
+        .map((call) => call.arguments as Map)
+        .toList();
+    expect(scheduled, hasLength(14));
+    expect(scheduled.skip(7).map((args) => args['id']),
+        [4200, 4201, 4202, 4203, 4204, 4205, 4206]);
+    for (final args in scheduled.skip(7)) {
+      expect(args['scheduledDateTime'].toString(), contains('T23:59:00'));
+    }
+  });
+
   test('calendar scheduling keeps chosen wall-clock time over DST changes', () {
     final ny = tz.getLocation('America/New_York');
     final beforeFall = tz.TZDateTime(ny, 2026, 10, 31, 21);
