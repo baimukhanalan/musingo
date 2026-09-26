@@ -21,10 +21,13 @@ class QuranChapterSummary {
       ('Medinan', 'kk') => 'Мәдина',
       ('Meccan', 'en') => 'Meccan',
       ('Medinan', 'en') => 'Medinan',
+      ('Meccan', 'ar') => 'مكية',
+      ('Medinan', 'ar') => 'مدنية',
       ('Meccan', _) => 'Мекканская',
       ('Medinan', _) => 'Мединская',
       (_, 'kk') => 'Көрсетілмеген',
       (_, 'en') => 'Unknown',
+      (_, 'ar') => 'غير محدد',
       _ => 'Не указано',
     };
   }

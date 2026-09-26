@@ -10,6 +10,7 @@ import '../services/curriculum_progress_service.dart';
 import '../services/curriculum_repository.dart';
 import '../services/lesson_content_localization.dart';
 import '../utils/colors.dart';
+import '../utils/arabic_ui_strings.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
 import '../widgets/premium_card.dart';
@@ -98,11 +99,13 @@ List<CurriculumChallenge> buildCurriculumChallenges({
   required List<CurriculumModule> allModules,
   String locale = 'ru',
 }) {
-  String tr(String ru, String kk, String en) => locale == 'kk'
-      ? kk
-      : locale == 'en'
-          ? en
-          : ru;
+  String tr(String ru, String kk, String en) => locale == 'ar'
+      ? translateArabicUi(ru: ru, en: en)
+      : locale == 'kk'
+          ? kk
+          : locale == 'en'
+              ? en
+              : ru;
   List<String> options(
     int salt,
     String Function(CurriculumModule) valueOf,
@@ -641,7 +644,10 @@ class _CurriculumModuleScreenState extends State<CurriculumModuleScreen> {
           const SizedBox(height: 14),
           _infoRow(
             Icons.route_rounded,
-            state.tr(ru: 'Перед стартом', kk: 'Бастамас бұрын', en: 'Before'),
+            state.tr(
+                ru: 'Рекомендуемая подготовка',
+                kk: 'Ұсынылатын дайындық',
+                en: 'Suggested preparation'),
             _module.prerequisite,
           ),
           _infoRow(

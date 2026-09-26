@@ -86,6 +86,7 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       _appState.refreshHearts();
       _appState.refreshHomeWidget();
+      _appState.refreshNativeReminders();
     }
   }
 
@@ -118,6 +119,7 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
             Locale('ru'),
             Locale('kk'),
             Locale('en'),
+            Locale('ar'),
           ],
           builder: (context, child) => ColoredBox(
             color: AppColors.backgroundGrey,

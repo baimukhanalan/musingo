@@ -10,9 +10,11 @@ class TranslationReviewNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (locale == 'ru') return const SizedBox.shrink();
-    final text = locale == 'kk'
-        ? 'Автоматты аударма · редактор тексеруі қажет'
-        : 'Automatic translation · editorial review pending';
+    final text = switch (locale) {
+      'kk' => 'Автоматты аударма · редактор тексеруі қажет',
+      'ar' => 'ترجمة آلية · بانتظار المراجعة التحريرية',
+      _ => 'Automatic translation · editorial review pending',
+    };
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
       child: Tooltip(

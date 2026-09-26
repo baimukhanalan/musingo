@@ -17,6 +17,7 @@ export function sanitizeGuestImport(incoming) {
     bestStreak: 0,
     totalLessons: 0,
     totalMinutes: 0,
+    totalStudySeconds: 0,
     lessonAttempts: 0,
     learnedAyats: 0,
     learnedDuas: 0,

@@ -232,7 +232,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ],
       _Field(
           controller: _emailCtrl,
-          label: 'Email',
+          label: state.tr(ru: 'Email', kk: 'Email', en: 'Email'),
           icon: Icons.email_outlined,
           type: TextInputType.emailAddress),
       const SizedBox(height: 12),
@@ -380,7 +380,10 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: result.canDeliver ? AppColors.navy : AppColors.gold,
       ));
     } catch (error) {
-      if (mounted) _showError(readableBackendError(error));
+      if (mounted) {
+        _showError(readableBackendError(error,
+            localeCode: context.read<AppState>().locale.code));
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

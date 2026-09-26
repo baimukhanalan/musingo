@@ -47,8 +47,7 @@ List<ReminderMessage> buildReminders({
   );
 
   ReminderMessage pick(List<ReminderMessage> pool, int shift) {
-    final raw = pool[(rotation + shift) % pool.length];
-    return ReminderMessage(fill(raw.title), fill(raw.body));
+    return pool[(rotation + shift) % pool.length];
   }
 
   final messages = <ReminderMessage>[];
@@ -59,6 +58,7 @@ List<ReminderMessage> buildReminders({
         AppLocale.kk => 'Туған күніңмен, {name}! 🎉',
         AppLocale.en => 'Happy birthday, {name}! 🎉',
         AppLocale.ru => 'С днём рождения, {name}! 🎉',
+        AppLocale.ar => 'كل عام وأنت بخير، {name}!',
       },
       switch (locale) {
         AppLocale.kk =>
@@ -67,6 +67,8 @@ List<ReminderMessage> buildReminders({
           'Ayn wishes you a peaceful and meaningful year. No lesson pressure today—this is simply a warm hello.',
         AppLocale.ru =>
           'Айн желает тебе спокойного и наполненного смыслом года. Сегодня без давления — просто тёплое поздравление.',
+        AppLocale.ar =>
+          'يتمنى لك عين عامًا هادئًا مليئًا بالخير. لا ضغط للدراسة اليوم، إنها مجرد تهنئة ودّية.',
       },
     ));
   }
@@ -80,6 +82,7 @@ List<ReminderMessage> buildReminders({
         AppLocale.kk => '{name}, бүгінгі жоспар дайын',
         AppLocale.en => '{name}, today’s plan is ready',
         AppLocale.ru => '{name}, план на сегодня готов',
+        AppLocale.ar => '{name}، خطّة اليوم جاهزة',
       },
       switch (locale) {
         AppLocale.kk =>
@@ -88,6 +91,8 @@ List<ReminderMessage> buildReminders({
           'Focus: $focus. About $preferredMinutes minutes—“${nextLessonTitle.trim()}”.',
         AppLocale.ru =>
           'Фокус: $focus. Примерно $preferredMinutes минут — «${nextLessonTitle.trim()}».',
+        AppLocale.ar =>
+          'تركيز اليوم: $focus. نحو $preferredMinutes دقائق لدرس «${nextLessonTitle.trim()}».',
       },
     ));
   }
@@ -98,12 +103,15 @@ List<ReminderMessage> buildReminders({
         AppLocale.kk => 'Бүгінгі басты міндет',
         AppLocale.en => 'Today’s main task',
         AppLocale.ru => 'Главная задача на сегодня',
+        AppLocale.ar => 'مهمّتك الأساسية اليوم',
       },
       switch (locale) {
         AppLocale.kk => '$dueCount қайталауды жаңа материалға дейін бекіт.',
         AppLocale.en =>
           'Complete $dueCount due reviews before starting new material.',
         AppLocale.ru => 'Закрепи $dueCount повторений до нового материала.',
+        AppLocale.ar =>
+          'أكمل $dueCount من المراجعات المستحقة قبل البدء بمادة جديدة.',
       },
     ));
   }
@@ -133,7 +141,10 @@ List<ReminderMessage> buildReminders({
   messages.add(pick(pools.mascot, 0));
   messages.add(pick(pools.mascot, 1));
 
-  return messages;
+  return messages
+      .map(
+          (message) => ReminderMessage(fill(message.title), fill(message.body)))
+      .toList(growable: false);
 }
 
 /// Вечерний нудж «не потеряй серию» для второго ежедневного уведомления.
@@ -185,7 +196,7 @@ String Function(String) _fillFactory({
 }
 
 /// Гостевые обращения на всех языках — трактуем как отсутствие имени.
-const _guestLabels = <String>{'Гость', 'Қонақ', 'Guest', 'гость'};
+const _guestLabels = <String>{'Гость', 'Қонақ', 'Guest', 'гость', 'ضيف'};
 
 /// Пулы сообщений для одного языка.
 class _LocalePools {
@@ -216,8 +227,73 @@ _LocalePools _poolsFor(AppLocale locale) {
       return _enPools;
     case AppLocale.ru:
       return _ruPools;
+    case AppLocale.ar:
+      return _arPools;
   }
 }
+
+// ===========================================================================
+// العربية. Encourage learning without guilt or promises of permanent recall.
+// ===========================================================================
+const _arPools = _LocalePools(
+  guestFallback: 'صديقي',
+  streakAtRisk: [
+    ReminderMessage('لنواصل عادة التعلّم',
+        'تعلّمت خلال {streak} أيام متتالية. درس قصير اليوم يساعدك على مواصلة هذه العادة.'),
+    ReminderMessage('{name}، خطوتك التالية تنتظرك',
+        'يمكنك مواصلة سلسلة {streak} أيام بدرس واحد قصير.'),
+    ReminderMessage('بقيت خطوة صغيرة لليوم',
+        'بعد {streak} أيام متتالية، لنخصّص بضع دقائق هادئة للتعلّم.'),
+    ReminderMessage('وقت قصير لنفسك',
+        'سلسلتك الحالية {streak} أيام. هل يناسبك درس قصير اليوم؟'),
+  ],
+  streakCelebration: [
+    ReminderMessage('{streak} أيام متتالية!',
+        'تتقدّم بخطوات ثابتة. لنواصل اليوم بدرس صغير.'),
+    ReminderMessage('عادة تنمو يومًا بعد يوم',
+        '{name}، أكملت {streak} أيام متتالية من التعلّم. عين سعيد بتقدّمك.'),
+    ReminderMessage('خطوة جديدة بعد {streak} أيام',
+        'العودة المنتظمة إلى التعلّم تصنع فرقًا. هل نكمل اليوم؟'),
+  ],
+  reviewDue: [
+    ReminderMessage('حان وقت المراجعة',
+        'لديك {dueCount} من المراجعات المستحقة. جلسة قصيرة تساعدك على تثبيت ما تعلّمته.'),
+    ReminderMessage('لنسترجع ما تعلّمناه',
+        'تنتظرك {dueCount} من المراجعات. جرّب تذكّر الإجابة قبل النظر إليها.'),
+    ReminderMessage('{name}، لنراجع معًا',
+        'عدد المراجعات المستحقة: {dueCount}. ابدأ بخطوة واحدة وفي وتيرتك الخاصة.'),
+  ],
+  returnAfterPause: [
+    ReminderMessage('لنبدأ من جديد، أنا معك',
+        'الانقطاع أمر طبيعي. درس صغير اليوم يكفي للعودة إلى المسار.'),
+    ReminderMessage('سعيد بعودتك',
+        'لا حاجة للاستعجال. ست دقائق هادئة قد تساعدك على العودة إلى التعلّم.'),
+    ReminderMessage(
+        'بداية جديدة اليوم', '{name}، لنبدأ بدرس مألوف ونواصل خطوة بخطوة.'),
+    ReminderMessage('عودة هادئة إلى الدروس',
+        'دون استعجال أو لوم. افتح Muslingo وخذ خطوة واحدة.'),
+  ],
+  dailyGeneral: [
+    ReminderMessage('خطوتك اليوم جاهزة',
+        'بضع دقائق هادئة لتعلّم شيء جديد ومراجعة ما تعرفه.'),
+    ReminderMessage('خطوة واحدة تكفي اليوم',
+        'استمع وافهم المعنى ثم كرّر. تابع من النقطة التي وصلت إليها.'),
+    ReminderMessage('مراجعة قصيرة ومفيدة',
+        'عُد إلى درس مألوف، ثم اختبر ما تتذكّره دون تلميحات.'),
+    ReminderMessage(
+        'لنواصل رحلتك', 'اختر درسًا يناسب مستواك وتابع بالوتيرة التي تناسبك.'),
+  ],
+  mascot: [
+    ReminderMessage(
+        '{name}، عين بانتظارك', 'كل شيء جاهز لجلسة قصيرة. هل لديك بضع دقائق؟'),
+    ReminderMessage(
+        'حان وقت التعلّم، {name}', 'عين يلوّح لك. لنبدأ بدرس صغير اليوم.'),
+    ReminderMessage('{name}، لنكمل مع عين',
+        'آية جديدة أو مراجعة مألوفة: اختر خطوتك التالية.'),
+    ReminderMessage('عين يشجّعك، {name}',
+        'حتى أصغر خطوة اليوم تُعدّ تقدّمًا. هل نخطوها معًا؟'),
+  ],
+);
 
 // ===========================================================================
 // Русский (по умолчанию).

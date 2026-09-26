@@ -34,8 +34,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Future<void> _send() async {
+    final state = context.read<AppState>();
     if (!_email.text.contains('@')) {
-      setState(() => _message = 'Укажи корректный email.');
+      setState(() => _message = state.tr(
+            ru: 'Укажи корректный email.',
+            kk: 'Дұрыс email мекенжайын енгізіңіз.',
+            en: 'Enter a valid email address.',
+          ));
       return;
     }
     setState(() {
@@ -43,48 +48,69 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       _message = null;
     });
     try {
-      final result =
-          await context.read<AppState>().requestPasswordReset(_email.text);
+      final result = await state.requestPasswordReset(_email.text);
       if (!mounted) return;
       setState(() {
         _message = result.canDeliver
-            ? 'Если аккаунт существует и email подтверждён, ссылка уже отправлена.'
-            : 'Запрос принят, но отправка писем пока не настроена администратором.';
+            ? state.tr(
+                ru: 'Если аккаунт существует и email подтверждён, ссылка уже отправлена.',
+                kk: 'Аккаунт бар және email расталған болса, сілтеме жіберілді.',
+                en: 'If the account exists and its email is verified, a link has been sent.',
+              )
+            : state.tr(
+                ru: 'Запрос принят, но отправка писем пока не настроена администратором.',
+                kk: 'Сұрау қабылданды, бірақ хат жіберуді әкімші әлі баптамаған.',
+                en: 'The request was accepted, but email delivery is not configured yet.',
+              );
       });
     } catch (error) {
-      if (mounted) setState(() => _message = readableBackendError(error));
+      if (mounted) {
+        setState(() => _message =
+            readableBackendError(error, localeCode: state.locale.code));
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) => _EmailActionScaffold(
-        title: 'Восстановить пароль',
-        subtitle:
-            'Мы отправим одноразовую ссылку только на подтверждённый email.',
-        children: [
-          TextField(
-            key: const Key('forgot-email-field'),
-            controller: _email,
-            keyboardType: TextInputType.emailAddress,
-            autofillHints: const [AutofillHints.email],
-            decoration: const InputDecoration(
-              labelText: 'Email',
-              prefixIcon: Icon(Icons.email_outlined),
-            ),
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    return _EmailActionScaffold(
+      title: state.tr(
+          ru: 'Восстановить пароль',
+          kk: 'Құпиясөзді қалпына келтіру',
+          en: 'Reset password'),
+      subtitle: state.tr(
+        ru: 'Мы отправим одноразовую ссылку только на подтверждённый email.',
+        kk: 'Бір реттік сілтемені тек расталған email мекенжайына жібереміз.',
+        en: 'We will send a one-time link only to a verified email address.',
+      ),
+      children: [
+        TextField(
+          key: const Key('forgot-email-field'),
+          controller: _email,
+          keyboardType: TextInputType.emailAddress,
+          textDirection: TextDirection.ltr,
+          autofillHints: const [AutofillHints.email],
+          decoration: InputDecoration(
+            labelText: state.tr(ru: 'Email', kk: 'Email', en: 'Email'),
+            prefixIcon: const Icon(Icons.email_outlined),
           ),
-          const SizedBox(height: 18),
-          PremiumButton(
-            label: 'Отправить ссылку',
-            onPressed: _loading ? null : _send,
-          ),
-          if (_message != null) ...[
-            const SizedBox(height: 16),
-            Text(_message!, key: const Key('forgot-result-message')),
-          ],
+        ),
+        const SizedBox(height: 18),
+        PremiumButton(
+          label: state.tr(
+              ru: 'Отправить ссылку', kk: 'Сілтемені жіберу', en: 'Send link'),
+          onPressed: _loading ? null : _send,
+        ),
+        if (_message != null) ...[
+          const SizedBox(height: 16),
+          Text(_message!, key: const Key('forgot-result-message')),
         ],
-      );
+      ],
+    );
+  }
 }
 
 class ResetPasswordScreen extends StatefulWidget {
@@ -110,13 +136,21 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   }
 
   Future<void> _reset() async {
+    final state = context.read<AppState>();
     if (widget.token.length < 40) {
-      setState(() => _message = 'Ссылка неполная или повреждена.');
+      setState(() => _message = state.tr(
+            ru: 'Ссылка неполная или повреждена.',
+            kk: 'Сілтеме толық емес немесе бүлінген.',
+            en: 'The link is incomplete or damaged.',
+          ));
       return;
     }
     if (_password.text.length < 8 || _password.text != _confirmation.text) {
-      setState(() => _message =
-          'Пароли должны совпадать и содержать не менее 8 символов.');
+      setState(() => _message = state.tr(
+            ru: 'Пароли должны совпадать и содержать не менее 8 символов.',
+            kk: 'Құпиясөздер бірдей және кемінде 8 таңбадан тұруы керек.',
+            en: 'Passwords must match and contain at least 8 characters.',
+          ));
       return;
     }
     setState(() {
@@ -124,54 +158,78 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       _message = null;
     });
     try {
-      await context
-          .read<AppState>()
-          .resetPassword(widget.token, _password.text);
+      await state.resetPassword(widget.token, _password.text);
       if (!mounted) return;
-      setState(() => _message = 'Пароль изменён. Теперь можно войти.');
+      setState(() => _message = state.tr(
+            ru: 'Пароль изменён. Теперь можно войти.',
+            kk: 'Құпиясөз өзгертілді. Енді кіре аласыз.',
+            en: 'Password changed. You can sign in now.',
+          ));
     } catch (error) {
-      if (mounted) setState(() => _message = readableBackendError(error));
+      if (mounted) {
+        setState(() => _message =
+            readableBackendError(error, localeCode: state.locale.code));
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) => _EmailActionScaffold(
-        title: 'Новый пароль',
-        subtitle:
-            'Ссылка одноразовая. После смены пароля старые сессии завершатся.',
-        children: [
-          TextField(
-            key: const Key('reset-password-field'),
-            controller: _password,
-            obscureText: true,
-            autofillHints: const [AutofillHints.newPassword],
-            decoration: const InputDecoration(labelText: 'Новый пароль'),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            key: const Key('reset-confirm-field'),
-            controller: _confirmation,
-            obscureText: true,
-            decoration: const InputDecoration(labelText: 'Повтори пароль'),
-          ),
-          const SizedBox(height: 18),
-          PremiumButton(
-            label: 'Изменить пароль',
-            onPressed: _loading ? null : _reset,
-          ),
-          if (_message != null) ...[
-            const SizedBox(height: 16),
-            Text(_message!, key: const Key('reset-result-message')),
-          ],
-          const SizedBox(height: 8),
-          TextButton(
-            onPressed: () => Navigator.pushReplacementNamed(context, '/login'),
-            child: const Text('Перейти ко входу'),
-          ),
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    return _EmailActionScaffold(
+      title:
+          state.tr(ru: 'Новый пароль', kk: 'Жаңа құпиясөз', en: 'New password'),
+      subtitle: state.tr(
+        ru: 'Ссылка одноразовая. После смены пароля старые сессии завершатся.',
+        kk: 'Сілтеме бір реттік. Құпиясөз өзгергенде ескі сессиялар аяқталады.',
+        en: 'This link works once. Changing the password ends earlier sessions.',
+      ),
+      children: [
+        TextField(
+          key: const Key('reset-password-field'),
+          controller: _password,
+          obscureText: true,
+          autofillHints: const [AutofillHints.newPassword],
+          decoration: InputDecoration(
+              labelText: state.tr(
+                  ru: 'Новый пароль', kk: 'Жаңа құпиясөз', en: 'New password')),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          key: const Key('reset-confirm-field'),
+          controller: _confirmation,
+          obscureText: true,
+          decoration: InputDecoration(
+              labelText: state.tr(
+                  ru: 'Повтори пароль',
+                  kk: 'Құпиясөзді қайталаңыз',
+                  en: 'Confirm new password')),
+        ),
+        const SizedBox(height: 18),
+        PremiumButton(
+          label: state.tr(
+              ru: 'Изменить пароль',
+              kk: 'Құпиясөзді өзгерту',
+              en: 'Change password'),
+          onPressed: _loading ? null : _reset,
+        ),
+        if (_message != null) ...[
+          const SizedBox(height: 16),
+          Text(_message!, key: const Key('reset-result-message')),
         ],
-      );
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () => Navigator.pushReplacementNamed(context, '/login'),
+          child: Text(state.tr(
+              ru: 'Перейти ко входу',
+              kk: 'Кіру бетіне өту',
+              en: 'Go to login')),
+        ),
+      ],
+    );
+  }
 }
 
 class VerifyEmailScreen extends StatefulWidget {
@@ -289,13 +347,13 @@ class _EmailActionScaffold extends StatelessWidget {
   final String title;
   final String subtitle;
   final List<Widget> children;
-  final String backTooltip;
+  final String? backTooltip;
 
   const _EmailActionScaffold({
     required this.title,
     required this.subtitle,
     required this.children,
-    this.backTooltip = 'Назад',
+    this.backTooltip,
   });
 
   @override
@@ -307,9 +365,12 @@ class _EmailActionScaffold extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 36),
               children: [
                 Align(
-                  alignment: Alignment.centerLeft,
+                  alignment: AlignmentDirectional.centerStart,
                   child: IconButton(
-                    tooltip: backTooltip,
+                    tooltip: backTooltip ??
+                        context
+                            .watch<AppState>()
+                            .tr(ru: 'Назад', kk: 'Артқа', en: 'Back'),
                     onPressed: () => Navigator.maybePop(context),
                     icon: const Icon(Icons.arrow_back_ios_new_rounded),
                   ),

@@ -26,6 +26,7 @@ class _MainTabScreenState extends State<MainTabScreen>
     with SingleTickerProviderStateMixin {
   late int _current;
   late final AnimationController _tabMotion;
+  final _tabKeys = List.generate(5, (_) => GlobalKey());
 
   @override
   void initState() {
@@ -91,6 +92,7 @@ class _MainTabScreenState extends State<MainTabScreen>
             children: [
               for (var i = 0; i < screens.length; i++)
                 TickerMode(
+                  key: _tabKeys[i],
                   enabled: i == _current,
                   child: RepaintBoundary(child: screens[i]),
                 ),
@@ -129,7 +131,7 @@ class _MainTabScreenState extends State<MainTabScreen>
                 _NavItem(
                     icon: Icons.self_improvement_outlined,
                     activeIcon: Icons.self_improvement_rounded,
-                    label: 'Hafiz',
+                    label: appState.tr(ru: 'Hafiz', en: 'Hafiz', ar: 'الحفظ'),
                     index: 3,
                     current: _current,
                     onTap: _onTap),
@@ -147,6 +149,19 @@ class _MainTabScreenState extends State<MainTabScreen>
   }
 
   void _onTap(int index) {
+    // Retain the page State (messages, drafts, filters), reset only its vertical
+    // viewport. Re-tapping the current tab is also a return-to-top action.
+    void resetScroll(Element element) {
+      if (element is StatefulElement && element.state is ScrollableState) {
+        final position = (element.state as ScrollableState).position;
+        if (position.axis == Axis.vertical && position.hasContentDimensions) {
+          position.jumpTo(position.minScrollExtent);
+        }
+      }
+      element.visitChildren(resetScroll);
+    }
+
+    _tabKeys[index].currentContext?.visitChildElements(resetScroll);
     if (index == _current) return;
     setState(() => _current = index);
     if (MediaQuery.disableAnimationsOf(context)) {
@@ -211,7 +226,8 @@ class _FloatingNavigationBar extends StatelessWidget {
                     children: [
                       Positioned.fill(
                         child: AnimatedAlign(
-                          alignment: Alignment(-1 + current * 0.5, 0),
+                          alignment:
+                              AlignmentDirectional(-1 + current * 0.5, 0),
                           duration: reducedMotion
                               ? Duration.zero
                               : const Duration(milliseconds: 320),

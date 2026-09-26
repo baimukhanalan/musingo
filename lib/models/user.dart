@@ -21,6 +21,7 @@ class UserModel {
   final DateTime? heartsUpdatedAt;
   final int totalLessons;
   final int totalMinutes;
+  final int totalStudySeconds;
   final int learnedAyats;
   final int learnedDuas;
   final int dailyGoal;
@@ -46,6 +47,7 @@ class UserModel {
     this.heartsUpdatedAt,
     this.totalLessons = 0,
     this.totalMinutes = 0,
+    int? totalStudySeconds,
     this.learnedAyats = 0,
     this.learnedDuas = 0,
     this.dailyGoal = 3,
@@ -54,7 +56,8 @@ class UserModel {
     this.speechAttempts = 0,
     this.rewardChestsOpened = 0,
     this.rewardHistory = const [],
-  }) : _bestStreak = bestStreak;
+  })  : _bestStreak = bestStreak,
+        totalStudySeconds = totalStudySeconds ?? totalMinutes * 60;
 
   int get xpForNextLevel => (level * 500) - xp;
   double get levelProgress => (xp % 500) / 500.0;
@@ -78,6 +81,7 @@ class UserModel {
     bool clearHeartsUpdatedAt = false,
     int? totalLessons,
     int? totalMinutes,
+    int? totalStudySeconds,
     int? learnedAyats,
     int? learnedDuas,
     int? dailyGoal,
@@ -107,6 +111,8 @@ class UserModel {
           : (heartsUpdatedAt ?? this.heartsUpdatedAt),
       totalLessons: totalLessons ?? this.totalLessons,
       totalMinutes: totalMinutes ?? this.totalMinutes,
+      totalStudySeconds: totalStudySeconds ??
+          (totalMinutes == null ? this.totalStudySeconds : totalMinutes * 60),
       learnedAyats: learnedAyats ?? this.learnedAyats,
       learnedDuas: learnedDuas ?? this.learnedDuas,
       dailyGoal: dailyGoal ?? this.dailyGoal,
@@ -134,6 +140,7 @@ class UserModel {
         'heartsUpdatedAt': heartsUpdatedAt?.toIso8601String(),
         'totalLessons': totalLessons,
         'totalMinutes': totalMinutes,
+        'totalStudySeconds': totalStudySeconds,
         'learnedAyats': learnedAyats,
         'learnedDuas': learnedDuas,
         'dailyGoal': dailyGoal,
@@ -166,6 +173,7 @@ class UserModel {
             : null,
         totalLessons: json['totalLessons'] ?? 0,
         totalMinutes: json['totalMinutes'] ?? 0,
+        totalStudySeconds: json['totalStudySeconds'],
         learnedAyats: json['learnedAyats'] ?? 0,
         learnedDuas: json['learnedDuas'] ?? 0,
         dailyGoal: json['dailyGoal'] ?? 3,

@@ -12,6 +12,7 @@ import 'package:muslingo/services/lesson_content_localization.dart';
 import 'package:muslingo/utils/app_locale.dart';
 
 import 'support/exhaustive_audit.dart';
+import 'support/localization_host.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -35,7 +36,9 @@ void main() {
           final state = await _guestState(tester);
           await state.setLocale(locale);
           final lessons = LessonContentLocalization.localizeCourses(
-            [course],
+            // AppState has now loaded the canonical full-Quran asset. Do not
+            // retain the smaller pre-initialization registry from test setup.
+            [state.getCourse(course.type)!],
             locale.code,
           ).single.lessons;
           for (final lessonIndex in lessonAuditIndices(lessons, locale.code)) {
@@ -106,6 +109,9 @@ Future<void> _pumpLesson(
     ChangeNotifierProvider<AppState>.value(
       value: state,
       child: MaterialApp(
+        locale: state.locale.toLocale(),
+        supportedLocales: testSupportedLocales,
+        localizationsDelegates: testLocalizationDelegates,
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context).copyWith(
             textScaler: TextScaler.linear(textScale),
@@ -128,6 +134,8 @@ Future<void> _pumpLesson(
     ),
   );
   await tester.pump();
+  expect(Directionality.of(tester.element(find.byType(LessonScreen))),
+      state.locale.isRtl ? TextDirection.rtl : TextDirection.ltr);
 }
 
 Future<void> _completeStep(WidgetTester tester, LessonStep step) async {

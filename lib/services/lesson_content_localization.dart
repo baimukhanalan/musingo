@@ -7,6 +7,7 @@ import '../models/lesson.dart';
 import '../models/lesson_video.dart';
 import 'arabic_learning_localization.dart';
 import 'learning_title_localization.dart';
+import 'lessons/quran_curriculum_localization.dart';
 
 /// Bundled translations of learning content. IDs, grading, Arabic recitation and
 /// source URLs stay identical across languages; switching never resets progress.
@@ -14,6 +15,7 @@ class LessonContentLocalization {
   LessonContentLocalization._();
 
   static final Map<String, Map<String, String>> _strings = {};
+  static const _bundledLocales = ['kk', 'en', 'ar'];
   static Future<void>? _loading;
   static final _courseCache = Expando<Map<String, Course>>();
   static final _lessonCache = Expando<Map<String, Lesson>>();
@@ -52,14 +54,14 @@ class LessonContentLocalization {
   static Future<void> load() {
     // Complete in the caller's zone once ready. Keeping a completed Future from
     // another test/widget zone can leave initialization awaiting fake time.
-    if (_strings.containsKey('kk') && _strings.containsKey('en')) {
+    if (_bundledLocales.every(_strings.containsKey)) {
       return Future<void>.value();
     }
     return _loading ??= _load().whenComplete(() => _loading = null);
   }
 
   static Future<void> _load() async {
-    await Future.wait(['kk', 'en'].map((locale) async {
+    await Future.wait(_bundledLocales.map((locale) async {
       final bytes = await rootBundle.load('assets/data/learning_$locale.json');
       final document = jsonDecode(utf8.decode(bytes.buffer.asUint8List(
         bytes.offsetInBytes,
@@ -72,6 +74,8 @@ class LessonContentLocalization {
 
   static String translateText(String source, String locale) {
     if (locale == 'ru') return source;
+    final quranReading = localizeQuranCurriculumText(source, locale);
+    if (quranReading != null) return quranReading;
     final terminology = localizeArabicLearningText(source, locale);
     if (terminology != null) return terminology;
     // Reasoning questions embed the very same source facts used by the lesson.
@@ -95,26 +99,32 @@ class LessonContentLocalization {
 
   static String trackTitle(String track, String locale) {
     const labels = {
-      'Quran': ['Коран', 'Құран', 'Quran'],
-      'Arabic': ['Арабский язык', 'Араб тілі', 'Arabic'],
-      'Tajwid': ['Таджвид', 'Тәжуид', 'Tajwid'],
+      'Quran': ['Коран', 'Құран', 'Quran', 'القرآن'],
+      'Arabic': ['Арабский язык', 'Араб тілі', 'Arabic', 'اللغة العربية'],
+      'Tajwid': ['Таджвид', 'Тәжуид', 'Tajwid', 'التجويد'],
       'Foundations/Academy': [
         'Основы ислама',
         'Ислам негіздері',
-        'Islamic foundations'
+        'Islamic foundations',
+        'أسس الإسلام'
       ],
     };
     return labels[track]?[locale == 'kk'
             ? 1
             : locale == 'en'
                 ? 2
-                : 0] ??
+                : locale == 'ar'
+                    ? 3
+                    : 0] ??
         track;
   }
 
   /// Phonetic reading aid, not a translation of the Arabic learning target.
   /// Cyrillic phonetic spelling stays readable for ru/kk; English uses Latin.
   static String? transliterationFor(String? source, String locale) {
+    // Arabic readers already have the unchanged Arabic target. A Cyrillic or
+    // Latin phonetic helper is neither an Arabic translation nor useful here.
+    if (locale == 'ar') return null;
     if (source == null || locale != 'en') return source;
     const alphabet = {
       'а': 'a',
@@ -204,6 +214,12 @@ class LessonContentLocalization {
       return localized;
     });
   }
+
+  /// Controlled Quran reading units are fully localized. Arabic legacy lesson
+  /// prose is not yet a complete reviewed translation; keep this explicit for
+  /// surfaces that offer or label the lesson's content language.
+  static bool hasCompleteLessonTranslation(Lesson lesson, String locale) =>
+      locale != 'ar' || lesson.id.startsWith('q_full_');
 
   static LessonStep localizeStep(LessonStep step, String locale) {
     String? text(String? source) =>

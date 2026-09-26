@@ -133,28 +133,30 @@ class _VerseCard extends StatelessWidget {
               ),
             ),
           ),
-          const Divider(height: 26),
-          Text(
-            verse.transliteration,
-            style: const TextStyle(
-              fontFamily: 'Nunito',
-              fontSize: 13,
-              height: 1.5,
-              fontStyle: FontStyle.italic,
-              color: AppColors.textGrey,
+          if (state.locale.code != 'ar') ...[
+            const Divider(height: 26),
+            Text(
+              verse.transliteration,
+              style: const TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 13,
+                height: 1.5,
+                fontStyle: FontStyle.italic,
+                color: AppColors.textGrey,
+              ),
             ),
-          ),
-          const SizedBox(height: 9),
-          Text(
-            verse.translation,
-            style: const TextStyle(
-              fontFamily: 'Nunito',
-              fontSize: 15,
-              height: 1.5,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textDark,
+            const SizedBox(height: 9),
+            Text(
+              verse.translation,
+              style: const TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 15,
+                height: 1.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textDark,
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 10),
           Text(
             state.tr(

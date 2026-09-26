@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { requireUser, verifyLessonAttempt } from '../lib/auth.js';
 import { sql } from '../lib/db.js';
 import { ApiError, integer, method, readJson, text, withApi } from '../lib/http.js';
@@ -48,39 +50,57 @@ export const lessons = new Set([
   'tj19', 'tj20', 'tj21', 'tj22', 'tj23', 'tj24', 'tj25', 'tj26', 'tj27',
   'tj28', 'tj29', 'tj30', 'tj31', 'tj32', 'tj33', 'tj34', 'tj35', 'tj36',
 ]);
-const masterySourceIds = [...lessons]
-  .filter((id) => id.startsWith('q'))
-  .slice(0, 32);
 for (let order = 23; order <= 100; order += 1) lessons.add(`a${order}`);
 for (let order = 69; order <= 100; order += 1) lessons.add(`q_mastery_${order}`);
 
-// learnedAyats credited on first completion = number of DISTINCT
-// quranGlobalAyahNumber values across a quran lesson's steps (counted from
-// quran_lessons.dart). Review lessons (q_review_*) carry no ayat reward and are
-// intentionally omitted (treated as 0).
-export const ayatRewards = {
-  q_fatiha_1: 1, q_fatiha_2: 2, q_fatiha_3: 2, q_fatiha_4: 2,
-  q_ikhlas_1: 2, q_falaq_1: 1, q_nas_1: 1,
-  q_baqara_1: 2, q_asr_1: 3, q_fil_1: 5, q_quraysh_1: 4, q_maun_1: 7,
-  q_kawthar_1: 3, q_kafirun_1: 6, q_nasr_1: 3, q_masad_1: 5,
-  q_humaza_1: 9, q_takathur_1: 8, q_qaria_1: 11, q_adiyat_1: 11, q_zalzala_1: 8,
-  q_qadr_1: 5, q_tin_1: 8, q_sharh_1: 8, q_duha_1: 11, q_ala_1: 19,
-  q_alaq_1: 19, q_shams_1: 15, q_layl_1: 21, q_fajr_1: 30, q_ghashiya_1: 26,
-  q_tariq_1: 17, q_buruj_1: 22,
-  q_naba_1: 20, q_naba_2: 20, q_naziat_1: 26, q_naziat_2: 20,
-  q_abasa_1: 23, q_abasa_2: 19, q_takwir_1: 29, q_infitar_1: 19,
-  q_mutaffifin_1: 20, q_mutaffifin_2: 16, q_inshiqaq_1: 25,
-  q_balad_1: 20, q_bayyina_1: 8,
-  q_mulk_1: 2, q_qalam_1: 2, q_haqqah_1: 2, q_maarij_1: 2, q_nuh_1: 2,
-  q_jinn_1: 2, q_muzzammil_1: 2, q_muddaththir_1: 2, q_qiyamah_1: 2,
-  q_insan_1: 2, q_mursalat_1: 2,
-  q_mujadila_1: 2, q_hashr_1: 2, q_mumtahanah_1: 2, q_saff_1: 2,
-  q_jumuah_1: 2, q_munafiqun_1: 2, q_taghabun_1: 2, q_talaq_1: 2,
-  q_tahrim_1: 2,
-};
-for (let index = 0; index < masterySourceIds.length; index += 1) {
-  const reward = ayatRewards[masterySourceIds[index]] ?? 0;
-  if (reward > 0) ayatRewards[`q_mastery_${69 + index}`] = reward;
+// Source-derived addresses are shared with the canonical reading path. Counts
+// are useful metadata, but progress is the UNION of addresses, never their sum.
+export const quranCurriculumManifest = JSON.parse(readFileSync(
+  new URL('../../docs/content/quran-full-curriculum-v1.json', import.meta.url),
+  'utf8',
+));
+export const quranLessonMetadata = new Map([
+  ...quranCurriculumManifest.legacyLessons.map((lesson) => [lesson.id, lesson]),
+  ...quranCurriculumManifest.lessons.map((lesson) => [lesson.id, {
+    ...lesson,
+    globalAyahNumbers: Array.from(
+      { length: lesson.globalEnd - lesson.globalStart + 1 },
+      (_, index) => lesson.globalStart + index,
+    ),
+  }]),
+]);
+for (const lesson of quranCurriculumManifest.lessons) lessons.add(lesson.id);
+export const ayatRewards = Object.fromEntries([...quranLessonMetadata]
+  .filter(([, lesson]) => lesson.globalAyahNumbers.length > 0).map(
+  ([id, lesson]) => [id, lesson.globalAyahNumbers.length],
+));
+
+export function distinctStudiedAyahs(completedLessons) {
+  const addresses = new Set();
+  for (const id of completedLessons ?? []) {
+    for (const ayah of quranLessonMetadata.get(id)?.globalAyahNumbers ?? []) {
+      addresses.add(ayah);
+    }
+  }
+  return addresses.size;
+}
+
+// The full path is an independent course entry, not gated by 100 older units.
+export function previousLessonId(lessonId) {
+  const prefix = lessonId.startsWith('q_full_') ? 'q_full_'
+    : lessonId.startsWith('tj') ? 'tj'
+      : lessonId.startsWith('q') ? 'q'
+        : lessonId.slice(0, 1);
+  const path = [...lessons].filter((id) => id.startsWith(prefix) &&
+    (prefix !== 'q' || !id.startsWith('q_full_')));
+  const index = path.indexOf(lessonId);
+  return index > 0 ? path[index - 1] : null;
+}
+
+export function requiredRecordedSteps(lessonId) {
+  return lessonId.startsWith('q_full_')
+    ? (quranLessonMetadata.get(lessonId)?.stepCount ?? 5)
+    : 5;
 }
 
 // M2: first-completion xp must equal the lesson's own xpReward (lib/services/
@@ -123,6 +143,7 @@ for (let order = 23; order <= 100; order += 1) {
 for (let order = 69; order <= 100; order += 1) {
   lessonXp[`q_mastery_${order}`] = 40;
 }
+for (const [id, metadata] of quranLessonMetadata) lessonXp[id] = metadata.xpReward;
 
 // C1-hardening: clamp the reported mistake count into [0, 5] instead of
 // rejecting >5 with a 400. A stale or third-party client that reports more
@@ -133,14 +154,94 @@ export function clampErrors(value) {
   return Math.min(5, integer(value ?? 0, { min: 0, max: Number.MAX_SAFE_INTEGER }));
 }
 
-function validLocalDay(value) {
-  const day = String(value ?? '');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return new Date().toISOString().slice(0, 10);
-  const timestamp = Date.parse(`${day}T12:00:00Z`);
-  if (Math.abs(timestamp - Date.now()) > 36 * 60 * 60 * 1000) {
-    return new Date().toISOString().slice(0, 10);
-  }
-  return day;
+export function completionDays(utcOffsetMinutes = 0, now = Date.now()) {
+  const offset = integer(utcOffsetMinutes ?? 0, { min: -840, max: 840 });
+  return {
+    localDay: new Date(now + offset * 60_000).toISOString().slice(0, 10),
+    utcDay: new Date(now).toISOString().slice(0, 10),
+  };
+}
+
+export function completionStudyTime(current, receipt, elapsedSeconds) {
+  const reported = elapsedSeconds == null ? null
+    : integer(elapsedSeconds, { min: 0, max: 7200 });
+  const serverSeconds = Math.min(7200, Math.max(0, Math.floor(receipt.elapsedMs / 1000)));
+  const studySecondsEarned = Math.min(reported ?? serverSeconds, serverSeconds);
+  const oldMinutes = Math.max(0, Math.floor(Number(current.totalMinutes) || 0));
+  const oldSeconds = Number.isSafeInteger(current.totalStudySeconds) && current.totalStudySeconds >= 0
+    ? Math.max(current.totalStudySeconds, oldMinutes * 60)
+    : oldMinutes * 60;
+  const totalStudySeconds = oldSeconds + studySecondsEarned;
+  return {
+    studySecondsEarned,
+    minutesEarned: Math.floor(studySecondsEarned / 60),
+    totalStudySeconds,
+    totalMinutes: Math.floor(totalStudySeconds / 60),
+  };
+}
+
+// All inputs except the optional timezone/active-duration reports are already
+// server-owned. Reports cannot increase rewards or the receipt's elapsed time.
+export function completionUpdate({
+  current, lessonId, errors = 0, rewardToken, receipt,
+  elapsedSeconds, utcOffsetMinutes = 0, now = Date.now(),
+}) {
+  if (!lessons.has(lessonId)) throw new ApiError(400, 'unknown_lesson', 'Unknown lesson.');
+  const completed = new Set((Array.isArray(current.completedLessons) ? current.completedLessons : [])
+    .filter((id) => lessons.has(id)));
+  const firstCompletion = !completed.has(lessonId);
+  completed.add(lessonId);
+  const xpEarned = firstCompletion ? lessonXp[lessonId] : 5;
+  const days = completionDays(utcOffsetMinutes, now);
+  // A timezone change may move the clock backwards. Do not reset a valid
+  // streak or count another day when travelling back across midnight.
+  const nextLocalDay = new Date(`${days.localDay}T12:00:00Z`);
+  nextLocalDay.setUTCDate(nextLocalDay.getUTCDate() + 1);
+  const today = current.lastStudyDay === nextLocalDay.toISOString().slice(0, 10)
+    ? current.lastStudyDay : days.localDay;
+  const yesterday = new Date(`${today}T12:00:00Z`);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  const newDay = current.lastStudyDay !== today;
+  const streak = newDay
+    ? (current.lastStudyDay === yesterday.toISOString().slice(0, 10) ? Number(current.streak ?? 0) + 1 : 1)
+    : Number(current.streak ?? 0);
+  const streakBonus = newDay && streak === 7 ? 10
+    : newDay && streak === 30 ? 50 : newDay && streak === 100 ? 200 : 0;
+  const xp = Number(current.xp ?? 0) + xpEarned + streakBonus;
+  const energyBefore = Math.min(999, Math.max(0, Math.floor(Number(current.energy) || 0)));
+  const energyEarned = Math.min(8, 999 - energyBefore);
+  // Public league caps always use UTC, even while learner-facing streaks and
+  // goals use the device's validated UTC offset.
+  const leaderboard = leaderboardContribution({
+    current, today: days.utcDay, earned: firstCompletion ? xpEarned + streakBonus : 0,
+  });
+  const time = completionStudyTime(current, receipt, elapsedSeconds);
+  const next = {
+    ...current,
+    xp,
+    level: Math.floor(xp / 500) + 1,
+    streak,
+    bestStreak: bestKnownStreak(current, streak),
+    hearts: current.isPremium ? 5 : Math.max(0, Number(current.hearts ?? 5) - clampErrors(errors)),
+    energy: energyBefore + energyEarned,
+    lastStudyDay: today,
+    totalLessons: completed.size,
+    totalMinutes: time.totalMinutes,
+    totalStudySeconds: time.totalStudySeconds,
+    // This means source text practised, not certification of memorization.
+    learnedAyats: distinctStudiedAyahs(completed),
+    learnedDuas: Number(current.learnedDuas ?? 0) + (firstCompletion && lessonId === 'r4' ? 2 : 0),
+    dailyProgress: nextDailyProgress({ current, today }),
+    lessonAttempts: Number(current.lessonAttempts ?? 0) + 1,
+    speechAttempts: Number(current.speechAttempts ?? 0),
+    rewardChestsOpened: Number(current.rewardChestsOpened ?? 0) + 3,
+    leaderboardXpToday: leaderboard.leaderboardXpToday,
+    leaderboardXpDay: leaderboard.leaderboardXpDay,
+    rewardHistory: [...(Array.isArray(current.rewardHistory) ? current.rewardHistory : []), rewardToken].slice(-500),
+    completedLessons: [...completed],
+    updatedAt: new Date(now).toISOString(),
+  };
+  return { next, xpEarned, streakBonus, energyEarned, firstCompletion, leaderboard, ...time };
 }
 
 export default withApi(async (request, response) => {
@@ -150,6 +251,9 @@ export default withApi(async (request, response) => {
   const lessonId = text(body.lessonId, { min: 2, max: 40, field: 'lesson' });
   if (!lessons.has(lessonId)) throw new ApiError(400, 'unknown_lesson', 'Unknown lesson.');
   const errors = clampErrors(body.errors);
+  const utcOffsetMinutes = integer(body.utcOffsetMinutes ?? 0, { min: -840, max: 840 });
+  const elapsedSeconds = body.elapsedSeconds == null ? undefined
+    : integer(body.elapsedSeconds, { min: 0, max: 7200 });
   const speechAttempts = integer(body.speechAttempts ?? 0, { min: 0, max: 50 });
   const attemptToken = text(body.attemptToken, { min: 40, max: 4096, field: 'attempt' });
   const attempt = await verifyLessonAttempt(attemptToken, {
@@ -188,6 +292,9 @@ export default withApi(async (request, response) => {
           replayed: true,
           xpEarned: 0,
           streakBonus: 0,
+          energyEarned: 0,
+          studySecondsEarned: 0,
+          minutesEarned: 0,
           firstCompletion: false,
           recordedSteps: Number(attemptState.completed_steps ?? 0),
           reportedSpeechAttempts: speechAttempts,
@@ -196,13 +303,13 @@ export default withApi(async (request, response) => {
       }
     }
   }
-  const receipt = lessonAttemptEligibility(attemptState);
+  const now = Date.now();
+  const receipt = lessonAttemptEligibility(attemptState, {
+    now, minimumSteps: requiredRecordedSteps(lessonId),
+  });
   if (!receipt.eligible || attemptState?.is_latest !== true) {
     throw new ApiError(400, 'incomplete_lesson_attempt', 'Lesson attempt is incomplete.');
   }
-  // Competitive rewards use the server's UTC day. A client-local date remains
-  // unsuitable for a cap because alternating valid dates resets the budget.
-  const today = new Date().toISOString().slice(0, 10);
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const rows = await sql`SELECT document, version FROM muslingo_progress WHERE user_id = ${user.id}::uuid`;
@@ -217,63 +324,20 @@ export default withApi(async (request, response) => {
         replayed: true,
         xpEarned: 0,
         streakBonus: 0,
+        energyEarned: 0,
+        studySecondsEarned: 0,
+        minutesEarned: 0,
         firstCompletion: false,
         progress: current,
       });
     }
-    const completed = new Set(Array.isArray(current.completedLessons) ? current.completedLessons : []);
-    const firstCompletion = !completed.has(lessonId);
-    completed.add(lessonId);
-    const xpEarned = firstCompletion ? (lessonXp[lessonId] ?? 25) : 5;
-    const yesterday = new Date(`${today}T12:00:00Z`);
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-    const yesterdayText = yesterday.toISOString().slice(0, 10);
-    const newDay = current.lastStudyDay !== today;
-    const streak = newDay
-      ? (current.lastStudyDay === yesterdayText ? Number(current.streak ?? 0) + 1 : 1)
-      : Number(current.streak ?? 0);
-    const streakBonus = newDay && streak === 7 ? 10 : newDay && streak === 30 ? 50 : newDay && streak === 100 ? 200 : 0;
-    const xp = Number(current.xp ?? 0) + xpEarned + streakBonus;
-    // XP and energy are based on the server-recorded attempt receipt. `errors`
-    // remains a bounded self-report used only for the learner's own hearts; it
-    // cannot increase rewards or public ranking.
-    const energyEarned = 8;
-    // Personal xp above is credited in full. Only the slice that reaches the
-    // weekly leaderboard is clipped to the per-day cap (remaining budget for
-    // `today`); the day-scoped counter is written back under the same version.
-    // Replays remain useful practice and still earn 5 personal XP, but only a
-    // first completion can affect the public league. This removes repeat-farm
-    // incentives while preserving the local learning loop.
-    const leaderboard = leaderboardContribution({
-      current,
-      today,
-      earned: firstCompletion ? xpEarned + streakBonus : 0,
+    const {
+      next, xpEarned, streakBonus, energyEarned, firstCompletion,
+      leaderboard, studySecondsEarned, minutesEarned,
+    } = completionUpdate({
+      current, lessonId, errors, rewardToken, receipt,
+      elapsedSeconds, utcOffsetMinutes, now,
     });
-    const next = {
-      ...current,
-      xp,
-      level: Math.floor(xp / 500) + 1,
-      streak,
-      bestStreak: bestKnownStreak(current, streak),
-      hearts: current.isPremium ? 5 : Math.max(0, Number(current.hearts ?? 5) - errors),
-      energy: Math.min(999, Number(current.energy ?? 0) + energyEarned),
-      lastStudyDay: today,
-      totalLessons: Number(current.totalLessons ?? 0) + 1,
-      totalMinutes: Number(current.totalMinutes ?? 0) + 5,
-      learnedAyats: Number(current.learnedAyats ?? 0) + (firstCompletion ? (ayatRewards[lessonId] ?? 0) : 0),
-      learnedDuas: Number(current.learnedDuas ?? 0) + (firstCompletion && lessonId === 'r4' ? 2 : 0),
-      dailyProgress: nextDailyProgress({ current, today }),
-      lessonAttempts: Number(current.lessonAttempts ?? 0) + 1,
-      // The current schema does not link /speech/evaluate calls to a lesson
-      // receipt. Do not turn a client-supplied number into authoritative usage.
-      speechAttempts: Number(current.speechAttempts ?? 0),
-      rewardChestsOpened: Number(current.rewardChestsOpened ?? 0) + 3,
-      leaderboardXpToday: leaderboard.leaderboardXpToday,
-      leaderboardXpDay: leaderboard.leaderboardXpDay,
-      rewardHistory: [...(Array.isArray(current.rewardHistory) ? current.rewardHistory : []), rewardToken].slice(-500),
-      completedLessons: [...completed],
-      updatedAt: new Date().toISOString(),
-    };
     const updated = await sql`
       UPDATE muslingo_progress
       SET document = ${JSON.stringify(next)}::jsonb,
@@ -299,6 +363,9 @@ export default withApi(async (request, response) => {
       return response.status(200).json({
         xpEarned,
         streakBonus,
+        energyEarned,
+        studySecondsEarned,
+        minutesEarned,
         firstCompletion,
         recordedSteps: receipt.completedSteps,
         reportedSpeechAttempts: speechAttempts,

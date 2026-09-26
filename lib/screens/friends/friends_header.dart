@@ -82,7 +82,7 @@ class _LeagueEntry extends StatelessWidget {
   }
 }
 
-/// Шапка экрана: крупный navy-заголовок «Друзья» + языковые пилюли справа.
+/// Шапка экрана: название и возврат. Язык меняется только в настройках.
 class _FriendsHeader extends StatelessWidget {
   const _FriendsHeader();
 
@@ -114,8 +114,6 @@ class _FriendsHeader extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 12),
-        const LanguagePills(),
       ],
     );
   }

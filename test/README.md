@@ -9,32 +9,51 @@ Run commands from the repository root. `flutter` is installed locally at
 flutter test --no-pub
 ```
 
-The original **246 Russian guided-lesson journeys remain enabled by default**.
+All **1,148 Russian guided-lesson journeys remain enabled by default**:
+1,002 Quran lessons (100 introductory + 902 full-Quran units), 100 Arabic,
+36 Tajwid, and 10 Islam basics lessons. The complete-Quran path covers 114 surahs
+and 6,236 ayahs; `LessonData.initialize()` must finish before counting the catalog.
 The additional expensive journeys use deterministic boundary/long-copy samples:
 first, middle, last, and longest text in each course/track (deduplicated).
 
 | Widget journey | Default | Exhaustive |
 | --- | ---: | ---: |
-| Guided lessons, RU | 246 | 246 |
-| Guided lessons, KK | 13 | 246 |
-| Guided lessons, EN | 13 | 246 |
+| Guided lessons, RU | 1,148 | 1,148 |
+| Guided lessons, KK | 14 | 1,148 |
+| Guided lessons, EN | 14 | 1,148 |
+| Guided lessons, AR | 15 | 1,148 |
 | Curriculum modules, RU | 16 | 570 |
 | Curriculum modules, KK | 16 | 570 |
 | Curriculum modules, EN | 16 | 570 |
-| Official-video card flows | 36 | 36 |
-| Major-page initial renders | 204 | 204 |
+| Curriculum modules, AR | 16 | 570 |
+| Official-video card flows | 52 | 52 |
+| Major-page initial renders | 288 | 288 |
 
-The default lesson total is **272**; the default module total is **48**.
-`audit_coverage_selection_test.dart` asserts these exact current-data counts,
-full-mode counts, and selection boundaries. Updating the source material can
-change the longest-copy sample; review the matrix when this assertion changes.
+The default totals are **1,191 guided-lesson journeys and 64 module journeys**.
+Kazakh and English select 4 Quran + 4 Arabic + 3 Tajwid + 3 basics lessons;
+Arabic selects 4 + 4 + 3 + 4. The longest-copy sample can change when translations
+change. `audit_coverage_selection_test.dart` loads the complete catalog, checks
+all four locales and these counts, verifies sample boundaries, and prints the
+exact source-dependent matrix:
 
-All modes also retain nine module negative/retry/navigation journeys at
-320/390/430 logical pixels and 1.5× text scale, three actual route close/re-entry/
+```sh
+flutter test --no-pub --reporter expanded test/audit_coverage_selection_test.dart
+```
+
+These lesson/module counts were confirmed by the passing coverage report on
+2026-09-26 (`/tmp/muslingo-coverage-final-20260926.log` on the current workstation).
+That report validates selection/counting, not completion of all widget journeys.
+The 52 video journeys are 13 catalog cards × 4 languages; the 288 page renders
+are 18 pages × 4 languages × 4 viewport/text-scale configurations.
+
+All modes also retain twelve module negative/retry/navigation journeys at
+320/390/430 logical pixels and 1.5× text scale, four actual route close/re-entry/
 back-to-library flows, unfinished-stage resume, and mid-step language switching.
 Guided/module positive journeys rotate those
 widths and sample 1.3× text scaling. The page smoke matrix uses 320×568 at 1×,
 390×844 at 1.5×, 430×932 at 1×, and 844×390 landscape at 1×.
+Test hosts install the production localization delegates and selected locale;
+Arabic page, lesson, module, and video journeys explicitly verify RTL direction.
 
 The flag does not reduce existing data-integrity, localization, safety,
 completion, or gameplay tests. Those continue checking the complete catalogs.
@@ -52,11 +71,13 @@ flutter test --no-pub --dart-define=MUSLINGO_EXHAUSTIVE_AUDIT=true \
   test/learning_title_localization_test.dart
 ```
 
-This completes **738 guided-lesson journeys and 1,710 module journeys**. The
-module journeys answer all five challenges (8,550 answers), complete ordering
+This mode exercises **4,592 guided-lesson journeys and 2,280 module journeys**
+across Russian, Kazakh, English, and Arabic. The module journeys answer all five
+challenges (11,400 answers), complete ordering
 practice, verify saved completion/mastery, and check the next-module control.
-Budget several minutes; there is no early exit or sampled curriculum in this
-mode. Additional API and physical/browser tests remain separate.
+Budget substantially more time than the default run; there is no early exit or
+sampled curriculum in this mode. Additional API and physical/browser tests
+remain separate.
 
 ## What these tests do not prove
 
@@ -65,10 +86,16 @@ mode. Additional API and physical/browser tests remain separate.
   audible, fast, or correctly transcribed on a real phone.
 - Video openers are injected. Every official link and its failure/retry UI is
   checked, but this is not evidence that every YouTube video streamed.
-- The 204 page configurations are initial-render smoke checks, not every action
-  on all 17 pages. Rotated widths are not an exhaustive cross-product for every
+- The 288 page configurations are initial-render smoke checks, not every action
+  on all 18 pages. Rotated widths are not an exhaustive cross-product for every
   lesson and every device.
 - Module save/mastery tests do not establish server-confirmed study-day or reward
   receipts. Client curriculum progress must not mint authenticated rewards.
+- Native notification scheduling mocks and source checks do not prove lock-screen
+  delivery, a working notification tap, device time-zone behaviour, permission
+  dialogs, or background audio. Record simulator and physical-device checks
+  separately, including whether the app was locked, backgrounded, or terminated.
+- These numbers describe configured test coverage, not a completed run. Keep the
+  run log, command/flags and result when reporting that an audit passed.
 - Stable IDs, answer indexes and Arabic targets do not by themselves establish
-  pedagogical, religious, or full bilingual editorial accuracy.
+  pedagogical, religious, or full four-language editorial accuracy.

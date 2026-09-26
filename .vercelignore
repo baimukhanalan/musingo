@@ -9,6 +9,10 @@ build/
 .dart_tool/
 .vercel_flutter/
 node_modules/
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/ephemeral/
+android/.gradle/
 
 # История git и локальные инструменты
 .git/

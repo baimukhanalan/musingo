@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/lesson.dart';
 import '../models/speech_evaluation.dart';
 import '../services/app_state.dart';
@@ -90,8 +91,10 @@ class LessonScreen extends StatefulWidget {
   State<LessonScreen> createState() => _LessonScreenState();
 }
 
-class _LessonScreenState extends State<LessonScreen> {
+class _LessonScreenState extends State<LessonScreen>
+    with WidgetsBindingObserver {
   final ScrollController _contentScrollController = ScrollController();
+  final Stopwatch _studyTimer = Stopwatch();
   int _stepIndex = 0;
   CatMood _catMood = CatMood.greet;
   int _reactionIndex = 0;
@@ -152,6 +155,8 @@ class _LessonScreenState extends State<LessonScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _studyTimer.start();
     // Инициализируем гейты для стартового шага: если урок начинается с speak
     // или пустого matching, кнопка «Продолжить» не должна быть залочена.
     _speakPassed = _isSpeakPassed(_step);
@@ -329,8 +334,19 @@ class _LessonScreenState extends State<LessonScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _studyTimer.stop();
     _contentScrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _studyTimer.start();
+    } else {
+      _studyTimer.stop();
+    }
   }
 
   Future<void> _finishLesson() async {
@@ -342,6 +358,7 @@ class _LessonScreenState extends State<LessonScreen> {
         widget.lesson.id,
         _errors.clamp(0, 5),
         weakStepIds: _weakStepIds,
+        elapsedSeconds: _studyTimer.elapsed.inSeconds,
       );
     } catch (_) {
       // Сеть/сервер отвалились в конце урока. Раньше исключение было
@@ -439,6 +456,25 @@ class _LessonScreenState extends State<LessonScreen> {
                           child: Column(
                             children: [
                               SizedBox(height: compactHeight ? 2 : 8),
+                              if (_stepIndex == 0 &&
+                                  !_reviewingMistakes &&
+                                  state.locale.code == 'ar' &&
+                                  !LessonContentLocalization
+                                      .hasCompleteLessonTranslation(
+                                          widget.lesson, state.locale.code))
+                                const Padding(
+                                  key: ValueKey(
+                                      'arabic-lesson-translation-notice'),
+                                  padding: EdgeInsets.only(bottom: 8),
+                                  child: Text(
+                                    'المحتوى التعليمي لهذا الدرس متاح حاليًا بالروسية؛ الترجمة العربية لم تكتمل بعد.',
+                                    textDirection: TextDirection.rtl,
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        height: 1.4,
+                                        color: AppColors.textGrey),
+                                  ),
+                                ),
                               AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 400),
                                 layoutBuilder: semanticSwitcherLayout,
@@ -460,6 +496,32 @@ class _LessonScreenState extends State<LessonScreen> {
                                 totalSteps: _activeSteps.length,
                                 reviewingMistakes: _reviewingMistakes,
                               ),
+                              if (_stepIndex == 0 &&
+                                  widget.lesson.id.startsWith('q_full_'))
+                                TextButton.icon(
+                                  onPressed: () async {
+                                    final opened = await launchUrl(
+                                      Uri.parse('https://tanzil.net'),
+                                      mode: LaunchMode.externalApplication,
+                                    );
+                                    if (!opened && context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                            content:
+                                                Text('https://tanzil.net')),
+                                      );
+                                    }
+                                  },
+                                  icon: const Icon(Icons.open_in_new_rounded,
+                                      size: 16),
+                                  label: Text(state.tr(
+                                    ru: 'Источник арабского текста · Tanzil',
+                                    kk: 'Арабша мәтін дереккөзі · Tanzil',
+                                    en: 'Arabic text source · Tanzil',
+                                    ar: 'مصدر النص العربي · Tanzil',
+                                  )),
+                                ),
                               if (!_reviewingMistakes &&
                                   _stepIndex == 0 &&
                                   lessonVideos.isNotEmpty) ...[

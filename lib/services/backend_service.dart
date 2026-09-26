@@ -27,11 +27,13 @@ class LessonCompletionResult {
   final BackendProfile profile;
   final int xpEarned;
   final int streakBonus;
+  final int energyEarned;
 
   const LessonCompletionResult({
     required this.profile,
     required this.xpEarned,
     required this.streakBonus,
+    this.energyEarned = 8,
   });
 }
 
@@ -312,8 +314,9 @@ class BackendService {
     String lessonId,
     int errors,
     int speechAttempts,
-    String attemptToken,
-  ) async {
+    String attemptToken, {
+    int elapsedSeconds = 0,
+  }) async {
     final now = DateTime.now();
     final localDate =
         '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
@@ -332,6 +335,8 @@ class BackendService {
         'speechAttempts': safeSpeechAttempts,
         'attemptToken': attemptToken,
         'localDate': localDate,
+        'utcOffsetMinutes': now.timeZoneOffset.inMinutes,
+        'elapsedSeconds': elapsedSeconds.clamp(0, 7200).toInt(),
       },
     );
     return LessonCompletionResult(
@@ -340,6 +345,7 @@ class BackendService {
       ),
       xpEarned: (response['xpEarned'] as num?)?.toInt() ?? 0,
       streakBonus: (response['streakBonus'] as num?)?.toInt() ?? 0,
+      energyEarned: (response['energyEarned'] as num?)?.toInt() ?? 8,
     );
   }
 
@@ -689,6 +695,7 @@ class BackendService {
             lastStudyDay.isEmpty ? null : DateTime.tryParse(lastStudyDay),
         totalLessons: (progress['totalLessons'] as num?)?.toInt() ?? 0,
         totalMinutes: (progress['totalMinutes'] as num?)?.toInt() ?? 0,
+        totalStudySeconds: (progress['totalStudySeconds'] as num?)?.toInt(),
         learnedAyats: (progress['learnedAyats'] as num?)?.toInt() ?? 0,
         learnedDuas: (progress['learnedDuas'] as num?)?.toInt() ?? 0,
         dailyGoal: (progress['dailyGoal'] as num?)?.toInt() ?? 3,
@@ -709,48 +716,149 @@ class BackendService {
   void dispose() => _client.close();
 }
 
-String readableBackendError(Object error) {
+String readableBackendError(Object error, {String localeCode = 'ru'}) {
+  String tr(String ru, String kk, String en, String ar) => switch (localeCode) {
+        'kk' => kk,
+        'en' => en,
+        'ar' => ar,
+        _ => ru,
+      };
+  String networkError() => tr(
+      'Сервер недоступен. Проверь подключение и повтори.',
+      'Сервер қолжетімсіз. Байланысты тексеріп, қайталап көр.',
+      'The server is unavailable. Check your connection and try again.',
+      'الخادم غير متاح. تحقّق من الاتصال وحاول مجددًا.');
   if (error is BackendException) {
     switch (error.code) {
       case 'network_error':
-        return 'Сервер недоступен. Проверь подключение и повтори.';
+        return networkError();
       case 'already_exists':
-        return 'Аккаунт с таким email уже есть. Войди через email и пароль.';
+        return tr(
+            'Аккаунт с таким email уже есть. Войди через email и пароль.',
+            'Бұл email тіркелген. Email және құпиясөз арқылы кір.',
+            'An account with this email already exists. Sign in with your email and password.',
+            'يوجد حساب بهذا البريد الإلكتروني. سجّل الدخول ببريدك وكلمة المرور.');
       case 'invalid_credentials':
-        return 'Неверный email или пароль.';
+        return tr(
+            'Неверный email или пароль.',
+            'Email немесе құпиясөз қате.',
+            'Incorrect email or password.',
+            'البريد الإلكتروني أو كلمة المرور غير صحيحة.');
       case 'invalid_current_password':
-        return 'Текущий пароль указан неверно.';
+        return tr(
+            'Текущий пароль указан неверно.',
+            'Қазіргі құпиясөз қате.',
+            'The current password is incorrect.',
+            'كلمة المرور الحالية غير صحيحة.');
       case 'password_reuse':
-        return 'Новый пароль должен отличаться от текущего.';
+        return tr(
+            'Новый пароль должен отличаться от текущего.',
+            'Жаңа құпиясөз қазіргі құпиясөзден өзгеше болуы керек.',
+            'The new password must be different from the current password.',
+            'يجب أن تختلف كلمة المرور الجديدة عن الحالية.');
       case 'password_changed':
-        return 'Пароль уже изменён в другой сессии. Войди снова.';
+        return tr(
+            'Пароль уже изменён в другой сессии. Войди снова.',
+            'Құпиясөз басқа сессияда өзгертілген. Қайта кір.',
+            'Your password was changed in another session. Sign in again.',
+            'تغيّرت كلمة المرور في جلسة أخرى. سجّل الدخول مجددًا.');
       case 'invalid_or_expired_token':
-        return 'Ссылка недействительна или уже использована. Запроси новую.';
+        return tr(
+            'Ссылка недействительна или уже использована. Запроси новую.',
+            'Сілтеме жарамсыз немесе қолданылған. Жаңасын сұра.',
+            'This link is invalid or already used. Request a new one.',
+            'الرابط غير صالح أو استُخدم من قبل. اطلب رابطًا جديدًا.');
       case 'email_not_verified':
-        return 'Подтверди email по ссылке из письма, затем войди снова.';
+        return tr(
+            'Подтверди email по ссылке из письма, затем войди снова.',
+            'Хаттағы сілтемемен email-ді растап, қайта кір.',
+            'Verify your email using the link in the message, then sign in again.',
+            'أكّد بريدك الإلكتروني عبر الرابط في الرسالة، ثم سجّل الدخول مجددًا.');
+      case 'invalid_email':
+        return tr('Укажи корректный email.', 'Дұрыс email енгіз.',
+            'Enter a valid email address.', 'أدخل بريدًا إلكترونيًا صالحًا.');
       case 'not_enough_energy':
-        return 'Нужно 20 энергии, чтобы восстановить жизнь.';
+        return tr(
+            'Нужно 20 энергии, чтобы восстановить жизнь.',
+            'Жанды қалпына келтіру үшін 20 қуат қажет.',
+            'You need 20 energy to restore a life.',
+            'تحتاج إلى 20 نقطة طاقة لاستعادة فرصة.');
       case 'hearts_full':
-        return 'Жизни уже полные.';
+        return tr('Жизни уже полные.', 'Жандар толық.',
+            'Your lives are already full.', 'فرصك مكتملة بالفعل.');
       case 'too_many_attempts':
-        return 'Слишком много попыток входа. Попробуй через 15 минут.';
+        return tr(
+            'Слишком много попыток входа. Попробуй через 15 минут.',
+            'Кіру әрекеттері тым көп. 15 минуттан кейін қайталап көр.',
+            'Too many sign-in attempts. Try again in 15 minutes.',
+            'محاولات تسجيل الدخول كثيرة. حاول بعد 15 دقيقة.');
       case 'expired_session':
       case 'invalid_session':
-        return 'Сессия истекла. Войди в аккаунт снова.';
+      case 'authentication_required':
+        return tr(
+            'Сессия истекла. Войди в аккаунт снова.',
+            'Сессия аяқталды. Аккаунтқа қайта кір.',
+            'Your session has expired. Sign in again.',
+            'انتهت الجلسة. سجّل الدخول إلى حسابك مجددًا.');
       case 'invalid_code':
-        return 'Неверный код-приглашение. Проверь и попробуй ещё раз.';
+        return tr(
+            'Неверный код-приглашение. Проверь и попробуй ещё раз.',
+            'Шақыру коды қате. Тексеріп, қайталап көр.',
+            'The invitation code is incorrect. Check it and try again.',
+            'رمز الدعوة غير صحيح. تحقّق منه وحاول مجددًا.');
       case 'cannot_add_self':
-        return 'Нельзя добавить самого себя.';
+        return tr('Нельзя добавить самого себя.', 'Өзіңді қосуға болмайды.',
+            'You cannot add yourself.', 'لا يمكنك إضافة نفسك.');
       case 'friend_not_found':
-        return 'Друг с таким кодом не найден.';
+        return tr(
+            'Друг с таким кодом не найден.',
+            'Бұл кодпен дос табылмады.',
+            'No friend was found with this code.',
+            'لم يُعثر على صديق بهذا الرمز.');
+      case 'lesson_locked':
+        return tr(
+            'Сначала заверши предыдущий урок.',
+            'Алдымен алдыңғы сабақты аяқта.',
+            'Complete the previous lesson first.',
+            'أكمل الدرس السابق أولًا.');
+      case 'unknown_lesson':
+        return tr(
+            'Урок не найден. Обнови список курсов.',
+            'Сабақ табылмады. Курстар тізімін жаңарт.',
+            'Lesson not found. Refresh the course list.',
+            'لم يُعثر على الدرس. حدّث قائمة الدورات.');
+      case 'incomplete_lesson_attempt':
+      case 'invalid_step_sequence':
+        return tr(
+            'Заверши все шаги урока по порядку.',
+            'Сабақтың барлық қадамын ретімен аяқта.',
+            'Complete every lesson step in order.',
+            'أكمل جميع خطوات الدرس بالترتيب.');
+      case 'progress_conflict':
+      case 'sync_conflict':
+        return tr(
+            'Прогресс обновлён на другом устройстве. Обнови страницу и повтори.',
+            'Прогресс басқа құрылғыда жаңарған. Бетті жаңартып, қайталап көр.',
+            'Progress changed on another device. Refresh and try again.',
+            'تغيّر التقدّم على جهاز آخر. حدّث الصفحة وحاول مجددًا.');
+      case 'progress_not_found':
+        return tr(
+            'Не удалось загрузить прогресс. Войди в аккаунт снова.',
+            'Прогресті жүктеу мүмкін болмады. Аккаунтқа қайта кір.',
+            'Your progress could not be loaded. Sign in again.',
+            'تعذّر تحميل تقدّمك. سجّل الدخول مجددًا.');
       default:
         if (error.statusCode == 0) {
-          return 'Сервер недоступен. Проверь подключение и повтори.';
+          return networkError();
         }
-        return error.message.isEmpty
-            ? 'Не удалось выполнить действие. Попробуй ещё раз.'
-            : error.message;
+        // Provider messages can be unlocalized or contain implementation data.
+        // Keep unknown failures safe and readable in the selected language.
+        break;
     }
   }
-  return 'Не удалось выполнить действие. Попробуй ещё раз.';
+  return tr(
+      'Не удалось выполнить действие. Попробуй ещё раз.',
+      'Әрекетті орындау мүмкін болмады. Қайталап көр.',
+      'The action could not be completed. Try again.',
+      'تعذّر إكمال الإجراء. حاول مجددًا.');
 }

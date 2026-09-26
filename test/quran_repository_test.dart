@@ -102,6 +102,55 @@ void main() {
     repository.dispose();
   });
 
+  test('Arabic reader requests only canonical text and recitation', () async {
+    final paths = <String>[];
+    final repository = QuranRepository(
+      client: MockClient((request) {
+        paths.add(request.url.path);
+        return _successfulApi(request);
+      }),
+      canonicalArabic: Future.value({
+        1: ['بِسْمِ ٱللَّهِ']
+      }),
+    );
+    final chapters = await repository.fetchChapters();
+    final chapter =
+        await repository.fetchChapter(chapters.first, localeCode: 'ar');
+    expect(paths.last, endsWith('/editions/quran-uthmani,ar.alafasy'));
+    expect(chapter.verses.single.arabicText, 'بِسْمِ ٱللَّهِ');
+    expect(chapter.verses.single.translation, isEmpty);
+    expect(chapter.verses.single.transliteration, isEmpty);
+    repository.dispose();
+
+    final offline = QuranRepository(
+      client: MockClient((_) async => http.Response('unavailable', 503)),
+      canonicalArabic: Future.value({
+        1: ['بِسْمِ ٱللَّهِ']
+      }),
+    );
+    final cached = await offline.fetchChapter(chapters.first, localeCode: 'ar');
+    expect(cached.verses.single.arabicText, 'بِسْمِ ٱللَّهِ');
+    expect(cached.verses.single.translation, isEmpty);
+    expect(cached.verses.single.transliteration, isEmpty);
+    offline.dispose();
+  });
+
+  test('Arabic search never falls back to a Russian edition', () async {
+    final paths = <String>[];
+    final repository = QuranRepository(client: MockClient((request) async {
+      paths.add(request.url.path);
+      return _jsonResponse({
+        'code': 200,
+        'data': {'matches': []}
+      });
+    }));
+    await repository.searchAyahs('رحمة', localeCode: 'ar');
+    await repository.searchAyahs('rahma', localeCode: 'ar');
+    expect(paths, hasLength(2));
+    expect(paths.every((path) => path.endsWith('/all/quran-uthmani')), isTrue);
+    repository.dispose();
+  });
+
   test('rejects a 114-item chapter list with the wrong order', () async {
     final repository = QuranRepository(
       client: MockClient((request) async {

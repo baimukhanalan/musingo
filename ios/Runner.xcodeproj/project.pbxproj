@@ -65,6 +65,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		F7126D0659914DAAAA100001 /* Widget.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Widget.xcconfig; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
 		163BC343C092E908CD28B841 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
@@ -155,6 +156,7 @@
 		878A00D52EF4BBA72AB17353 /* MuslingoAyahWidget */ = {
 			isa = PBXGroup;
 			children = (
+				F7126D0659914DAAAA100001 /* Widget.xcconfig */,
 				930617E358E824284F411C16 /* MuslingoAyahWidget.swift */,
 				583EB1F8D81C028DD70BF549 /* Info.plist */,
 				5742543F1167F922DC7CACF2 /* MuslingoAyahWidget.entitlements */,
@@ -665,6 +667,7 @@
 		};
 		544DF69BB21BAC6D6B2828D8 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F7126D0659914DAAAA100001 /* Widget.xcconfig */;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
@@ -849,6 +852,7 @@
 		};
 		A1862D7D93B45D55497AA4E8 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F7126D0659914DAAAA100001 /* Widget.xcconfig */;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
@@ -874,6 +878,7 @@
 		};
 		A9DCE94544B2A059F178BA69 /* Profile */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F7126D0659914DAAAA100001 /* Widget.xcconfig */;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;

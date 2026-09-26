@@ -49,7 +49,8 @@ class _LeagueScreenState extends State<LeagueScreen> {
       if (!mounted) return;
       await context.read<AppState>().handleBackendSessionError(error);
       if (!mounted) return;
-      setState(() => _error = readableBackendError(error));
+      setState(() => _error = readableBackendError(error,
+          localeCode: context.read<AppState>().locale.code));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

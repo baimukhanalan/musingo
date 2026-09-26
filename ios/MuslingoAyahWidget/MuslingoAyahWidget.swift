@@ -3,6 +3,40 @@ import WidgetKit
 
 private let appGroupId = "group.com.muslingo.app"
 
+private struct WidgetCopy {
+  let localeCode: String
+
+  init(localeCode: String? = nil) {
+    self.localeCode = localeCode
+      ?? UserDefaults(suiteName: appGroupId)?.string(forKey: "widget_locale")
+      ?? "ru"
+  }
+
+  func tr(_ ru: String, _ kk: String, _ en: String, _ ar: String) -> String {
+    switch localeCode {
+    case "kk": return kk
+    case "en": return en
+    case "ar": return ar
+    default: return ru
+    }
+  }
+
+  var title: String { tr("Аят дня", "Күн аяты", "Ayah of the day", "آية اليوم") }
+  var preparing: String {
+    tr("Аят дня готовится", "Күн аяты дайындалуда", "Your daily ayah is getting ready", "جارٍ إعداد آية اليوم")
+  }
+  var openApp: String {
+    tr("Открой Muslingo, чтобы обновить виджет.", "Виджетті жаңарту үшін Muslingo қолданбасын аш.",
+       "Open Muslingo to refresh the widget.", "افتح Muslingo لتحديث الأداة.")
+  }
+  var description: String {
+    tr("Аят и перевод на главном экране и экране блокировки.",
+       "Басты экран мен құлыптау экранындағы аят пен аударма.",
+       "A daily ayah on your home screen and lock screen.",
+       "آية يومية على الشاشة الرئيسية وشاشة القفل.")
+  }
+}
+
 private struct AyahPayload: Decodable {
   let date: String
   let number: Int
@@ -14,6 +48,7 @@ private struct AyahPayload: Decodable {
 
 private struct AyahEntry: TimelineEntry {
   let date: Date
+  let localeCode: String
   let number: Int?
   let title: String
   let arabic: String
@@ -25,13 +60,15 @@ private struct AyahProvider: TimelineProvider {
   private let calendar = Calendar.autoupdatingCurrent
 
   func placeholder(in context: Context) -> AyahEntry {
-    AyahEntry(
+    let copy = WidgetCopy()
+    return AyahEntry(
       date: Date(),
+      localeCode: copy.localeCode,
       number: 1,
-      title: "АЯТ ДНЯ",
+      title: copy.title,
       arabic: "بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ",
-      translation: "Во имя Аллаха, Милостивого, Милосердного",
-      coachLine: "Айн: короткий шаг на сегодня"
+      translation: "",
+      coachLine: ""
     )
   }
 
@@ -62,11 +99,13 @@ private struct AyahProvider: TimelineProvider {
     formatter.locale = Locale(identifier: "en_US_POSIX")
     formatter.dateFormat = "yyyy-MM-dd"
     let today = calendar.startOfDay(for: Date())
+    let localeCode = defaults.string(forKey: "widget_locale") ?? "ru"
 
     return payload.compactMap { item in
       guard let itemDate = formatter.date(from: item.date), itemDate >= today else { return nil }
       return AyahEntry(
         date: itemDate,
+        localeCode: localeCode,
         number: item.number,
         title: item.title.uppercased(),
         arabic: item.arabic,
@@ -77,12 +116,14 @@ private struct AyahProvider: TimelineProvider {
   }
 
   private func fallback() -> AyahEntry {
-    AyahEntry(
+    let copy = WidgetCopy()
+    return AyahEntry(
       date: Date(),
+      localeCode: copy.localeCode,
       number: nil,
       title: "MUSLINGO",
-      arabic: "Аят дня готовится",
-      translation: "Открой Muslingo, чтобы обновить виджет.",
+      arabic: copy.preparing,
+      translation: copy.openApp,
       coachLine: ""
     )
   }
@@ -118,10 +159,12 @@ private struct AyahWidgetView: View {
           .minimumScaleFactor(0.72)
           .frame(maxWidth: .infinity, alignment: .leading)
 
-        Text(entry.translation)
-          .font(.caption2)
-          .lineLimit(1)
-          .minimumScaleFactor(0.78)
+        if !entry.translation.isEmpty {
+          Text(entry.translation)
+            .font(.caption2)
+            .lineLimit(1)
+            .minimumScaleFactor(0.78)
+        }
       }
       .widgetURL(URL(string: "https://muslingo-mobile.vercel.app/#/home"))
       .muslingoWidgetBackground()
@@ -146,10 +189,12 @@ private struct AyahWidgetView: View {
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)
         .lineLimit(2)
-      Text(entry.translation)
-        .font(.caption)
-        .foregroundColor(Color(red: 0.33, green: 0.43, blue: 0.50))
-        .lineLimit(3)
+      if !entry.translation.isEmpty {
+        Text(entry.translation)
+          .font(.caption)
+          .foregroundColor(Color(red: 0.33, green: 0.43, blue: 0.50))
+          .lineLimit(3)
+      }
       if !entry.coachLine.isEmpty && family == .systemMedium {
         Divider().opacity(0.35)
         Text(entry.coachLine)
@@ -191,9 +236,11 @@ struct MuslingoAyahWidget: Widget {
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: AyahProvider()) { entry in
       AyahWidgetView(entry: entry)
+        .environment(\.locale, Locale(identifier: entry.localeCode))
+        .environment(\.layoutDirection, entry.localeCode == "ar" ? .rightToLeft : .leftToRight)
     }
-    .configurationDisplayName("Аят дня")
-    .description("Аят и перевод на главном экране и экране блокировки.")
+    .configurationDisplayName(Text(WidgetCopy().title))
+    .description(Text(WidgetCopy().description))
     .supportedFamilies(supportedFamilies)
   }
 }

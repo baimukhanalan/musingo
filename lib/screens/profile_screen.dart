@@ -6,8 +6,7 @@ import '../models/lesson.dart';
 import '../models/user.dart';
 import '../services/app_state.dart';
 import '../utils/colors.dart';
-import '../widgets/cat_character.dart';
-import '../widgets/language_pills.dart';
+import '../widgets/editable_profile_avatar.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_card.dart';
 import '../widgets/section_label.dart';
@@ -229,6 +228,18 @@ class ProfileScreen extends StatelessWidget {
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textLight,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                const Text(
+                  'by Alan Baimukhan',
+                  key: ValueKey('profile-author-credit'),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Nunito',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textGrey,
                   ),
                 ),
               ],

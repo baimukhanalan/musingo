@@ -70,21 +70,31 @@ class QuranRepository {
   }) async {
     final preferences = await SharedPreferences.getInstance();
     final normalizedLocale =
-        const {'ru', 'kk', 'en'}.contains(localeCode) ? localeCode : 'ru';
-    final translationEdition = normalizedLocale == 'kk'
-        ? 'kk.khalifahaltai'
-        : normalizedLocale == 'en'
-            ? 'en.sahih'
-            : 'ru.kuliev';
-    final transliterationEdition =
-        normalizedLocale == 'ru' ? 'ru.transliteration' : 'en.transliteration';
+        const {'ru', 'kk', 'en', 'ar'}.contains(localeCode) ? localeCode : 'ru';
+    final translationEdition = normalizedLocale == 'ar'
+        ? 'quran-uthmani'
+        : normalizedLocale == 'kk'
+            ? 'kk.khalifahaltai'
+            : normalizedLocale == 'en'
+                ? 'en.sahih'
+                : 'ru.kuliev';
+    final transliterationEdition = normalizedLocale == 'ar'
+        ? 'quran-uthmani'
+        : normalizedLocale == 'ru'
+            ? 'ru.transliteration'
+            : 'en.transliteration';
     final cacheKey = '$_chapterCachePrefix${summary.number}_$normalizedLocale';
     final canonicalArabic = await _loadCanonicalArabic();
 
     try {
       final body = await _get(
         '/surah/${summary.number}/editions/'
-        'quran-uthmani,$translationEdition,$transliterationEdition,ar.alafasy',
+        '${{
+          'quran-uthmani',
+          translationEdition,
+          transliterationEdition,
+          'ar.alafasy'
+        }.join(',')}',
       );
       final chapter = _decodeChapter(
         summary,
@@ -119,7 +129,7 @@ class QuranRepository {
     final trimmed = query.trim();
     if (trimmed.length < 2) return const [];
     final hasArabic = RegExp(r'[\u0600-\u06ff]').hasMatch(trimmed);
-    final edition = hasArabic
+    final edition = hasArabic || localeCode == 'ar'
         ? 'quran-uthmani'
         : localeCode == 'kk'
             ? 'kk.khalifahaltai'
@@ -256,8 +266,14 @@ class QuranRepository {
         globalNumber: arabicAyah['number'] as int,
         numberInChapter: verseNumber,
         arabicText: canonicalVerses[index],
-        translation: translatedAyah['text'] as String,
-        transliteration: transliteratedAyah['text'] as String,
+        // Arabic mode has the source text already. Do not duplicate it as a
+        // "translation", or silently fall back to Russian/Latin secondary text.
+        translation: translationEdition == 'quran-uthmani'
+            ? ''
+            : translatedAyah['text'] as String,
+        transliteration: transliterationEdition == 'quran-uthmani'
+            ? ''
+            : transliteratedAyah['text'] as String,
         audioUrl: _proxiedAudioUrl(arabicAyah['number'] as int),
         audioFallbackUrl: quranAudioSources(arabicAyah['number'] as int).last,
         juz: arabicAyah['juz'] as int,

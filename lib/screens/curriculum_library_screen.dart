@@ -347,9 +347,9 @@ class _CurriculumLibraryScreenState extends State<CurriculumLibraryScreen> {
           const SizedBox(height: 13),
           Text(
             state.tr(
-              ru: 'Все модули бесплатны: теория, источники, активная практика и проверка мастерства.',
-              kk: 'Барлық модуль тегін: теория, дереккөз, белсенді тәжірибе және меңгеруді тексеру.',
-              en: 'Every module is free: concept, sources, active practice, and mastery checks.',
+              ru: 'Все 570 модулей открыты и бесплатны. Выбирай любую тему; подготовка и порядок — рекомендации, а не блокировка. Прогресс засчитывается после практики и проверки знаний.',
+              kk: '570 модульдің бәрі ашық әрі тегін. Кез келген тақырыпты таңда; дайындық пен рет — ұсыныс, шектеу емес. Ілгерілеу жаттығу мен білім тексерілген соң есептеледі.',
+              en: 'All 570 modules are open and free. Choose any topic; preparation and order are recommendations, not locks. Progress is earned through practice and assessment.',
             ),
             style: TextStyle(
               fontFamily: 'Nunito',

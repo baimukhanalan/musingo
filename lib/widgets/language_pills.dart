@@ -47,11 +47,12 @@ class LanguagePills extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        runSpacing: 4,
         children: [
           for (final locale in AppLocale.values)
-            _pill(context, locale, activeLabel),
+            IntrinsicWidth(child: _pill(context, locale, activeLabel)),
         ],
       ),
     );

@@ -46,6 +46,8 @@
 	</dict>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Микрофон нужен для коротких упражнений на произношение арабских фраз.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Выбрать фото профиля. Оно хранится только на этом устройстве.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Распознавание речи помогает проверить практику произношения в уроках.</string>
 	<key>UIApplicationSceneManifest</key>

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -33,8 +35,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   _LearningMode _mode = _LearningMode.quran;
-  final Map<String, ScrollController> _pathControllers = {};
-  final PageStorageBucket _courseScrollStorage = PageStorageBucket();
 
   static const _quranIcons = [
     Icons.auto_awesome_rounded,
@@ -71,17 +71,6 @@ class _HomeScreenState extends State<HomeScreen> {
     Icons.pause_circle_rounded,
   ];
 
-  ScrollController _pathControllerFor(String courseId) =>
-      _pathControllers.putIfAbsent(courseId, ScrollController.new);
-
-  @override
-  void dispose() {
-    for (final controller in _pathControllers.values) {
-      controller.dispose();
-    }
-    super.dispose();
-  }
-
   void _openCourse(_LearningMode mode) {
     HapticsService.tap();
     setState(() => _mode = mode);
@@ -90,14 +79,9 @@ class _HomeScreenState extends State<HomeScreen> {
         // Fullscreen is a home view; refreshing its URL remains a valid entry.
         settings: const RouteSettings(name: '/home'),
         fullscreenDialog: true,
-        builder: (context) => PageStorage(
-          bucket: _courseScrollStorage,
-          child: _CoursePathScreen(
-            mode: mode,
-            controller: _pathControllerFor(
-                mode == _LearningMode.basics ? 'rules' : mode.name),
-            onOpenLesson: _openLesson,
-          ),
+        builder: (context) => _CoursePathScreen(
+          mode: mode,
+          onOpenLesson: _openLesson,
         ),
       ),
     );
@@ -131,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
           // слайверы самоизмеряемые, поэтому такой проблемы нет.
           child: CustomScrollView(
             slivers: [
-              // Keep the greeting; language selection remains in Profile.
+              // Keep the greeting; language selection lives in Settings.
               SliverToBoxAdapter(
                 child: _GreetingHeader(name: user.name),
               ),

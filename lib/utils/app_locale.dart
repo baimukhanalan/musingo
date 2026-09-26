@@ -4,7 +4,8 @@ import 'package:flutter/widgets.dart';
 enum AppLocale {
   ru('ru', 'RU'),
   kk('kk', 'KZ'),
-  en('en', 'EN');
+  en('en', 'EN'),
+  ar('ar', 'العربية');
 
   /// Код языка для хранения/[Locale] — "ru" / "kk" / "en".
   final String code;
@@ -16,6 +17,8 @@ enum AppLocale {
 
   /// [Locale] для MaterialApp.
   Locale toLocale() => Locale(code);
+
+  bool get isRtl => this == AppLocale.ar;
 
   /// Разбор сохранённого кода. Неизвестный/пустой код даёт дефолт — русский.
   static AppLocale fromCode(String? code) {

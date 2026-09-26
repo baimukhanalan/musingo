@@ -9,6 +9,7 @@ import 'package:muslingo/screens/install_app_screen.dart';
 import 'package:muslingo/screens/league_screen.dart';
 import 'package:muslingo/screens/main_tab_screen.dart';
 import 'package:muslingo/screens/mentor_memory_screen.dart';
+import 'package:muslingo/screens/onboarding_screen.dart';
 import 'package:muslingo/screens/premium_screen.dart';
 import 'package:muslingo/screens/profile_screen.dart';
 import 'package:muslingo/screens/progress_portability_screen.dart';
@@ -20,6 +21,8 @@ import 'package:muslingo/services/app_state.dart';
 import 'package:muslingo/utils/app_locale.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/localization_host.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +44,7 @@ void main() {
       'quran': const QuranScreen(),
       'coach': const CoachScreen(),
       'mentor memory': const MentorMemoryScreen(),
+      'onboarding': const OnboardingScreen(),
       'profile': const ProfileScreen(),
       'streak': const StreakScreen(),
       'league': const LeagueScreen(),
@@ -71,6 +75,9 @@ void main() {
             ChangeNotifierProvider<AppState>.value(
               value: state,
               child: MaterialApp(
+                locale: state.locale.toLocale(),
+                supportedLocales: testSupportedLocales,
+                localizationsDelegates: testLocalizationDelegates,
                 builder: (context, child) => MediaQuery(
                   data: MediaQuery.of(context).copyWith(
                     textScaler: TextScaler.linear(configuration.textScale),
@@ -87,6 +94,11 @@ void main() {
           );
           await tester.pump();
           await tester.pump(const Duration(milliseconds: 80));
+          expect(
+            Directionality.of(tester.element(find.byWidget(entry.value).first)),
+            locale.isRtl ? TextDirection.rtl : TextDirection.ltr,
+            reason: '${locale.code}/${entry.key} must use its actual direction',
+          );
           final exception = tester.takeException();
           expect(
             exception,

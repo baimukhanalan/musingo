@@ -18,15 +18,18 @@ import '../models/daily_ayah.dart';
 import '../models/mentor_profile.dart';
 import '../models/mentor_tip.dart';
 import '../utils/app_locale.dart';
+import '../utils/arabic_ui_strings.dart';
 import 'backend_service.dart';
 import 'lesson_data.dart';
 import 'notification_service.dart';
 import 'home_widget_service.dart';
+import 'profile_avatar_store.dart';
 
 enum NativeLanguage {
   russian('ru', 'Русский'),
   kazakh('kk', 'Казахский'),
   english('en', 'English'),
+  arabic('ar', 'العربية'),
   uzbek('uz', 'Узбекский');
 
   final String code;
@@ -51,6 +54,22 @@ class PortableImportResult {
     required this.completedLessons,
     required this.knowledgeItems,
     required this.hafizItems,
+  });
+}
+
+/// A successful award awaiting local durability. Keep the original result so
+/// a save retry is not interpreted as another lesson attempt/review.
+class _PendingLessonCompletion {
+  final Map<String, dynamic> result;
+  final bool backend;
+  final int leagueXp;
+  int? leagueXpTarget;
+  String? leagueSeason;
+
+  _PendingLessonCompletion({
+    required this.result,
+    required this.backend,
+    this.leagueXp = 0,
   });
 }
 
@@ -80,6 +99,25 @@ class AppState extends ChangeNotifier {
   static const _pendingSyncImportKey = 'pending_sync_import';
   static const _pendingSyncUserKey = 'pending_sync_user';
   static const _pendingSyncGuestKey = 'pending_sync_is_guest';
+  static const _avatarGuestGenerationKey = 'avatar_guest_generation_v1';
+  String _avatarGuestGeneration = '';
+
+  /// Local avatars are never included in cloud progress/import payloads.
+  String get avatarStorageScope => isGuest
+      ? 'guest:$_avatarGuestGeneration'
+      : 'user:${_user?.id ?? 'signed-out'}';
+
+  Future<void> _ensureAvatarGuestGeneration(SharedPreferences prefs) async {
+    _avatarGuestGeneration = prefs.getString(_avatarGuestGenerationKey) ?? '';
+    if (_avatarGuestGeneration.isEmpty) {
+      _avatarGuestGeneration = List.generate(
+              16,
+              (_) =>
+                  _secureRandom.nextInt(256).toRadixString(16).padLeft(2, '0'))
+          .join();
+      await prefs.setString(_avatarGuestGenerationKey, _avatarGuestGeneration);
+    }
+  }
 
   /// За сколько восстанавливается одна жизнь и потолок жизней локального
   /// аккаунта. FAQ обещает восстановление, но механики не было — здесь она.
@@ -120,6 +158,8 @@ class AppState extends ChangeNotifier {
   Map<String, dynamic> _curriculumProgress = {};
   MentorProfile _mentorProfile = const MentorProfile();
   final Map<String, Future<String>> _lessonAttempts = {};
+  final Map<String, Future<Map<String, dynamic>>> _lessonCompletions = {};
+  final Map<String, _PendingLessonCompletion> _pendingLessonCompletions = {};
 
   /// Слепок локального/гостевого прогресса, который не удалось влить на сервер
   /// в момент входа/регистрации (сеть упала на syncLearningData). Держим его,
@@ -171,14 +211,16 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> rememberForCoach(String text) async {
-    if (!_mentorProfile.memoryEnabled) return;
+  Future<bool> rememberForCoach(String text) async {
+    if (!_mentorProfile.memoryEnabled || MentorMemory.isSensitiveText(text)) {
+      return false;
+    }
     final clean = text.trim().replaceAll(RegExp(r'\s+'), ' ');
-    if (clean.isEmpty) return;
+    if (clean.isEmpty) return false;
     final normalized = clean.toLowerCase();
     if (_mentorProfile.memories
         .any((item) => item.text.trim().toLowerCase() == normalized)) {
-      return;
+      return true;
     }
     final memory = MentorMemory(
       id: 'memory_${DateTime.now().microsecondsSinceEpoch}',
@@ -189,6 +231,7 @@ class AppState extends ChangeNotifier {
       memories:
           [memory, ..._mentorProfile.memories].take(20).toList(growable: false),
     ));
+    return true;
   }
 
   Future<void> forgetCoachMemory(String id) => updateMentorProfile(
@@ -276,7 +319,7 @@ class AppState extends ChangeNotifier {
   /// leave the rest of the app looking signed in.
   Future<bool> handleBackendSessionError(Object error) async {
     if (!_isExpiredSession(error)) return false;
-    final message = readableBackendError(error);
+    final message = readableBackendError(error, localeCode: _locale.code);
     await logout();
     _error = message;
     notifyListeners();
@@ -714,11 +757,22 @@ class AppState extends ChangeNotifier {
   /// ayatRewards (число аятов суры) и авто-масштабируется на новый контент, в
   /// отличие от подсчёта уникальных строк. Один аят проходит через audio/text/
   /// speak, поэтому дедуп по номеру аята.
-  static int _distinctAyahCount(Lesson lesson) => lesson.steps
-      .map((step) => step.quranGlobalAyahNumber)
-      .whereType<int>()
-      .toSet()
-      .length;
+  Set<String> _completedLessonIdsIncluding(String lessonId) => {
+        lessonId,
+        for (final course in _courses)
+          for (final lesson in course.lessons)
+            if (lesson.status == LessonStatus.completed) lesson.id,
+      };
+
+  int _uniqueLearnedAyahs(Set<String> completedIds) => {
+        for (final course in _courses)
+          if (course.type == CourseType.quran)
+            for (final lesson in course.lessons)
+              if (completedIds.contains(lesson.id))
+                for (final step in lesson.steps)
+                  if (step.quranGlobalAyahNumber != null)
+                    step.quranGlobalAyahNumber!,
+      }.length;
 
   /// PBKDF2-HMAC-SHA256, один выходной блок (32 байта). Заменяет хранение
   /// паролей локальных аккаунтов открытым текстом.
@@ -777,9 +831,11 @@ class AppState extends ChangeNotifier {
 
   Future<void> _init() async {
     try {
+      await LessonData.initialize();
       _courses = LessonData.getCourses();
       await LessonContentLocalization.load();
       final preferences = await SharedPreferences.getInstance();
+      await _ensureAvatarGuestGeneration(preferences);
       await _removeLegacyPlaintextAccounts(preferences);
       _soundEnabled = preferences.getBool('sound_enabled') ?? true;
       _locale = AppLocale.fromCode(preferences.getString(_localeKey));
@@ -904,12 +960,17 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<void> _saveUser() async {
+  Future<void> _saveUser({bool requireSuccess = false}) async {
     if (_user == null) return;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user', jsonEncode(_user!.toJson()));
+    await _savePreference(
+      prefs.setString('user', jsonEncode(_user!.toJson())),
+      'user',
+      requireSuccess: requireSuccess,
+    );
     if (_user!.id.startsWith('local_') && _user!.email.isNotEmpty) {
-      await _saveLearningProfileForUser(prefs, _user!.id);
+      await _saveLearningProfileForUser(prefs, _user!.id,
+          requireSuccess: requireSuccess);
       final accounts = _decodeLocalAccounts(prefs.getString(_localAccountsKey));
       final account = accounts[_normalizeEmail(_user!.email)];
       if (account is Map) {
@@ -917,8 +978,22 @@ class AppState extends ChangeNotifier {
           ...Map<String, dynamic>.from(account),
           'user': _user!.toJson(),
         };
-        await prefs.setString(_localAccountsKey, jsonEncode(accounts));
+        await _savePreference(
+          prefs.setString(_localAccountsKey, jsonEncode(accounts)),
+          _localAccountsKey,
+          requireSuccess: requireSuccess,
+        );
       }
+    }
+  }
+
+  Future<void> _savePreference(
+    Future<bool> write,
+    String key, {
+    bool requireSuccess = false,
+  }) async {
+    if (!await write && requireSuccess) {
+      throw StateError('Local progress was not saved: $key');
     }
   }
 
@@ -936,6 +1011,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> loginAsGuest() async {
+    _lessonAttempts.clear();
     await _backend?.logout();
     _error = null;
     _user = UserModel.guest();
@@ -1068,7 +1144,7 @@ class AppState extends ChangeNotifier {
       }
       return true;
     } catch (error) {
-      final message = readableBackendError(error);
+      final message = readableBackendError(error, localeCode: _locale.code);
       final sessionExpired = error is BackendException &&
           (error.code == 'expired_session' ||
               error.code == 'invalid_session' ||
@@ -1099,6 +1175,7 @@ class AppState extends ChangeNotifier {
     try {
       _backend ??= await BackendService.create();
       var profile = await operation();
+      if (_user?.id != profile.user.id) _lessonAttempts.clear();
       if (localState != null) {
         try {
           profile = await _backend!.syncLearningData(
@@ -1123,7 +1200,7 @@ class AppState extends ChangeNotifier {
       await preferences.setString('user', jsonEncode(_user!.toJson()));
       return true;
     } catch (error) {
-      _error = readableBackendError(error);
+      _error = readableBackendError(error, localeCode: _locale.code);
       return false;
     } finally {
       _isLoading = false;
@@ -1304,32 +1381,47 @@ class AppState extends ChangeNotifier {
 
   Future<void> _saveLearningProfileForUser(
     SharedPreferences prefs,
-    String userId,
-  ) async {
+    String userId, {
+    bool requireSuccess = false,
+  }) async {
     final goalKey = _scopedLearningKey(userId, 'goal');
     final recommendationKey = _scopedLearningKey(userId, 'recommendation');
     final skillProfileKey = _scopedLearningKey(userId, 'skill_profile');
     if (_learningGoal == null) {
-      await prefs.remove(goalKey);
+      await _savePreference(prefs.remove(goalKey), goalKey,
+          requireSuccess: requireSuccess);
     } else {
-      await prefs.setString(goalKey, _learningGoal!.storageValue);
+      await _savePreference(
+          prefs.setString(goalKey, _learningGoal!.storageValue), goalKey,
+          requireSuccess: requireSuccess);
     }
-    await prefs.setInt(
-      _scopedLearningKey(userId, 'placement_level'),
-      _placementLevel,
-    );
+    await _savePreference(
+        prefs.setInt(
+          _scopedLearningKey(userId, 'placement_level'),
+          _placementLevel,
+        ),
+        _scopedLearningKey(userId, 'placement_level'),
+        requireSuccess: requireSuccess);
     if (_learningRecommendation == null) {
-      await prefs.remove(recommendationKey);
+      await _savePreference(prefs.remove(recommendationKey), recommendationKey,
+          requireSuccess: requireSuccess);
     } else {
-      await prefs.setString(recommendationKey, _learningRecommendation!);
+      await _savePreference(
+          prefs.setString(recommendationKey, _learningRecommendation!),
+          recommendationKey,
+          requireSuccess: requireSuccess);
     }
     if (_learningSkillProfile == null) {
-      await prefs.remove(skillProfileKey);
+      await _savePreference(prefs.remove(skillProfileKey), skillProfileKey,
+          requireSuccess: requireSuccess);
     } else {
-      await prefs.setString(
-        skillProfileKey,
-        jsonEncode(_learningSkillProfile!.toJson()),
-      );
+      await _savePreference(
+          prefs.setString(
+            skillProfileKey,
+            jsonEncode(_learningSkillProfile!.toJson()),
+          ),
+          skillProfileKey,
+          requireSuccess: requireSuccess);
     }
   }
 
@@ -1392,6 +1484,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    _lessonAttempts.clear();
     final currentUser = _user;
     if (_notificationsEnabled) {
       try {
@@ -1408,6 +1501,11 @@ class AppState extends ChangeNotifier {
     await _backend?.logout();
     final prefs = await SharedPreferences.getInstance();
     await _clearPendingSync(preferences: prefs);
+    if (currentUser?.id == 'guest') {
+      await prefs.remove(ProfileAvatarStore.keyFor(avatarStorageScope));
+      await prefs.remove(_avatarGuestGenerationKey);
+      await _ensureAvatarGuestGeneration(prefs);
+    }
     // Master notification state is device-persistent. Leaving it true here
     // re-enabled reminders on the next launch, even though the user had signed
     // out and the in-memory switch was off.
@@ -1450,6 +1548,7 @@ class AppState extends ChangeNotifier {
       }
       _notificationsEnabled = false;
       if (isBackendUser) await _backend!.deleteAccount();
+      await ProfileAvatarStore().remove(avatarStorageScope);
       final preferences = await SharedPreferences.getInstance();
       await _clearPendingSync(preferences: preferences);
       await preferences.setBool(_notificationsEnabledKey, false);
@@ -1475,7 +1574,7 @@ class AppState extends ChangeNotifier {
       _checkAchievements();
       return true;
     } catch (error) {
-      _error = readableBackendError(error);
+      _error = readableBackendError(error, localeCode: _locale.code);
       return false;
     } finally {
       _isLoading = false;
@@ -1505,7 +1604,7 @@ class AppState extends ChangeNotifier {
 
   /// Возвращает строку под текущий язык интерфейса. [ru] обязателен и служит
   /// фолбэком, если перевод на текущий язык не передан.
-  String tr({required String ru, String? kk, String? en}) {
+  String tr({required String ru, String? kk, String? en, String? ar}) {
     switch (_locale) {
       case AppLocale.ru:
         return ru;
@@ -1513,6 +1612,8 @@ class AppState extends ChangeNotifier {
         return kk ?? ru;
       case AppLocale.en:
         return en ?? ru;
+      case AppLocale.ar:
+        return ar ?? translateArabicUi(ru: ru, en: en);
     }
   }
 
@@ -1798,12 +1899,57 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  bool _refreshingReminders = false;
+
+  /// Refresh permissions, local time zone and the finite ayah schedule after
+  /// returning from Settings, travel or a long background interval.
+  Future<void> refreshNativeReminders() async {
+    if (!_isInitialized ||
+        !_notificationService.supportsNativeSurfaces ||
+        _refreshingReminders) {
+      return;
+    }
+    _refreshingReminders = true;
+    try {
+      await _notificationService.initialize();
+      _notificationPermission = await _notificationService.permissionState();
+      if (!_notificationsEnabled) return;
+      if (_notificationPermission != NotificationPermissionState.granted) {
+        _notificationsEnabled = false;
+        final preferences = await SharedPreferences.getInstance();
+        await preferences.setBool(_notificationsEnabledKey, false);
+      } else {
+        await _scheduleLearningReminders();
+      }
+      notifyListeners();
+    } catch (_) {
+      _error = tr(
+        ru: 'Не удалось обновить напоминания. Проверь их в настройках.',
+        kk: 'Еске салулар жаңартылмады. Баптаулардан тексер.',
+        en: 'Could not refresh reminders. Please check notification settings.',
+      );
+      notifyListeners();
+    } finally {
+      _refreshingReminders = false;
+    }
+  }
+
   Future<bool> sendTestNotification() async {
     if (!_notificationsEnabled) {
       final enabled = await setNotificationsEnabled(true);
       if (!enabled) return false;
     }
-    return _notificationService.showTest(ReminderMessages.test);
+    return _notificationService.showTest(
+      ReminderMessage(
+          'Muslingo',
+          tr(
+            ru: 'Напоминания работают. Айн ждёт тебя на короткий урок.',
+            kk: 'Еске салулар жұмыс істейді. Айн сені қысқа сабаққа күтеді.',
+            en: 'Reminders are working. Ayn is ready for a short lesson.',
+          )),
+      localeCode: _locale.code,
+      showOnLockScreen: _lockScreenPreviewEnabled,
+    );
   }
 
   Future<void> _scheduleLearningReminders() {
@@ -1835,7 +1981,9 @@ class AppState extends ChangeNotifier {
         learningGoal: goal,
         locale: _locale,
         personalized: personalized,
-        isBirthday: _mentorProfile.isBirthday(now),
+        // This pool repeats weekly. Birthday greetings need a separate
+        // one-shot date, never a recurring weekday slot. In-app tips retain it.
+        isBirthday: false,
         currentFocus: _mentorProfile.currentFocus,
         nextLessonTitle: recommendedLesson?.title ?? '',
         preferredMinutes: _mentorProfile.preferredSessionMinutes,
@@ -1856,6 +2004,7 @@ class AppState extends ChangeNotifier {
       ayahHour: _dailyAyahHour,
       ayahMinute: _dailyAyahMinute,
       showOnLockScreen: _lockScreenPreviewEnabled,
+      localeCode: _locale.code,
     );
   }
 
@@ -1890,12 +2039,42 @@ class AppState extends ChangeNotifier {
     int errors, {
     Set<String> weakStepIds = const {},
     DateTime? completedAt,
+    int elapsedSeconds = 0,
+  }) {
+    final completionKey = '$avatarStorageScope:$lessonId';
+    return _lessonCompletions.putIfAbsent(
+      completionKey,
+      () => _completeLesson(
+        lessonId,
+        errors,
+        completionKey: completionKey,
+        weakStepIds: weakStepIds,
+        completedAt: completedAt,
+        elapsedSeconds: elapsedSeconds,
+      ).whenComplete(() {
+        _lessonCompletions.remove(completionKey);
+      }),
+    );
+  }
+
+  Future<Map<String, dynamic>> _completeLesson(
+    String lessonId,
+    int errors, {
+    required String completionKey,
+    required Set<String> weakStepIds,
+    DateTime? completedAt,
+    required int elapsedSeconds,
   }) async {
     if (_user == null) return {};
+    final completedLesson = _findLesson(lessonId);
+    if (completedLesson == null) throw StateError('Unknown lesson: $lessonId');
+    final pending = _pendingLessonCompletions[completionKey];
+    if (pending != null) {
+      return _persistLessonCompletion(lessonId, completionKey, pending);
+    }
 
     if (isBackendUser) {
       try {
-        final completedLesson = _findLesson(lessonId);
         final attemptFuture = _lessonAttempts.putIfAbsent(
           lessonId,
           () => _backend!.startLessonAttempt(lessonId),
@@ -1907,30 +2086,29 @@ class AppState extends ChangeNotifier {
           _lessonAttempts.remove(lessonId);
           rethrow;
         }
-        final speechAttempts = completedLesson?.steps
-                .where((step) => step.type == LessonStepType.speak)
-                .length ??
-            0;
+        final speechAttempts = completedLesson.steps
+            .where((step) => step.type == LessonStepType.speak)
+            .length;
         final result = await _backend!.completeLesson(
           lessonId,
           errors,
           speechAttempts,
           attemptToken,
+          elapsedSeconds: elapsedSeconds,
         );
-        _lessonAttempts.remove(lessonId);
-        final energyEarned = (12 - (errors * 2)).clamp(4, 12).toInt();
+        if (completionKey != '$avatarStorageScope:$lessonId') {
+          throw StateError(
+              'The active account changed during lesson completion');
+        }
+        final energyEarned = result.energyEarned;
         _applyBackendProfile(result.profile);
-        await _updateMemoryForLesson(
+        _applyMemoryForLesson(
           completedLesson,
           weakStepIds,
           completedAt ?? DateTime.now(),
         );
-        await _saveCourseProgress();
-        await _saveUser();
-        await _syncBackendProgress();
         _checkAchievements();
-        notifyListeners();
-        return {
+        final pending = _PendingLessonCompletion(backend: true, result: {
           'xpEarned': result.xpEarned,
           'streakBonus': result.streakBonus,
           'newStreak': _user!.streak,
@@ -1941,9 +2119,13 @@ class AppState extends ChangeNotifier {
           'rewardToken': attemptToken,
           'weakKnowledgeCount': weakKnowledgeCount,
           'nextReviewAt': nextReviewAt,
-        };
+        });
+        _pendingLessonCompletions[completionKey] = pending;
+        return await _persistLessonCompletion(lessonId, completionKey, pending);
       } catch (error) {
-        final message = readableBackendError(error);
+        final message = _pendingLessonCompletions.containsKey(completionKey)
+            ? _error
+            : readableBackendError(error, localeCode: _locale.code);
         if (_isExpiredSession(error)) await logout();
         _error = message;
         notifyListeners();
@@ -1992,13 +2174,12 @@ class AppState extends ChangeNotifier {
       }
     }
 
-    final completedLesson = _findLesson(lessonId);
     // Повтор уже пройденного урока даёт фиксированные 5 XP — как сервер
     // (server/routes/progress-complete.js: firstCompletion ? 25 : 5). Раньше
     // клиент за повтор начислял полный lesson.xpReward, что накручивало XP
     // переигрыванием. Первое прохождение сохраняет lesson.xpReward.
-    final bool isRepeat = completedLesson?.status == LessonStatus.completed;
-    final xpEarned = isRepeat ? 5 : (completedLesson?.xpReward ?? 25);
+    final bool isRepeat = completedLesson.status == LessonStatus.completed;
+    final xpEarned = isRepeat ? 5 : completedLesson.xpReward;
     final newXp = _user!.xp + xpEarned + streakBonus;
     final newLevel = (newXp ~/ 500) + 1;
     final newHearts = _user!.hearts;
@@ -2008,12 +2189,12 @@ class AppState extends ChangeNotifier {
     // quranGlobalAyahNumber (совпадает с серверными ayatRewards = число аятов
     // суры). Дуа — фиксированные +2 только за первый проход r4 (как сервер:
     // firstCompletion && lessonId === 'r4' ? 2 : 0).
-    final learnedAyats =
-        (!isRepeat && completedLesson?.course == CourseType.quran)
-            ? _distinctAyahCount(completedLesson!)
-            : 0;
-    final learnedDuas = (!isRepeat && completedLesson?.id == 'r4') ? 2 : 0;
-    final energyEarned = (12 - (errors * 2)).clamp(4, 12).toInt();
+    final completedIds = _completedLessonIdsIncluding(lessonId);
+    final learnedAyats = _uniqueLearnedAyahs(completedIds);
+    final learnedDuas = (!isRepeat && completedLesson.id == 'r4') ? 2 : 0;
+    final energyEarned = (999 - _user!.energy).clamp(0, 8).toInt();
+    final studySeconds =
+        _user!.totalStudySeconds + elapsedSeconds.clamp(0, 7200).toInt();
     final rewardToken = _rewardTokenFor(completedLesson, errors);
 
     _user = _user!.copyWith(
@@ -2023,9 +2204,10 @@ class AppState extends ChangeNotifier {
       hearts: newHearts,
       energy: (_user!.energy + energyEarned).clamp(0, 999).toInt(),
       lastStudyDate: now,
-      totalLessons: _user!.totalLessons + 1,
-      totalMinutes: _user!.totalMinutes + 5,
-      learnedAyats: _user!.learnedAyats + learnedAyats,
+      totalLessons: completedIds.length,
+      totalMinutes: studySeconds ~/ 60,
+      totalStudySeconds: studySeconds,
+      learnedAyats: learnedAyats,
       learnedDuas: _user!.learnedDuas + learnedDuas,
       // Дневной прогресс считает СЕГОДНЯ: в новый календарный день начинается
       // заново с 1, внутри одного дня растёт с потолком dailyGoal. Раньше рос
@@ -2035,10 +2217,9 @@ class AppState extends ChangeNotifier {
           : 1.clamp(0, _user!.dailyGoal).toInt(),
       lessonAttempts: _user!.lessonAttempts + 1,
       speechAttempts: _user!.speechAttempts +
-          (completedLesson?.steps
-                  .where((step) => step.type == LessonStepType.speak)
-                  .length ??
-              0),
+          (completedLesson.steps
+              .where((step) => step.type == LessonStepType.speak)
+              .length),
       rewardChestsOpened: _user!.rewardChestsOpened + 3,
       rewardHistory: [
         ..._user!.rewardHistory,
@@ -2052,7 +2233,8 @@ class AppState extends ChangeNotifier {
       for (int j = 0; j < lessons.length; j++) {
         if (lessons[j].id == lessonId) {
           lessons[j] = lessons[j].copyWith(status: LessonStatus.completed);
-          if (j + 1 < lessons.length) {
+          if (j + 1 < lessons.length &&
+              lessons[j + 1].status == LessonStatus.locked) {
             lessons[j + 1] =
                 lessons[j + 1].copyWith(status: LessonStatus.available);
           }
@@ -2068,35 +2250,74 @@ class AppState extends ChangeNotifier {
     }
 
     _checkAchievements();
-    // Durability: user (XP/сердца/стрик) — источник истины, пишем его первым и
-    // без глушения. Остальные срезы (память, прогресс курса, лиговый XP) пишем
-    // независимо через _guardedSave: SharedPreferences не даёт мульти-ключевой
-    // атомарности, поэтому сбой одного ключа не должен терять остальные и не
-    // должен мешать notifyListeners. Всё уже применено в памяти выше.
-    await _saveUser();
-    await _guardedSave(
-      () => _updateMemoryForLesson(completedLesson, weakStepIds, now),
+    _applyMemoryForLesson(completedLesson, weakStepIds, now);
+    final localPending = _PendingLessonCompletion(
+      backend: false,
+      leagueXp: isRepeat ? 0 : xpEarned + streakBonus,
+      result: {
+        'xpEarned': xpEarned,
+        'streakBonus': streakBonus,
+        'newStreak': newStreak,
+        'streakBroken': streakBroken,
+        'newLevel': newLevel,
+        'heartsLost': errors,
+        'energyEarned': energyEarned,
+        'rewardToken': rewardToken,
+        'weakKnowledgeCount': weakKnowledgeCount,
+        'nextReviewAt': nextReviewAt,
+      },
     );
-    await _guardedSave(_saveCourseProgress);
-    await _guardedSave(() => _addLocalLeagueXp(xpEarned + streakBonus));
-    notifyListeners();
+    // No asynchronous write may precede this receipt: even the first write
+    // can fail after SharedPreferences has updated its in-memory cache.
+    _pendingLessonCompletions[completionKey] = localPending;
+    return _persistLessonCompletion(lessonId, completionKey, localPending);
+  }
 
-    return {
-      'xpEarned': xpEarned,
-      'streakBonus': streakBonus,
-      'newStreak': newStreak,
-      'streakBroken': streakBroken,
-      'newLevel': newLevel,
-      'heartsLost': errors,
-      'energyEarned': energyEarned,
-      'rewardToken': rewardToken,
-      'weakKnowledgeCount': weakKnowledgeCount,
-      'nextReviewAt': nextReviewAt,
-    };
+  Future<Map<String, dynamic>> _persistLessonCompletion(
+    String lessonId,
+    String completionKey,
+    _PendingLessonCompletion pending,
+  ) async {
+    try {
+      if (completionKey != '$avatarStorageScope:$lessonId') {
+        throw StateError('The active account changed during lesson completion');
+      }
+      await _saveUser(requireSuccess: true);
+      await _saveKnowledgeStates(requireSuccess: true);
+      await _saveCourseProgress(requireSuccess: true);
+      if (!pending.backend && pending.leagueXp > 0) {
+        await _saveCompletionLeagueXp(pending);
+      }
+    } catch (_) {
+      _error = tr(
+        ru: 'Не удалось сохранить результат. Повтори попытку — очки не начислятся дважды.',
+        kk: 'Нәтиже сақталмады. Қайта көр: ұпайлар екі рет қосылмайды.',
+        en: 'Could not save your result. Retry — points will not be awarded twice.',
+        ar: 'تعذّر حفظ النتيجة. أعد المحاولة؛ لن تُضاف النقاط مرتين.',
+      );
+      notifyListeners();
+      rethrow;
+    }
+    if (pending.backend) {
+      await _syncBackendProgress();
+    }
+    _pendingLessonCompletions.remove(completionKey);
+    if (pending.backend) {
+      // A consumed server receipt stays available until all local writes pass.
+      _lessonAttempts.remove(lessonId);
+    }
+    _error = null;
+    notifyListeners();
+    return Map<String, dynamic>.from(pending.result);
   }
 
   Future<void> beginLessonAttempt(String lessonId) async {
-    if (!isBackendUser || _lessonAttempts.containsKey(lessonId)) return;
+    if (!isBackendUser ||
+        _lessonAttempts.containsKey(lessonId) ||
+        _pendingLessonCompletions
+            .containsKey('$avatarStorageScope:$lessonId')) {
+      return;
+    }
     final attempt = _backend!.startLessonAttempt(lessonId);
     _lessonAttempts[lessonId] = attempt;
     try {
@@ -2107,7 +2328,11 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> recordLessonStep(String lessonId, int stepIndex) async {
-    if (!isBackendUser) return;
+    if (!isBackendUser ||
+        _pendingLessonCompletions
+            .containsKey('$avatarStorageScope:$lessonId')) {
+      return;
+    }
     try {
       final attempt = _lessonAttempts.putIfAbsent(
         lessonId,
@@ -2159,7 +2384,7 @@ class AppState extends ChangeNotifier {
         notifyListeners();
         return true;
       } catch (error) {
-        _error = readableBackendError(error);
+        _error = readableBackendError(error, localeCode: _locale.code);
         notifyListeners();
         return false;
       }
@@ -2178,26 +2403,54 @@ class AppState extends ChangeNotifier {
     return true;
   }
 
-  Future<void> _addLocalLeagueXp(int amount) async {
+  Future<void> _saveCompletionLeagueXp(_PendingLessonCompletion pending) async {
     final user = _user;
-    if (user == null || isBackendUser || amount <= 0) return;
+    if (user == null || isBackendUser || pending.leagueXp <= 0) return;
     final preferences = await SharedPreferences.getInstance();
-    await _resetLeagueSeasonIfNeeded(preferences);
+    await _resetLeagueSeasonIfNeeded(preferences, requireSuccess: true);
+    final season = _leagueSeasonId(DateTime.now());
+    // A retry in a new week must not apply last week's award to this week.
+    if (pending.leagueSeason != null && pending.leagueSeason != season) return;
+    pending.leagueSeason = season;
     final key = '$_leagueXpPrefix${user.id}';
-    await preferences.setInt(key, (preferences.getInt(key) ?? 0) + amount);
+    pending.leagueXpTarget ??=
+        (preferences.getInt(key) ?? 0) + pending.leagueXp;
+    await _savePreference(
+      preferences.setInt(
+        key,
+        max(pending.leagueXpTarget!, preferences.getInt(key) ?? 0),
+      ),
+      key,
+      requireSuccess: true,
+    );
   }
 
-  Future<void> _resetLeagueSeasonIfNeeded(SharedPreferences preferences) async {
+  Future<void> _resetLeagueSeasonIfNeeded(
+    SharedPreferences preferences, {
+    bool requireSuccess = false,
+  }) async {
     final season = _leagueSeasonId(DateTime.now());
     if (preferences.getString(_leagueSeasonKey) == season) return;
     final keys = preferences
         .getKeys()
         .where((key) => key.startsWith(_leagueXpPrefix))
         .toList(growable: false);
-    for (final key in keys) {
-      await preferences.remove(key);
+    try {
+      for (final key in keys) {
+        await _savePreference(preferences.remove(key), key,
+            requireSuccess: requireSuccess);
+      }
+      await _savePreference(
+        preferences.setString(_leagueSeasonKey, season),
+        _leagueSeasonKey,
+        requireSuccess: requireSuccess,
+      );
+    } catch (_) {
+      // A failed setter also changes the preferences cache. Refresh it so a
+      // retry cannot mistake an unpersisted season reset for a durable reset.
+      if (requireSuccess) await preferences.reload();
+      rethrow;
     }
-    await preferences.setString(_leagueSeasonKey, season);
   }
 
   String _leagueSeasonId(DateTime date) {
@@ -2311,18 +2564,21 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<void> _saveKnowledgeStates() async {
+  Future<void> _saveKnowledgeStates({bool requireSuccess = false}) async {
     final key = _memoryEngineKey;
     if (key == null) return;
     final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(
-      key,
-      jsonEncode(
-        _knowledgeStates.values
-            .map((knowledge) => knowledge.toJson())
-            .toList(growable: false),
-      ),
-    );
+    await _savePreference(
+        preferences.setString(
+          key,
+          jsonEncode(
+            _knowledgeStates.values
+                .map((knowledge) => knowledge.toJson())
+                .toList(growable: false),
+          ),
+        ),
+        key,
+        requireSuccess: requireSuccess);
   }
 
   String? get _hafizProgressKey =>
@@ -2404,11 +2660,11 @@ class AppState extends ChangeNotifier {
     return progress;
   }
 
-  Future<void> _updateMemoryForLesson(
+  void _applyMemoryForLesson(
     Lesson? lesson,
     Set<String> weakStepIds,
     DateTime reviewedAt,
-  ) async {
+  ) {
     if (lesson == null) return;
     for (final indexedStep in lesson.steps.indexed) {
       final step = indexedStep.$2;
@@ -2426,7 +2682,6 @@ class AppState extends ChangeNotifier {
             )
           : existing.reviewed(wasWeak: wasWeak, reviewedAt: reviewedAt);
     }
-    await _saveKnowledgeStates();
   }
 
   String _knowledgeLabel(LessonStep step) {
@@ -2446,6 +2701,7 @@ class AppState extends ChangeNotifier {
         return KnowledgeKind.matching;
       case LessonStepType.question:
       case LessonStepType.listenChoice:
+        if (lesson.id.startsWith('q_full_')) return KnowledgeKind.matching;
         return lesson.course == CourseType.rules ||
                 lesson.course == CourseType.tajwid
             ? KnowledgeKind.rule
@@ -2541,9 +2797,12 @@ class AppState extends ChangeNotifier {
       final lessons = <Lesson>[];
       for (final lesson in course.lessons) {
         final isCompleted = completed.contains(lesson.id);
+        // Preserve independent entry points from the source catalogue. The
+        // complete Quran path must not depend on finishing the 100 intro units.
+        final isEntryPoint = lesson.status == LessonStatus.available;
         final status = isCompleted
             ? LessonStatus.completed
-            : previousCompleted
+            : previousCompleted || isEntryPoint
                 ? LessonStatus.available
                 : LessonStatus.locked;
         lessons.add(lesson.copyWith(status: status));
@@ -2559,7 +2818,7 @@ class AppState extends ChangeNotifier {
     }).toList(growable: false);
   }
 
-  Future<void> _saveCourseProgress() async {
+  Future<void> _saveCourseProgress({bool requireSuccess = false}) async {
     final key = _completedLessonsKey;
     if (key == null) return;
     final completed = _courses
@@ -2568,7 +2827,11 @@ class AppState extends ChangeNotifier {
         .map((lesson) => lesson.id)
         .toList(growable: false);
     final preferences = await SharedPreferences.getInstance();
-    await preferences.setStringList(key, completed);
+    await _savePreference(
+      preferences.setStringList(key, completed),
+      key,
+      requireSuccess: requireSuccess,
+    );
   }
 
   Map<String, dynamic> _buildSyncState() {

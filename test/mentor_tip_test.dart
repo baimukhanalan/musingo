@@ -10,6 +10,8 @@ import 'package:muslingo/widgets/mentor_tip_card.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/localization_host.dart';
+
 void main() {
   final morning = DateTime.utc(2026, 9, 21, 6);
   MentorTip tip(
@@ -194,6 +196,9 @@ void main() {
       await tester.pumpWidget(ChangeNotifierProvider<AppState>.value(
           value: state,
           child: MaterialApp(
+              locale: state.locale.toLocale(),
+              supportedLocales: testSupportedLocales,
+              localizationsDelegates: testLocalizationDelegates,
               builder: (context, child) => MediaQuery(
                   data: MediaQuery.of(context)
                       .copyWith(textScaler: const TextScaler.linear(1.6)),

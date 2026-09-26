@@ -15,7 +15,11 @@ class _ProfileHeader extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _Avatar(isPremium: user.isPremium),
+              EditableProfileAvatar(
+                key: ValueKey(state.avatarStorageScope),
+                storageScope: state.avatarStorageScope,
+                isPremium: user.isPremium,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -60,69 +64,6 @@ class _ProfileHeader extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: LanguagePills(
-              selected: _langCode(state.nativeLanguage),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _langCode(NativeLanguage? lang) {
-    switch (lang) {
-      case NativeLanguage.kazakh:
-        return 'KZ';
-      case NativeLanguage.english:
-        return 'EN';
-      case NativeLanguage.russian:
-      case NativeLanguage.uzbek:
-      case null:
-        return 'RU';
-    }
-  }
-}
-
-class _Avatar extends StatelessWidget {
-  final bool isPremium;
-  const _Avatar({required this.isPremium});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 96,
-      height: 108,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            width: 96,
-            height: 108,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              color: AppColors.skyLight.withValues(alpha: 0.6),
-            ),
-            alignment: Alignment.center,
-            child: const CatCharacter(mood: CatMood.idle, size: 96),
-          ),
-          if (isPremium)
-            Positioned(
-              bottom: -2,
-              right: -2,
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: AppColors.gold,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.white, width: 2),
-                ),
-                child: const Icon(Icons.workspace_premium_rounded,
-                    color: Colors.white, size: 13),
-              ),
-            ),
         ],
       ),
     );

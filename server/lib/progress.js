@@ -1,5 +1,33 @@
-// Shared by the single Vercel API router.
+import { readFileSync } from 'node:fs';
+
+// Shared by the single Vercel API router. Keep this module independent of route
+// handlers/db imports: progress-complete itself imports these helpers.
 const maxListItems = 2000;
+const curriculum = JSON.parse(readFileSync(
+  new URL('../../docs/content/quran-full-curriculum-v1.json', import.meta.url), 'utf8',
+));
+const quranAddresses = new Map([
+  ...curriculum.legacyLessons.map(({ id, globalAyahNumbers }) => [id, globalAyahNumbers]),
+  ...curriculum.lessons.map(({ id, globalStart, globalEnd }) => [id,
+    Array.from({ length: globalEnd - globalStart + 1 }, (_, index) => globalStart + index)]),
+]);
+export const learningRegistryLessonIds = new Set([
+  ...quranAddresses.keys(),
+  ...Array.from({ length: 100 }, (_, index) => `a${index + 1}`),
+  ...Array.from({ length: 10 }, (_, index) => `r${index + 1}`),
+  ...Array.from({ length: 36 }, (_, index) => `tj${String(index + 1).padStart(2, '0')}`),
+]);
+
+function learnedAyahsFor(completed) {
+  return new Set([...completed].flatMap((id) => quranAddresses.get(id) ?? [])).size;
+}
+
+function savedStudySeconds(document, maximum = Number.MAX_SAFE_INTEGER) {
+  return Math.max(
+    safeInt(document.totalStudySeconds, 0, maximum),
+    safeInt(document.totalMinutes, 0, Math.floor(maximum / 60)) * 60,
+  );
+}
 
 // The current lesson-attempt table can prove that a signed-in learner advanced
 // through sequential steps, but it cannot independently grade an answer. Keep
@@ -40,6 +68,7 @@ export function defaultProgress(user) {
     lastStudyDay: '',
     totalLessons: 0,
     totalMinutes: 0,
+    totalStudySeconds: 0,
     learnedAyats: 0,
     learnedDuas: 0,
     dailyGoal: 3,
@@ -214,13 +243,15 @@ export function mergeLearningState(server, incoming, { importGuest = false } = {
   // Completed lessons are awarded by /api/progress/complete. A regular sync
   // must never let the client mint completions (and indirectly unlock course
   // content). The only exception is the explicit one-time guest import.
+  const importedCompleted = new Set(importGuest
+    ? safeList(incoming.completedLessons).filter((id) => learningRegistryLessonIds.has(id)) : []);
   const completed = new Set([
-    ...safeList(server.completedLessons).filter((value) => typeof value === 'string'),
-    ...(importGuest
-      ? safeList(incoming.completedLessons).filter((value) => typeof value === 'string')
-      : []),
+    ...safeList(server.completedLessons).filter((id) => learningRegistryLessonIds.has(id)),
+    ...importedCompleted,
   ]);
-  next.completedLessons = [...completed].slice(0, 500);
+  // 1,148 guided lessons now include the complete Quran path. The former 500
+  // cap silently erased legitimate completion IDs on an ordinary state sync.
+  next.completedLessons = [...completed].slice(0, maxListItems);
   next.knowledgeStates = mergeObjectsById(server.knowledgeStates, incoming.knowledgeStates);
   next.hafizProgress = mergeObjectsById(server.hafizProgress, incoming.hafizProgress);
   next.curriculumProgress = mergeCurriculumProgress(
@@ -244,15 +275,15 @@ export function mergeLearningState(server, incoming, { importGuest = false } = {
     // reach, and keep the numbers consistent with each other. The previous
     // 1_000_000 cap let a guest import land straight at the top of the
     // leaderboard.
+    // Only the incoming guest value is capped. An old guest snapshot must not
+    // truncate an already-earned authoritative server counter.
     const pick = (field, cap) =>
-      Math.max(safeInt(server[field], 0, cap), safeInt(incoming[field], 0, cap));
+      Math.max(safeInt(server[field], 0, Number.MAX_SAFE_INTEGER), safeInt(incoming[field], 0, cap));
 
     const HARD_XP_CAP = 50_000;      // absolute XP ceiling for an import — a very dedicated long-term player.
     const PER_LESSON_XP = 1_000;     // XP head-room per distinct completed lesson: 25 XP first pass + ~195 replays * 5 XP.
     const STREAK_CAP = 400;          // days — beyond ~13 months of unbroken daily study it is not credible.
-    const TOTAL_LESSONS_CAP = 1_000; // total lesson completions, repeats included.
     const ENERGY_CAP = 999;          // mirrors the energy ceiling used in progress-complete.js.
-    const MINUTES_PER_LESSON = 10;   // each completion books 5 min; 10 leaves honest head-room.
 
     next.streak = pick('streak', STREAK_CAP);
     // Streak milestone bonuses an honest player could have banked, mirroring
@@ -267,25 +298,39 @@ export function mergeLearningState(server, incoming, { importGuest = false } = {
     // self-declare a level out of line with it.
     next.level = Math.floor(next.xp / 500) + 1;
 
-    next.totalLessons = pick('totalLessons', TOTAL_LESSONS_CAP);
-    next.totalMinutes = pick('totalMinutes', next.totalLessons * MINUTES_PER_LESSON);
+    next.totalLessons = completed.size;
+    next.learnedAyats = learnedAyahsFor(completed);
+    // Preserve the existing bounded three-attempts-per-lesson guest policy,
+    // but measure actual seconds (up to the receipt's 2h maximum per attempt).
+    // sanitizeGuestImport at the HTTP boundary clears these claims; this pure
+    // merge does not authorize unverifiable guest rewards or unlocks.
+    const guestAttempts = Math.max(importedCompleted.size,
+      safeInt(incoming.lessonAttempts ?? incoming.totalLessons, 0, importedCompleted.size * 3));
+    const guestSeconds = savedStudySeconds(incoming, guestAttempts * 7200);
+    next.totalStudySeconds = Math.max(savedStudySeconds(server), guestSeconds);
+    next.totalMinutes = Math.floor(next.totalStudySeconds / 60);
     next.energy = pick('energy', ENERGY_CAP);
     next.hearts = safeInt(incoming.hearts ?? server.hearts, 0, 5);
 
     // Remaining counters do not feed the leaderboard, but are still bounded to
     // app-plausible ranges and kept consistent with the lesson totals above.
-    next.learnedAyats = pick('learnedAyats', 300);              // a few short surahs' worth of ayats.
     next.learnedDuas = pick('learnedDuas', 100);
     next.dailyProgress = pick('dailyProgress', next.dailyGoal); // can never exceed the daily goal.
-    next.lessonAttempts = pick('lessonAttempts', next.totalLessons * 3);         // <= ~3 tries per completion.
+    next.lessonAttempts = Math.max(safeInt(server.lessonAttempts, 0, Number.MAX_SAFE_INTEGER), guestAttempts);
     next.speechAttempts = pick('speechAttempts', next.totalLessons * 50);        // <= 50 speech tries per completion.
     next.rewardChestsOpened = pick('rewardChestsOpened', next.totalLessons * 3); // +3 chests per completion.
 
-    next.rewardHistory = safeList(incoming.rewardHistory)
-      .filter((value) => typeof value === 'string')
-      .slice(-500);
+    // Server-issued replay guards have priority over untrusted guest tokens.
+    // Even a full guest history must not evict a server receipt on sign-up sync.
+    const serverTokens = [...new Set(safeList(server.rewardHistory)
+      .filter((value) => typeof value === 'string'))].slice(-500);
+    const serverTokenSet = new Set(serverTokens);
+    const guestTokens = [...new Set(safeList(incoming.rewardHistory)
+      .filter((value) => typeof value === 'string' && !serverTokenSet.has(value)))];
+    next.rewardHistory = [...guestTokens, ...serverTokens].slice(-500);
     const incomingStudy = safeString(incoming.lastStudyDay, 10);
-    if (incomingStudy && /^\d{4}-\d{2}-\d{2}$/.test(incomingStudy)) next.lastStudyDay = incomingStudy;
+    if (incomingStudy && /^\d{4}-\d{2}-\d{2}$/.test(incomingStudy) &&
+        incomingStudy > String(server.lastStudyDay ?? '')) next.lastStudyDay = incomingStudy;
   }
 
   next.updatedAt = new Date().toISOString();

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-// progress.js has no side-effect imports (no db.js), so these run without a
+// progress.js reads the bundled registry but does not import db.js, so these run without a
 // DATABASE_URL. Both anti-cheat holes live here: the guest-import caps in
 // mergeLearningState and the reward-replay dedup in isRewardReplay.
 import {
@@ -26,7 +26,7 @@ test('guest import clamps inflated xp to the completedLessons-derived cap', () =
 });
 
 test('guest import xp can never exceed the hard 50k ceiling', () => {
-  const many = Array.from({ length: 500 }, (_, i) => `x${i}`); // 500 * 1000 = 500k > hard cap
+  const many = Array.from({ length: 100 }, (_, i) => `a${i + 1}`); // real registry IDs; 100 * 1000 > hard cap
   const merged = mergeLearningState(defaultProgress(user), {
     xp: 999_999,
     completedLessons: many,
@@ -65,13 +65,16 @@ test('guest import clamps hearts into 0..5', () => {
 
 // --- guest import: consistency between counters --------------------------
 
-test('guest import keeps totalMinutes consistent with totalLessons', () => {
+test('guest helper bounds study seconds by known lessons and attempt budget', () => {
   const merged = mergeLearningState(defaultProgress(user), {
+    completedLessons: Array.from({ length: 10 }, (_, i) => `a${i + 1}`),
     totalLessons: 10,
-    totalMinutes: 100_000, // absurd; cap is totalLessons * 10 = 100
+    lessonAttempts: 10,
+    totalMinutes: 100_000, // capped at ten declared attempts, at most two hours each
   }, { importGuest: true });
   assert.equal(merged.totalLessons, 10);
-  assert.equal(merged.totalMinutes, 100);
+  assert.equal(merged.totalMinutes, 1200);
+  assert.equal(merged.totalStudySeconds, 72_000);
 });
 
 test('guest import clamps totalLessons and energy to their ceilings', () => {
@@ -79,7 +82,7 @@ test('guest import clamps totalLessons and energy to their ceilings', () => {
     totalLessons: 10_000,
     energy: 9_999,
   }, { importGuest: true });
-  assert.equal(merged.totalLessons, 1000);
+  assert.equal(merged.totalLessons, 0); // no registered completed IDs, no count
   assert.equal(merged.energy, 999);
 });
 

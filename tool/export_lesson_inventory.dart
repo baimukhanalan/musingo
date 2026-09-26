@@ -4,7 +4,8 @@ import 'dart:io';
 import 'package:muslingo/models/lesson.dart';
 import 'package:muslingo/services/lesson_data.dart';
 
-void main() {
+Future<void> main() async {
+  await LessonData.initialize();
   final courses = LessonData.getCourses();
   final courseRows = courses.map((course) {
     final steps = course.lessons.expand((lesson) => lesson.steps).toList();

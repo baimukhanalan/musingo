@@ -1,11 +1,31 @@
 import '../models/lesson.dart';
 import 'lesson_challenge_engine.dart';
 import 'lessons/quran_lessons.dart';
+import 'lessons/quran_full_curriculum.dart';
+import 'lessons/quran_curriculum_asset_io.dart'
+    if (dart.library.ui) 'lessons/quran_curriculum_asset_flutter.dart';
 import 'lessons/arabic_lessons.dart';
 import 'lessons/rules_lessons.dart';
 import 'tajwid_data.dart';
 
 class LessonData {
+  static List<Lesson> _fullQuranLessons = const [];
+  static Future<void>? _initializing;
+  static bool get fullQuranInitialized => _fullQuranLessons.isNotEmpty;
+
+  /// Load the complete source-backed path before publishing courses to state.
+  /// Repeated calls are safe across account changes and Flutter test zones.
+  static Future<void> initialize() {
+    if (fullQuranInitialized) return Future<void>.value();
+    return _initializing ??=
+        _initializeFullQuran().whenComplete(() => _initializing = null);
+  }
+
+  static Future<void> _initializeFullQuran() async {
+    final text = await loadQuranCurriculumAsset();
+    _fullQuranLessons = QuranFullCurriculum.fromCanonicalText(text).lessons();
+  }
+
   static final List<Lesson> _quranLessons =
       LessonChallengeEngine.strengthen(quranLessons);
   static final List<Lesson> _arabicLessons =
@@ -23,7 +43,7 @@ class LessonData {
         title: 'Коран',
         description: 'Изучай аяты с аудио и переводом',
         type: CourseType.quran,
-        lessons: _quranLessons,
+        lessons: [..._quranLessons, ..._fullQuranLessons],
       );
 
   static Course get arabicCourse => Course(

@@ -1,20 +1,78 @@
 part of '../home_screen.dart';
 
 /// A route above the tab shell: the map owns the entire viewport and back
-/// returns to the same home scroll position. Opening a lesson preserves it.
-class _CoursePathScreen extends StatelessWidget {
+/// starts each visit at the top. Opening a lesson preserves the active map.
+class _CoursePathScreen extends StatefulWidget {
   final _LearningMode mode;
-  final ScrollController controller;
   final void Function(BuildContext context, Lesson lesson) onOpenLesson;
 
   const _CoursePathScreen({
     required this.mode,
-    required this.controller,
     required this.onOpenLesson,
   });
 
   @override
+  State<_CoursePathScreen> createState() => _CoursePathScreenState();
+}
+
+class _CoursePathScreenState extends State<_CoursePathScreen> {
+  final controller = ScrollController(keepScrollOffset: false);
+  ImageProvider? _worldImage;
+  bool _worldReady = false;
+  bool _worldFailed = false;
+  int _imageGeneration = 0;
+  Timer? _worldTimeout;
+  bool _fullQuranOnly = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final width = (MediaQuery.sizeOf(context).width *
+            MediaQuery.devicePixelRatioOf(context))
+        .round()
+        .clamp(384, 768);
+    final provider = ResizeImage.resizeIfNeeded(
+      width,
+      null,
+      AssetImage('assets/images/world_${widget.mode.name}.webp'),
+    );
+    if (_worldImage == provider) return;
+    _worldImage = provider;
+    _worldReady = false;
+    _worldFailed = false;
+    final generation = ++_imageGeneration;
+    // Decode just the selected world, at the same bounded resolution as the
+    // visible image. No course nodes are shown before that first frame is ready.
+    var failed = false;
+    _worldTimeout?.cancel();
+    _worldTimeout = Timer(const Duration(seconds: 6), () {
+      _finishWorld(generation, true);
+    });
+    precacheImage(provider, context, onError: (_, __) => failed = true)
+        .then((_) => _finishWorld(generation, failed), onError: (_) {
+      _finishWorld(generation, true);
+    });
+  }
+
+  void _finishWorld(int generation, bool failed) {
+    if (!mounted || generation != _imageGeneration || _worldReady) return;
+    _worldTimeout?.cancel();
+    setState(() {
+      _worldReady = true;
+      _worldFailed = failed;
+    });
+  }
+
+  @override
+  void dispose() {
+    _worldTimeout?.cancel();
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final mode = widget.mode;
     final state = context.watch<AppState>();
     final type = switch (mode) {
       _LearningMode.basics => CourseType.rules,
@@ -23,6 +81,15 @@ class _CoursePathScreen extends StatelessWidget {
       _LearningMode.tajwid => CourseType.tajwid,
     };
     final course = state.getCourse(type);
+    final hasFullQuran = mode == _LearningMode.quran &&
+        (course?.lessons.any((lesson) => lesson.id.startsWith('q_full_')) ??
+            false);
+    final lessons = hasFullQuran
+        ? course!.lessons
+            .where(
+                (lesson) => lesson.id.startsWith('q_full_') == _fullQuranOnly)
+            .toList(growable: false)
+        : course?.lessons ?? <Lesson>[];
     final title = switch (mode) {
       _LearningMode.basics => state.tr(
           ru: 'Основы ислама', kk: 'Ислам негіздері', en: 'Basics of Islam'),
@@ -77,30 +144,86 @@ class _CoursePathScreen extends StatelessWidget {
             ),
             if (course != null)
               Expanded(
-                child: Stack(
-                  key: const ValueKey('learning-path-panel-expanded'),
-                  children: [
-                    Positioned.fill(
-                        child: _LearningPathWorld(
-                            mode: mode, controller: controller)),
-                    Scrollbar(
-                      controller: controller,
-                      radius: const Radius.circular(8),
-                      child: CustomScrollView(
-                        key: PageStorageKey('course-path-${course.id}'),
-                        controller: controller,
-                        primary: false,
-                        slivers: [
-                          _LessonPath(
-                            lessons: course.lessons,
-                            icons: icons,
-                            onOpenLesson: onOpenLesson,
+                child: !_worldReady
+                    ? Center(
+                        child: Text(
+                          state.tr(
+                            ru: 'Готовим курс…',
+                            kk: 'Курс дайындалуда…',
+                            en: 'Preparing your course…',
+                          ),
+                          key: const ValueKey('course-world-loading'),
+                          style: const TextStyle(color: AppColors.textGrey),
+                        ),
+                      )
+                    : Stack(
+                        key: const ValueKey('learning-path-panel-expanded'),
+                        children: [
+                          Positioned.fill(
+                              child: _worldFailed
+                                  ? const DecoratedBox(
+                                      key: ValueKey('course-world-fallback'),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.bottomCenter,
+                                          end: Alignment.topCenter,
+                                          colors: [
+                                            AppColors.ivory,
+                                            AppColors.skyLight
+                                          ],
+                                        ),
+                                      ),
+                                    )
+                                  : _LearningPathWorld(
+                                      mode: mode,
+                                      image: _worldImage!,
+                                      controller: controller)),
+                          Scrollbar(
+                            controller: controller,
+                            radius: const Radius.circular(8),
+                            child: CustomScrollView(
+                              key: PageStorageKey('course-path-${course.id}'),
+                              controller: controller,
+                              primary: false,
+                              slivers: [
+                                if (hasFullQuran)
+                                  SliverToBoxAdapter(
+                                    child: Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                          20, 8, 20, 8),
+                                      child: FilledButton.tonalIcon(
+                                        key: const ValueKey(
+                                            'quran-path-section-toggle'),
+                                        onPressed: () {
+                                          controller.jumpTo(0);
+                                          setState(() =>
+                                              _fullQuranOnly = !_fullQuranOnly);
+                                        },
+                                        icon: Icon(_fullQuranOnly
+                                            ? Icons.school_outlined
+                                            : Icons.menu_book_rounded),
+                                        label: Text(_fullQuranOnly
+                                            ? state.tr(
+                                                ru: 'Вводные уроки',
+                                                kk: 'Кіріспе сабақтар',
+                                                en: 'Introductory lessons')
+                                            : state.tr(
+                                                ru: 'Весь Коран · 114 сур',
+                                                kk: 'Толық Құран · 114 сүре',
+                                                en: 'Full Quran · 114 surahs')),
+                                      ),
+                                    ),
+                                  ),
+                                _LessonPath(
+                                  lessons: lessons,
+                                  icons: icons,
+                                  onOpenLesson: widget.onOpenLesson,
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
               ),
           ],
         ),
@@ -112,8 +235,13 @@ class _CoursePathScreen extends StatelessWidget {
 class _LearningPathWorld extends StatelessWidget {
   final _LearningMode mode;
   final ScrollController controller;
+  final ImageProvider image;
 
-  const _LearningPathWorld({required this.mode, required this.controller});
+  const _LearningPathWorld({
+    required this.mode,
+    required this.controller,
+    required this.image,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -126,16 +254,12 @@ class _LearningPathWorld extends StatelessWidget {
             // ground-to-sky journey; no idle animation or per-lesson bitmaps.
             final canvasHeight = (constraints.maxWidth * 2)
                 .clamp(constraints.maxHeight * 1.65, double.infinity);
-            final image = Image.asset(
-              'assets/images/world_${mode.name}.webp',
+            final painting = Image(
+              image: image,
               key: ValueKey('learning-world-${mode.name}'),
               width: constraints.maxWidth,
               height: canvasHeight,
               fit: BoxFit.cover,
-              cacheWidth: (constraints.maxWidth *
-                      MediaQuery.devicePixelRatioOf(context))
-                  .round()
-                  .clamp(384, 768),
               filterQuality: FilterQuality.medium,
               errorBuilder: (_, error, stack) => const ColoredBox(
                 color: AppColors.skyLight,
@@ -143,7 +267,7 @@ class _LearningPathWorld extends StatelessWidget {
             );
             return AnimatedBuilder(
               animation: controller,
-              child: image,
+              child: painting,
               builder: (context, child) {
                 // Expansion may briefly retain the outgoing scrollable during
                 // its crossfade. The latest attached viewport owns the scene.

@@ -84,6 +84,11 @@ extension LearningSkillDetails on LearningSkill {
       (LearningSkill.surahRecall, AppLocale.en) => 'Surahs',
       (LearningSkill.meaning, AppLocale.en) => 'Meaning',
       (LearningSkill.tajwid, AppLocale.en) => 'Tajwid',
+      (LearningSkill.letters, AppLocale.ar) => 'الحروف',
+      (LearningSkill.reading, AppLocale.ar) => 'القراءة',
+      (LearningSkill.surahRecall, AppLocale.ar) => 'السور',
+      (LearningSkill.meaning, AppLocale.ar) => 'المعنى',
+      (LearningSkill.tajwid, AppLocale.ar) => 'التجويد',
       _ => title,
     };
   }
@@ -135,6 +140,11 @@ extension LearningGoalDetails on LearningGoal {
       (LearningGoal.pronunciation, AppLocale.en) => 'Improve pronunciation',
       (LearningGoal.quranMeaning, AppLocale.en) => 'Understand the Quran',
       (LearningGoal.islamBasics, AppLocale.en) => 'Learn Islam basics',
+      (LearningGoal.arabicReading, AppLocale.ar) => 'قراءة النص العربي',
+      (LearningGoal.shortSurahs, AppLocale.ar) => 'حفظ السور القصيرة',
+      (LearningGoal.pronunciation, AppLocale.ar) => 'تحسين النطق',
+      (LearningGoal.quranMeaning, AppLocale.ar) => 'فهم معاني القرآن',
+      (LearningGoal.islamBasics, AppLocale.ar) => 'تعلّم أساسيات الإسلام',
       _ => title,
     };
   }
@@ -177,6 +187,16 @@ extension LearningGoalDetails on LearningGoal {
         'An ayah, key words, and a comprehension question',
       (LearningGoal.islamBasics, AppLocale.en) =>
         'One core topic and a short comprehension check',
+      (LearningGoal.arabicReading, AppLocale.ar) =>
+        'الحروف والقراءة وتدريب قصير على النطق',
+      (LearningGoal.shortSurahs, AppLocale.ar) =>
+        'مقطع جديد من سورة ومراجعة آية مألوفة',
+      (LearningGoal.pronunciation, AppLocale.ar) =>
+        'الاستماع إلى النموذج وتكراره بدقة',
+      (LearningGoal.quranMeaning, AppLocale.ar) =>
+        'آية وكلمات أساسية وسؤال للتحقق من الفهم',
+      (LearningGoal.islamBasics, AppLocale.ar) =>
+        'موضوع أساسي واحد واختبار قصير للفهم',
       _ => dailyFocus,
     };
   }

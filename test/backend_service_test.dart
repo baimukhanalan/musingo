@@ -98,6 +98,66 @@ void main() {
     );
   });
 
+  test('known backend failures are readable in Arabic without Russian leakage',
+      () {
+    for (final code in [
+      'network_error',
+      'already_exists',
+      'invalid_credentials',
+      'invalid_current_password',
+      'password_reuse',
+      'password_changed',
+      'invalid_or_expired_token',
+      'email_not_verified',
+      'invalid_email',
+      'not_enough_energy',
+      'hearts_full',
+      'too_many_attempts',
+      'expired_session',
+      'invalid_session',
+      'authentication_required',
+      'invalid_code',
+      'cannot_add_self',
+      'friend_not_found',
+      'lesson_locked',
+      'unknown_lesson',
+      'incomplete_lesson_attempt',
+      'invalid_step_sequence',
+      'progress_conflict',
+      'sync_conflict',
+      'progress_not_found',
+    ]) {
+      final text = readableBackendError(
+          BackendException(400, code, 'Internal provider detail'),
+          localeCode: 'ar');
+      expect(text, matches(RegExp(r'[\u0600-\u06ff]')), reason: code);
+      expect(text, isNot(matches(RegExp(r'[\u0400-\u04ff]'))), reason: code);
+      expect(text, isNot(contains('provider')), reason: code);
+    }
+  });
+
+  test('unknown backend exceptions do not expose provider text in any language',
+      () {
+    for (final locale in ['ru', 'kk', 'en', 'ar']) {
+      final text = readableBackendError(
+          const BackendException(
+              500, 'unknown_code', 'PRIVATE DATABASE DETAILS'),
+          localeCode: locale);
+      expect(text, isNot(contains('PRIVATE')));
+      expect(text, isNotEmpty);
+    }
+    expect(readableBackendError(Exception('secret'), localeCode: 'ar'),
+        'تعذّر إكمال الإجراء. حاول مجددًا.');
+  });
+
+  test('backend errors retain Kazakh and English language selection', () {
+    const error = BackendException(401, 'invalid_credentials', '');
+    expect(readableBackendError(error, localeCode: 'kk'),
+        'Email немесе құпиясөз қате.');
+    expect(readableBackendError(error, localeCode: 'en'),
+        'Incorrect email or password.');
+  });
+
   test('changes password with the active token and stores the replacement',
       () async {
     var calls = 0;

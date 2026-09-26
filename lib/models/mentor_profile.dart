@@ -11,6 +11,22 @@ class MentorMemory {
     required this.createdAt,
   });
 
+  /// Learning preferences can be remembered; credentials, contact details,
+  /// medical and intimate information must not enter persistent mentor memory.
+  /// Strip Arabic marks before matching so diacritics do not bypass the guard.
+  static bool isSensitiveText(String text) {
+    final normalized = text
+        .toLowerCase()
+        .replaceAll(RegExp(r'[\u0640\u064b-\u065f\u0670\u06d6-\u06ed]'), '');
+    return RegExp(
+          r'(парол|password|құпия ?сөз|token|токен|otp|\bpin\b|банк|bank|карт|card|cvv|iban|иин|\biin\b|паспорт|passport|адрес|address|мекенжай|телефон|phone|email|e-mail|почт|медицин|medical|диагноз|diagnos|интим|intimate|сексуал|sexual|голосов.*запис|voice recording|كلم[ةه]\s*(?:ال)?(?:مرور|سر)|رمز\s*(?:ال)?(?:دخول|تحقق|سري)|رمزي\s*(?:السري|للتحقق)|بطاق|حسابي\s*(?:البنكي|المصرفي)|جواز\s*(?:ال)?سفر|رقم\s*(?:ال)?هوي|عنواني|عنوان\s*(?:ال)?(?:منزل|سكن)|اسكن\s*في|أسكن\s*في|هاتفي|هاتف|جوالي|بريدي|بريد\s*(?:إلكتروني|الكتروني)|تشخيص|مرضي|أعاني\s*من|اعاني\s*من|طبي|صحتي|علاجي|دوائي|ادويتي|أدويتي|علاق.*حميم|حيات.*جنس|جماع|جنس|تسجيل.*صوت)',
+          caseSensitive: false,
+        ).hasMatch(normalized) ||
+        RegExp(r'[\w.+-]+@[\w.-]+\.[a-z]{2,}', caseSensitive: false)
+            .hasMatch(normalized) ||
+        RegExp(r'(?:[0-9٠-٩۰-۹][\s()+-]*){7,}').hasMatch(normalized);
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'text': text,

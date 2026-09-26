@@ -1,4 +1,5 @@
 import '../models/coach.dart';
+import 'arabic_coach.dart';
 
 /// Offline mentor responses are authored in each supported language, so a
 /// provider outage never silently changes the learner's language to Russian.
@@ -26,6 +27,7 @@ class LocalizedCoach {
 
   static CoachResponse answer(
       String question, CoachContext context, String locale) {
+    if (locale == 'ar') return ArabicCoach.answer(question, context);
     final kk = locale == 'kk';
     String t(String kz, String en) => kk ? kz : en;
     final q = question.toLowerCase();

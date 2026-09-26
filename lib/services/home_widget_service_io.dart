@@ -25,6 +25,7 @@ class HomeWidgetPlatform {
       AppLocale.ru => 'Аят дня',
       AppLocale.kk => 'Күн аяты',
       AppLocale.en => 'Ayah of the day',
+      AppLocale.ar => 'آية اليوم',
     };
     for (var offset = 0; offset < 30; offset++) {
       final date = DateTime(now.year, now.month, now.day + offset);
@@ -36,7 +37,9 @@ class HomeWidgetPlatform {
         'title': title,
         'arabic': ayah.arabic,
         'translation': ayah.secondaryTextFor(locale),
-        'coachLine': coachLine.trim(),
+        // Personal advice (including birthdays) belongs only to today's entry.
+        // Future ayahs stay available without repeating stale personal text.
+        'coachLine': offset == 0 ? coachLine.trim() : '',
       });
     }
 

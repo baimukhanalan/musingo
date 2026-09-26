@@ -1,8 +1,7 @@
 import { issueLessonAttempt, requireUser } from '../lib/auth.js';
 import { sql } from '../lib/db.js';
 import { ApiError, method, readJson, text, withApi } from '../lib/http.js';
-import { MIN_RECORDED_LESSON_STEPS } from '../lib/progress.js';
-import { lessons } from './progress-complete.js';
+import { lessons, previousLessonId, requiredRecordedSteps } from './progress-complete.js';
 
 export default withApi(async (request, response) => {
   method(request, ['POST']);
@@ -14,12 +13,8 @@ export default withApi(async (request, response) => {
     SELECT document FROM muslingo_progress WHERE user_id = ${user.id}::uuid
   `;
   const completed = new Set(currentRows[0]?.document?.completedLessons ?? []);
-  const coursePrefix = lessonId.startsWith('tj') ? 'tj'
-    : lessonId.startsWith('q') ? 'q'
-      : lessonId.slice(0, 1);
-  const courseLessons = [...lessons].filter((id) => id.startsWith(coursePrefix));
-  const lessonIndex = courseLessons.indexOf(lessonId);
-  if (lessonIndex > 0 && !completed.has(courseLessons[lessonIndex - 1])) {
+  const previous = previousLessonId(lessonId);
+  if (previous && !completed.has(previous)) {
     throw new ApiError(409, 'lesson_locked', 'Complete the previous lesson first.');
   }
   const attempt = await issueLessonAttempt(user.id, lessonId);
@@ -43,7 +38,7 @@ export default withApi(async (request, response) => {
   `;
   return response.status(201).json({
     attemptToken: attempt.token,
-    minimumRecordedSteps: MIN_RECORDED_LESSON_STEPS,
+    minimumRecordedSteps: requiredRecordedSteps(lessonId),
     expiresInSeconds: 2 * 60 * 60,
   });
 });

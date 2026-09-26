@@ -7,6 +7,7 @@ import '../services/app_state.dart';
 import '../services/lesson_video_catalog.dart';
 import '../services/lesson_content_localization.dart';
 import '../utils/colors.dart';
+import '../utils/arabic_ui_strings.dart';
 import 'premium_card.dart';
 
 typedef LessonVideoOpener = Future<bool> Function(Uri uri);
@@ -31,11 +32,13 @@ List<LessonVideoKnowledgeChallenge> buildLessonVideoChallenges(
   List<LessonVideo>? catalog,
   String locale = 'ru',
 }) {
-  String tr(String ru, String kk, String en) => locale == 'kk'
-      ? kk
-      : locale == 'en'
-          ? en
-          : ru;
+  String tr(String ru, String kk, String en) => locale == 'ar'
+      ? translateArabicUi(ru: ru, en: en)
+      : locale == 'kk'
+          ? kk
+          : locale == 'en'
+              ? en
+              : ru;
   video = LessonContentLocalization.localizeVideo(video, locale);
   final peers = (catalog ?? LessonVideoCatalog.curated.entries)
       .map((item) => LessonContentLocalization.localizeVideo(item, locale))

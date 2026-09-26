@@ -3,6 +3,7 @@ import 'dart:js_interop';
 import 'package:web/web.dart' as web;
 
 import '../models/notification_permission_state.dart';
+import '../models/notification_copy.dart';
 import '../models/reminder_message.dart';
 
 @JS('muslingoPush.isSupported')
@@ -65,6 +66,7 @@ class NotificationPlatform {
     int ayahHour = 8,
     int ayahMinute = 15,
     bool showOnLockScreen = false,
+    String localeCode = 'ru',
   }) async {
     // На web реальные локальные уведомления не планируем — контент собирает
     // серверный web-push. Сигнатура совпадает с остальными платформами;
@@ -92,12 +94,20 @@ class NotificationPlatform {
     }
   }
 
-  Future<bool> showTest(ReminderMessage message) async {
+  Future<bool> showTest(
+    ReminderMessage message, {
+    String localeCode = 'ru',
+    bool showOnLockScreen = false,
+  }) async {
     if (web.Notification.permission != 'granted' ||
         !supportsBackgroundScheduling) {
       return false;
     }
-    return (await _pushShowTest(message.title.toJS, message.body.toJS).toDart)
+    final copy = NotificationCopy(localeCode);
+    return (await _pushShowTest(
+      copy.visibleTitle(message.title, showOnLockScreen).toJS,
+      copy.visibleBody(message.body, showOnLockScreen).toJS,
+    ).toDart)
         .toDart;
   }
 }

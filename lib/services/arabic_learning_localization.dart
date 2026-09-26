@@ -2,6 +2,7 @@
 /// Keep deterministic source-based names in Arabic reading exercises instead of
 /// allowing the general machine-translation dictionary to change their meaning.
 String? localizeArabicLearningText(String source, String locale) {
+  if (locale == 'ar') return _arabicTerminology(source);
   if (locale != 'kk' && locale != 'en') return null;
   final kk = locale == 'kk';
   const names = <String, (String, String)>{
@@ -122,3 +123,91 @@ String? localizeArabicLearningText(String source, String locale) {
   }
   return null;
 }
+
+String? _arabicTerminology(String source) {
+  final exact = _arabicLetterNames[source];
+  if (exact != null) return exact;
+  const phases = {
+    'Точный звук': 'النطق الدقيق',
+    'Форма в слове': 'شكل الحرف في الكلمة',
+    'Чтение без подсказки': 'القراءة دون تلميحات',
+  };
+  final colon = source.indexOf(': ');
+  if (colon > 0) {
+    final letter = _arabicLetterNames[source.substring(0, colon)];
+    final phase = phases[source.substring(colon + 2)];
+    if (letter != null && phase != null) return '$letter: $phase';
+  }
+  final list = source.split(', ');
+  if (list.length > 1 && list.every(_arabicLetterNames.containsKey)) {
+    return list.map((item) => _arabicLetterNames[item]!).join('، ');
+  }
+  var match = RegExp(
+          r'^Сравни (.+) с (.+)\. Сначала найди отличие на слух, затем произнеси слово целиком\.$')
+      .firstMatch(source);
+  if (match != null) {
+    final first = _arabicLetterNames[match[1]];
+    final second = _arabicLetterNames[match[2]];
+    if (first != null && second != null) {
+      return 'قارن $first بـ$second. ميّز الفرق بالاستماع أولًا، ثم انطق الكلمة كاملة.';
+    }
+  }
+  match = RegExp(r'^Он заменяет (.+) на (.+)$').firstMatch(source);
+  if (match != null) {
+    final first = _arabicLetterNames[match[1]];
+    final second = _arabicLetterNames[match[2]];
+    if (first != null && second != null) return 'يستبدل $first بـ$second';
+  }
+  for (final entry in <String, String Function(String)>{
+    r'^Проследи, как (.+) меняет соединение в слове, не меняя основной звук\.$':
+        (letter) =>
+            'لاحظ كيف يتغيّر اتصال $letter في الكلمة دون تغيير صوته الأساسي.',
+    r'^Проверь место образования (.+) и длину гласной\.$': (letter) =>
+        'تحقّق من مخرج $letter وطول الحركة.',
+    r'^Как узнать (.+) после соединения\?$': (letter) =>
+        'كيف تتعرّف إلى $letter عند اتصاله؟',
+    r'^Сначала прослушай образец\. Затем произнеси слово, сохраняя отличие от (.+)\.$':
+        (letter) =>
+            'استمع إلى النموذج أولًا، ثم انطق الكلمة مع الحفاظ على الفرق عن $letter.',
+  }.entries) {
+    match = RegExp(entry.key).firstMatch(source);
+    final letter = match == null ? null : _arabicLetterNames[match[1]];
+    if (letter != null) return entry.value(letter);
+  }
+  if (source == 'Слышать характеристику в син, сад и зай без преувеличения.') {
+    return 'تمييز الصفة سمعيًا في السين والصاد والزاي دون مبالغة.';
+  }
+  return null;
+}
+
+const _arabicLetterNames = <String, String>{
+  'Алиф': 'الألف',
+  'Ба': 'الباء',
+  'Та': 'التاء',
+  'Са': 'الثاء',
+  'Джим': 'الجيم',
+  'Ха': 'الحاء',
+  'Хо': 'الخاء',
+  'Даль': 'الدال',
+  'Заль': 'الذال',
+  'Ра': 'الراء',
+  'Зай': 'الزاي',
+  'Син': 'السين',
+  'Шин': 'الشين',
+  'Сад': 'الصاد',
+  'Дад': 'الضاد',
+  'Та твёрдая': 'الطاء',
+  'За твёрдая': 'الظاء',
+  'Айн': 'العين',
+  'Гайн': 'الغين',
+  'Фа': 'الفاء',
+  'Каф глубокая': 'القاف',
+  'Каф': 'الكاف',
+  'Лям': 'اللام',
+  'Мим': 'الميم',
+  'Нун': 'النون',
+  'Ха лёгкая': 'الهاء',
+  'Вав': 'الواو',
+  'Йа': 'الياء',
+  'Хамза': 'الهمزة',
+};

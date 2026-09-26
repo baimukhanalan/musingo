@@ -11,6 +11,8 @@ import 'package:muslingo/utils/app_locale.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/localization_host.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -36,6 +38,9 @@ void main() {
       ChangeNotifierProvider<AppState>.value(
         value: state,
         child: MaterialApp(
+          locale: state.locale.toLocale(),
+          supportedLocales: testSupportedLocales,
+          localizationsDelegates: testLocalizationDelegates,
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context).copyWith(
               textScaler: TextScaler.linear(scale),
@@ -85,6 +90,7 @@ void main() {
                 AppLocale.ru => '10 уроков',
                 AppLocale.kk => '10 сабақ',
                 AppLocale.en => '10 lessons',
+                AppLocale.ar => '10 دروس',
               }),
               findsOneWidget,
               reason: 'localized title ${locale.code} $width x$scale');

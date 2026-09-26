@@ -234,10 +234,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       children: [
         const Padding(
           padding: EdgeInsets.fromLTRB(20, 12, 16, 4),
-          child: Row(
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
             children: [
               _Wordmark(),
-              Spacer(),
               LanguagePills(),
             ],
           ),

@@ -1,8 +1,9 @@
 import 'package:muslingo/models/curriculum_module.dart';
 import 'package:muslingo/models/lesson.dart';
 
-/// Additional full-language/full-library UI journeys are opt-in. The original
-/// 246 Russian guided-lesson journeys always remain in the default test run.
+/// Additional full-language/full-library UI journeys are opt-in. Every Russian
+/// guided lesson remains in the default run, including the 902 complete-Quran
+/// units added by LessonData.initialize() (1,148 guided lessons in total).
 const exhaustiveAudit = bool.fromEnvironment('MUSLINGO_EXHAUSTIVE_AUDIT');
 
 List<int> representativeIndices<T>(List<T> items, int Function(T) textLength) {

@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
@@ -19,6 +22,8 @@ import 'package:muslingo/screens/quran_screen.dart';
 import 'package:muslingo/services/app_state.dart';
 import 'package:muslingo/widgets/cat_character.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/localization_host.dart';
 
 /// Регрессия на «пустой экран уроков»: pinned SliverPersistentHeader на главной
 /// заявлял высоту 58, а контент (StatsRow) рисовался на ~47 → SliverGeometry
@@ -49,7 +54,32 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
   }
 
-  testWidgets('language remains available in Profile on compact screens',
+  Future<void> settleCourse(WidgetTester tester) async {
+    // A newly pushed route may still be offstage for its first transition
+    // frame. Finish that transition before looking up its image context.
+    await tester.pumpAndSettle();
+    final screen = find.byKey(const ValueKey('course-fullscreen'));
+    if (screen.evaluate().isNotEmpty) {
+      final context = tester.element(screen);
+      final width = (MediaQuery.sizeOf(context).width *
+              MediaQuery.devicePixelRatioOf(context))
+          .round()
+          .clamp(384, 768);
+      await tester.runAsync(() async {
+        for (final mode in ['quran', 'arabic', 'basics', 'tajwid']) {
+          await precacheImage(
+            ResizeImage.resizeIfNeeded(
+                width, null, AssetImage('assets/images/world_$mode.webp')),
+            context,
+          );
+        }
+      });
+    }
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets(
+      'Profile keeps language controls only in Settings and shows author',
       (tester) async {
     tester.view.physicalSize = const Size(320, 568);
     tester.view.devicePixelRatio = 1;
@@ -68,11 +98,15 @@ void main() {
       ),
     ));
     await tester.pump();
-    expect(find.byType(LanguagePills), findsOneWidget);
-    await tester.tap(find.text('KZ'));
+    expect(find.byType(LanguagePills), findsNothing);
+    final credit = find.byKey(const ValueKey('profile-author-credit'));
+    await tester.ensureVisible(credit);
     await tester.pump();
-    expect(state.locale.code, 'kk');
-    expect(state.nativeLanguage, NativeLanguage.kazakh);
+    expect(find.text('by Alan Baimukhan'), findsOneWidget);
+    expect(
+        tester.getTopLeft(credit).dy,
+        greaterThan(
+            tester.getBottomLeft(find.textContaining('muslingo v1.0')).dy));
     expect(tester.takeException(), isNull);
     await teardown(tester);
   });
@@ -152,7 +186,7 @@ void main() {
       await tester.pump();
       await tester.tap(button);
       await tester.pump();
-      await tester.pumpAndSettle();
+      await settleCourse(tester);
       expect(find.byKey(const ValueKey('course-fullscreen')), findsOneWidget);
       expect(find.byKey(PageStorageKey('course-path-${entry.value}')),
           findsOneWidget);
@@ -177,7 +211,7 @@ void main() {
       expect(tester.getTopLeft(world).dy, greaterThan(start.dy));
       await tester.tap(find.byKey(const ValueKey('collapse-learning-path')));
       await tester.pump();
-      await tester.pumpAndSettle();
+      await settleCourse(tester);
       expect(find.byKey(const ValueKey('course-fullscreen')), findsNothing);
       expect(tester.takeException(), isNull);
     }
@@ -200,6 +234,62 @@ void main() {
     final mentor = cards.indexWhere((w) => w is MentorTipCard);
     expect(ayah, greaterThanOrEqualTo(0));
     expect(mentor, greaterThan(ayah));
+    await teardown(tester);
+  });
+
+  testWidgets(
+      'a stalled world never exposes bare nodes and falls back after six seconds',
+      (tester) async {
+    final state = await guestState(tester);
+    await tester.pumpWidget(ChangeNotifierProvider<AppState>.value(
+      value: state,
+      child: DefaultAssetBundle(
+        bundle: _DelayedWorldBundle(),
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    ));
+    await tester.pump();
+    final button = find.byKey(const ValueKey('course-mode-quran'));
+    await tester.scrollUntilVisible(button, 200,
+        scrollable: find.byType(Scrollable).first);
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('course-world-loading')), findsOneWidget);
+    expect(find.byKey(const PageStorageKey('course-path-quran')), findsNothing);
+    expect(find.byKey(const ValueKey('collapse-learning-path')).hitTestable(),
+        findsOneWidget);
+    await tester.pump(const Duration(seconds: 6));
+    expect(find.byKey(const ValueKey('course-world-loading')), findsNothing);
+    expect(find.byKey(const ValueKey('course-world-fallback')), findsOneWidget);
+    expect(
+        find.byKey(const PageStorageKey('course-path-quran')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await teardown(tester);
+  });
+
+  testWidgets('full Quran entry opens the independent 114-surah path',
+      (tester) async {
+    final state = await guestState(tester);
+    await tester.pumpWidget(ChangeNotifierProvider<AppState>.value(
+      value: state,
+      child: const MaterialApp(home: HomeScreen()),
+    ));
+    await tester.pump();
+    final button = find.byKey(const ValueKey('course-mode-quran'));
+    await tester.scrollUntilVisible(button, 200,
+        scrollable: find.byType(Scrollable).first);
+    await tester.tap(button);
+    await settleCourse(tester);
+    expect(find.text('Весь Коран · 114 сур'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('quran-path-section-toggle')));
+    await tester.pump();
+    final first = state
+        .getCourse(CourseType.quran)!
+        .lessons
+        .firstWhere((lesson) => lesson.id.startsWith('q_full_'));
+    expect(find.text(first.title), findsOneWidget);
+    expect(first.status, LessonStatus.available);
+    expect(find.text('Вводные уроки'), findsOneWidget);
     await teardown(tester);
   });
 
@@ -274,7 +364,7 @@ void main() {
     await teardown(tester);
   });
 
-  testWidgets('fullscreen hides dock, back restores home and course offset',
+  testWidgets('fullscreen hides dock and re-opening starts the course at top',
       (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -291,7 +381,7 @@ void main() {
     await tester.pump();
     await tester.tap(button);
     await tester.pump();
-    await tester.pumpAndSettle();
+    await settleCourse(tester);
     expect(find.byKey(const ValueKey('bottom-nav-0')), findsNothing);
     expect(find.byKey(const ValueKey('course-mode-basics')), findsNothing);
     final path = tester
@@ -302,17 +392,22 @@ void main() {
     await tester.pump();
     await tester.binding.handlePopRoute();
     await tester.pump();
-    await tester.pumpAndSettle();
+    await settleCourse(tester);
     expect(find.byKey(const ValueKey('bottom-nav-0')), findsOneWidget);
     await Scrollable.ensureVisible(tester.element(button), alignment: 0.3);
     await tester.pump();
     await tester.tap(button);
     await tester.pump();
-    await tester.pumpAndSettle();
-    expect(path.offset, 750);
+    await settleCourse(tester);
+    final reopenedPath = tester
+        .widget<CustomScrollView>(
+            find.byKey(const PageStorageKey('course-path-quran')))
+        .controller!;
+    expect(reopenedPath, isNot(same(path)));
+    expect(reopenedPath.offset, 0);
     await tester.tap(find.byKey(const ValueKey('collapse-learning-path')));
     await tester.pump();
-    await tester.pumpAndSettle();
+    await settleCourse(tester);
     expect(find.byKey(const ValueKey('course-fullscreen')), findsNothing);
     expect(find.byKey(const ValueKey('bottom-nav-4')), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -337,19 +432,19 @@ void main() {
     await tester.scrollUntilVisible(button, 200,
         scrollable: find.byType(Scrollable).first);
     await Scrollable.ensureVisible(tester.element(button), alignment: 0.3);
-    await tester.pumpAndSettle();
+    await settleCourse(tester);
     await tester.tap(button);
-    await tester.pumpAndSettle();
+    await settleCourse(tester);
     final title = state.getCourse(CourseType.quran)!.lessons.first.title;
     await tester.tap(find.text(title));
-    await tester.pumpAndSettle();
+    await settleCourse(tester);
     expect(find.byType(LessonScreen), findsOneWidget);
     expect(find.byKey(const ValueKey('bottom-nav-0')), findsNothing);
     expect(find.text('Сложный религиозный вопрос?'), findsNothing);
     await tester.tap(find.byIcon(Icons.close_rounded));
-    await tester.pumpAndSettle();
+    await settleCourse(tester);
     await tester.tap(find.text('Выйти'));
-    await tester.pumpAndSettle();
+    await settleCourse(tester);
     expect(find.byKey(const ValueKey('course-fullscreen')), findsOneWidget);
     expect(find.byKey(const ValueKey('bottom-nav-0')), findsNothing);
     expect(tester.takeException(), isNull);
@@ -357,7 +452,7 @@ void main() {
   });
 
   testWidgets(
-      'all fullscreen courses fit RU KK EN at 320 390 430 with large text',
+      'all fullscreen courses fit RU KK EN AR at 320 390 430 with large text',
       (tester) async {
     final state = await guestState(tester);
     tester.view.devicePixelRatio = 1;
@@ -370,6 +465,9 @@ void main() {
         await tester.pumpWidget(ChangeNotifierProvider<AppState>.value(
             value: state,
             child: MaterialApp(
+                locale: state.locale.toLocale(),
+                supportedLocales: testSupportedLocales,
+                localizationsDelegates: testLocalizationDelegates,
                 builder: (context, child) => MediaQuery(
                     data: MediaQuery.of(context)
                         .copyWith(textScaler: const TextScaler.linear(1.6)),
@@ -382,9 +480,9 @@ void main() {
               scrollable: find.byType(Scrollable).first);
           await Scrollable.ensureVisible(tester.element(button),
               alignment: 0.3);
-          await tester.pumpAndSettle();
+          await settleCourse(tester);
           await tester.tap(button);
-          await tester.pumpAndSettle();
+          await settleCourse(tester);
           final exit = find.byKey(const ValueKey('collapse-learning-path'));
           expect(exit.hitTestable(), findsOneWidget);
           expect(find.byKey(const ValueKey('course-fullscreen-title')),
@@ -397,7 +495,7 @@ void main() {
           expect(tester.takeException(), isNull,
               reason: '$mode ${locale.code} $width');
           await tester.tap(exit);
-          await tester.pumpAndSettle();
+          await settleCourse(tester);
         }
         await tester.pumpWidget(const SizedBox.shrink());
       }
@@ -609,4 +707,14 @@ void main() {
 
     await teardown(tester);
   });
+}
+
+class _DelayedWorldBundle extends CachingAssetBundle {
+  @override
+  Future<ByteData> load(String key) {
+    if (key.startsWith('assets/images/world_')) {
+      return Completer<ByteData>().future;
+    }
+    return rootBundle.load(key);
+  }
 }

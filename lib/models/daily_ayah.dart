@@ -17,19 +17,22 @@ class AyahOfDay {
   });
 
   String? translationFor(AppLocale locale) {
+    // The original ayah is already Arabic; do not label it as a translation.
+    if (locale == AppLocale.ar) return null;
     if (locale == AppLocale.ru) return translation;
     final localized =
         LessonContentLocalization.translateText(translation, locale.code);
-    // Never present untranslated Russian as a Kazakh or English translation.
+    // Never present untranslated Russian as a translation in another language.
     return localized == translation || localized.trim().isEmpty
         ? null
         : localized;
   }
 
-  String transliterationFor(AppLocale locale) =>
-      LessonContentLocalization.transliterationFor(
-          transliteration, locale.code) ??
-      transliteration;
+  String transliterationFor(AppLocale locale) => locale == AppLocale.ar
+      ? ''
+      : LessonContentLocalization.transliterationFor(
+              transliteration, locale.code) ??
+          transliteration;
 
   String secondaryTextFor(AppLocale locale) =>
       translationFor(locale) ?? transliterationFor(locale);
@@ -95,6 +98,7 @@ class DailyAyahData {
       AppLocale.ru => 'Аят дня',
       AppLocale.kk => 'Күн аяты',
       AppLocale.en => 'Ayah of the day',
+      AppLocale.ar => 'آية اليوم',
     };
     return List<ReminderMessage>.generate(count, (index) {
       final date = DateTime(start.year, start.month, start.day + index);
@@ -102,7 +106,9 @@ class DailyAyahData {
       if (ayah == null) return const ReminderMessage('', '');
       return ReminderMessage(
         '$title · №${ayah.globalAyahNumber}',
-        '${ayah.arabic}\n${ayah.secondaryTextFor(locale)}',
+        [ayah.arabic, ayah.secondaryTextFor(locale)]
+            .where((text) => text.isNotEmpty)
+            .join('\n'),
       );
     }).where((message) => message.title.isNotEmpty).toList(growable: false);
   }

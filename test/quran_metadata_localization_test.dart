@@ -11,6 +11,8 @@ import 'package:muslingo/utils/quran_search.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/localization_host.dart';
+
 const _fatiha = QuranChapterSummary(
   number: 1,
   arabicName: 'سُورَةُ ٱلْفَاتِحَةِ',
@@ -35,6 +37,7 @@ void main() {
       'ru': ('Мекканская', 'Мединская'),
       'kk': ('Мекке', 'Мәдина'),
       'en': ('Meccan', 'Medinan'),
+      'ar': ('مكية', 'مدنية'),
     }.entries) {
       expect(_fatiha.revelationLabelForLocale(entry.key), entry.value.$1);
       expect(medinan.revelationLabelForLocale(entry.key), entry.value.$2);
@@ -96,7 +99,13 @@ void main() {
   Widget host(AppState state, Widget page) =>
       ChangeNotifierProvider<AppState>.value(
         value: state,
-        child: MaterialApp(home: page),
+        child: Consumer<AppState>(
+            builder: (_, state, __) => MaterialApp(
+                  locale: state.locale.toLocale(),
+                  supportedLocales: testSupportedLocales,
+                  localizationsDelegates: testLocalizationDelegates,
+                  home: page,
+                )),
       );
 
   testWidgets('reader list switches metadata language from cached source',
@@ -141,20 +150,29 @@ void main() {
         AppLocale.ru => 'Открыть полный текст',
         AppLocale.kk => 'Толық мәтінді ашу',
         AppLocale.en => 'Open full text',
+        AppLocale.ar => 'فتح النص كاملًا',
       });
       await tester.ensureVisible(openText);
       await tester.tap(openText);
       await tester.pumpAndSettle();
-      final language = switch (locale) {
-        AppLocale.ru => 'Русский',
-        AppLocale.kk => 'Қазақша',
-        AppLocale.en => 'English',
-      };
-      expect(find.text(language), findsOneWidget);
-      await tester.tap(find.text(language));
-      await tester.pumpAndSettle();
-      expect(find.text('1. fixture-${locale.code}', findRichText: true),
-          findsOneWidget);
+      if (locale == AppLocale.ar) {
+        expect(find.byType(SegmentedButton<bool>), findsNothing);
+        expect(
+            find.text('1. بِسْمِ ٱللَّهِ', findRichText: true), findsOneWidget);
+        expect(find.textContaining('fixture-ar'), findsNothing);
+      } else {
+        final language = switch (locale) {
+          AppLocale.ru => 'Русский',
+          AppLocale.kk => 'Қазақша',
+          AppLocale.en => 'English',
+          AppLocale.ar => 'العربية',
+        };
+        expect(find.text(language), findsOneWidget);
+        await tester.tap(find.text(language));
+        await tester.pumpAndSettle();
+        expect(find.text('1. fixture-${locale.code}', findRichText: true),
+            findsOneWidget);
+      }
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();

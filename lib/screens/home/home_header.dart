@@ -165,7 +165,7 @@ class _CompactStatCard extends StatelessWidget {
               children: [
                 FittedBox(
                   fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
+                  alignment: AlignmentDirectional.centerStart,
                   child: Text(
                     value,
                     style: const TextStyle(

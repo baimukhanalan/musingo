@@ -77,6 +77,7 @@ class _CoachScreenState extends State<CoachScreen> {
             ru: '\n\nЧтобы мои советы стали точнее: что для тебя самое важное в обучении сейчас? Отвечать необязательно.',
             kk: '\n\nКеңесім дәлірек болуы үшін: қазір оқуда сен үшін ең маңыздысы не? Жауап беру міндетті емес.',
             en: '\n\nTo make my guidance more useful: what matters most to you in learning right now? You do not have to answer.',
+            ar: '\n\nلأجعل إرشادي أنسب لك: ما أهم ما تريد تحقيقه في التعلم الآن؟ الإجابة اختيارية.',
           )
         : '';
     setState(() {
@@ -87,7 +88,8 @@ class _CoachScreenState extends State<CoachScreen> {
                 ? state.tr(
                     ru: '${preferredName.isEmpty ? '' : '$preferredName, '}с днём рождения! 🎉 Я рядом без обязательного плана: можем сделать лёгкое повторение или просто поговорить.',
                     kk: '${preferredName.isEmpty ? '' : '$preferredName, '}туған күніңмен! 🎉 Бүгін міндетті жоспарсыз: жеңіл қайталау жасаймыз немесе жай сөйлесеміз.',
-                    en: '${preferredName.isEmpty ? '' : '$preferredName, '}happy birthday! 🎉 No pressure today: we can do a light review or simply talk.')
+                    en: '${preferredName.isEmpty ? '' : '$preferredName, '}happy birthday! 🎉 No pressure today: we can do a light review or simply talk.',
+                    ar: '${preferredName.isEmpty ? '' : '$preferredName، '}كل عام وأنت بخير! لا ضغط اليوم: يمكننا مراجعة خفيفة أو مجرد الحديث.')
                 : state.dueReviewCount > 0
                     ? state.tr(
                         ru: 'У тебя ${state.dueReviewCount} назначенных повторений. '
@@ -95,7 +97,8 @@ class _CoachScreenState extends State<CoachScreen> {
                         kk: 'Сенде ${state.dueReviewCount} тағайындалған қайталау бар. '
                             'Алдымен соларды бекітейік, содан кейін жаңа материалға ораламыз.',
                         en: 'You have ${state.dueReviewCount} scheduled reviews. '
-                            'Let\'s reinforce them first, then return to new material.')
+                            'Let\'s reinforce them first, then return to new material.',
+                        ar: 'لديك ${state.dueReviewCount} مراجعات مجدولة. لنثبتها أولًا، ثم نعود إلى مادة جديدة.')
                     : state.tr(
                         ru: 'Сегодня подходящий следующий шаг — '
                             '«$lessonTitle». Я отвечаю по твоему '
@@ -105,7 +108,8 @@ class _CoachScreenState extends State<CoachScreen> {
                             'және діни материалдар үшін дереккөздерді көрсетемін.',
                         en: 'A good next step today is '
                             '“$lessonTitle”. I answer based on your progress '
-                            'and show sources for religious materials.')) +
+                            'and show sources for religious materials.',
+                        ar: 'الخطوة المناسبة اليوم هي «$lessonTitle». أستند إلى تقدمك في التعلم وأعرض مصادر المعلومات الدينية.')) +
             discovery,
         createdAt: DateTime.now(),
       ));
@@ -289,7 +293,8 @@ class _CoachScreenState extends State<CoachScreen> {
     final conversationKey = _activeConversationKey;
     final locale = state.locale.code;
     final memory = _explicitMemory(question, state);
-    if (memory != null) await state.rememberForCoach(memory);
+    final memorySaved =
+        memory != null ? await state.rememberForCoach(memory) : false;
     if (!mounted || _activeConversationKey != conversationKey) return;
 
     final coachContext = _contextFrom(state);
@@ -297,21 +302,34 @@ class _CoachScreenState extends State<CoachScreen> {
     // движок). Backend передаём только если он сконфигурирован — иначе
     // answerSmart сразу вернёт локальный ответ.
     BackendService? backend;
-    if (kIsWeb || BackendService.hasConfiguredApiUrl) {
+    if (memory == null && (kIsWeb || BackendService.hasConfiguredApiUrl)) {
       backend = await _ensureBackend();
       if (!mounted || _activeConversationKey != conversationKey) return;
     }
 
-    final response = await _coach.answerSmart(
-      question,
-      coachContext,
-      backend: backend,
-      locale: locale,
-      catalog: _catalogFrom(state),
-      xp: state.user?.xp ?? 0,
-      streak: state.user?.streak ?? 0,
-      completedLessonIds: _completedLessonIds(state),
-    );
+    final response = memory != null
+        ? CoachResponse(
+            text: memorySaved
+                ? state.tr(
+                    ru: 'Сохранено в памяти наставника.',
+                    kk: 'Тәлімгер жадына сақталды.',
+                    en: 'Saved to mentor memory.',
+                    ar: 'تم الحفظ في ذاكرة المرشد.')
+                : state.tr(
+                    ru: 'Не сохранено. Память может быть выключена; чувствительные данные я не запоминаю.',
+                    kk: 'Сақталмады. Жад өшірулі болуы мүмкін; құпия деректерді есте сақтамаймын.',
+                    en: 'Not saved. Memory may be off; I do not store sensitive information.',
+                    ar: 'لم يتم الحفظ. قد تكون الذاكرة معطلة؛ لا أحفظ المعلومات الحساسة.'))
+        : await _coach.answerSmart(
+            question,
+            coachContext,
+            backend: backend,
+            locale: locale,
+            catalog: _catalogFrom(state),
+            xp: state.user?.xp ?? 0,
+            streak: state.user?.streak ?? 0,
+            completedLessonIds: _completedLessonIds(state),
+          );
     if (!mounted || _activeConversationKey != conversationKey) return;
     setState(() {
       _sending = false;
@@ -336,9 +354,8 @@ class _CoachScreenState extends State<CoachScreen> {
   }
 
   String? _explicitMemory(String question, AppState state) {
-    if (!state.mentorProfile.memoryEnabled) return null;
     final match = RegExp(
-      r'^(?:запомни(?:,|\s+что)?|есіңде сақта(?:,|\s+)?|remember(?:,|\s+that)?)\s+(.+)$',
+      r'^(?:запомни(?:,|\s+что)?|есіңде сақта(?:,|\s+)?|remember(?:,|\s+that)?|تذكر|تذكّر|احفظ عني)\s+(.+)$',
       caseSensitive: false,
     ).firstMatch(question.trim());
     return match?.group(1)?.trim();
@@ -459,8 +476,7 @@ class _CoachScreenState extends State<CoachScreen> {
     final suggestion = message.memorySuggestion?.trim();
     if (suggestion == null || suggestion.isEmpty) return;
     final state = context.read<AppState>();
-    final saved = save && state.mentorProfile.memoryEnabled;
-    if (saved) await state.rememberForCoach(suggestion);
+    final saved = save && await state.rememberForCoach(suggestion);
     if (!mounted) return;
     final index = _messages.indexWhere((item) => item.id == message.id);
     if (index >= 0) {
@@ -489,9 +505,10 @@ class _CoachScreenState extends State<CoachScreen> {
           )
         : save
             ? state.tr(
-                ru: 'Память наставника отключена в настройках.',
-                kk: 'Тәлімгер жады баптауларда өшірілген.',
-                en: 'Mentor memory is disabled in settings.',
+                ru: 'Не сохранено. Память может быть выключена; чувствительные данные я не запоминаю.',
+                kk: 'Сақталмады. Жад өшірулі болуы мүмкін; құпия деректерді есте сақтамаймын.',
+                en: 'Not saved. Memory may be off; I do not store sensitive information.',
+                ar: 'لم يتم الحفظ. قد تكون الذاكرة معطلة؛ لا أحفظ المعلومات الحساسة.',
               )
             : state.tr(
                 ru: 'Не сохраняю.',

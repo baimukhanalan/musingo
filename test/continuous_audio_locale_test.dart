@@ -46,6 +46,50 @@ class _RecordingSpeech implements SpeechSynthesizer {
 }
 
 void main() {
+  testWidgets('Arabic audio uses translated outlines and ar-SA, not Quran TTS',
+      (tester) async {
+    SharedPreferences.resetStatic();
+    SharedPreferences.setMockInitialValues({});
+    final state = AppState();
+    late final CurriculumModule module;
+    await tester.runAsync(() async {
+      final deadline = DateTime.now().add(const Duration(seconds: 10));
+      while (!state.isInitialized && DateTime.now().isBefore(deadline)) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      module = (await CurriculumRepository.load()).first;
+    });
+    expect(state.isInitialized, isTrue);
+    await state.loginAsGuest();
+    await state.setLocale(AppLocale.ar);
+    final speech = _RecordingSpeech();
+    await tester.pumpWidget(ChangeNotifierProvider<AppState>.value(
+      value: state,
+      child: MaterialApp(
+          home: Directionality(
+              textDirection: TextDirection.rtl,
+              child: ContinuousAudioScreen(
+                  modulesFuture: Future.value([module]),
+                  speechSynthesizer: speech))),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('الاستماع المتواصل'), findsOneWidget);
+    final localized = LessonContentLocalization.localizeModule(module, 'ar');
+    expect(find.text(localized.title), findsOneWidget);
+    final toggle = find.byKey(const ValueKey('continuous-audio-toggle'));
+    await tester.ensureVisible(toggle);
+    await tester.tap(toggle);
+    await tester.pump();
+    expect(speech.languages.last, 'ar-SA');
+    expect(speech.spoken.single, contains(localized.objective));
+    expect(RegExp(r'[А-Яа-яЁё]').hasMatch(speech.spoken.single), isFalse);
+    expect(speech.spoken.single, isNot(contains('بِسْمِ ٱللَّهِ')));
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    state.dispose();
+  });
+
   testWidgets('continuous audio switches both module text and voice language',
       (tester) async {
     SharedPreferences.resetStatic();

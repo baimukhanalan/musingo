@@ -22,7 +22,9 @@ void main() {
     });
 
     const lesson = Lesson(
-      id: 'completion_guard',
+      // Exercise the UI with a minimal fixture using a registered lesson ID;
+      // unknown IDs are now deliberately rejected by AppState.
+      id: 'r1',
       title: 'Completion guard',
       subtitle: 'One step',
       course: CourseType.rules,
@@ -156,7 +158,7 @@ Future<void> _readyGuest(WidgetTester tester, AppState state) async {
 
 Widget _questionLessonApp(AppState state) {
   const lesson = Lesson(
-    id: 'question_guard',
+    id: 'r1',
     title: 'Question guard',
     subtitle: 'One step',
     course: CourseType.rules,

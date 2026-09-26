@@ -292,17 +292,19 @@ class _DailyAyahCardState extends State<DailyAyahCard>
                 color: AppColors.textDark,
               ),
             ),
-            const SizedBox(height: 10),
-            Text(
-              ayah.transliterationFor(state.locale),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'Nunito',
-                fontSize: 14,
-                fontStyle: FontStyle.italic,
-                color: AppColors.textGrey,
+            if (ayah.transliterationFor(state.locale).isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(
+                ayah.transliterationFor(state.locale),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 14,
+                  fontStyle: FontStyle.italic,
+                  color: AppColors.textGrey,
+                ),
               ),
-            ),
+            ],
             if (ayah.translationFor(state.locale) case final translation?) ...[
               const SizedBox(height: 10),
               Container(height: 1, color: AppColors.border),

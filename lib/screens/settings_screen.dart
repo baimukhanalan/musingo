@@ -736,6 +736,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return 'Қазақша';
       case AppLocale.en:
         return 'English';
+      case AppLocale.ar:
+        return 'العربية';
     }
   }
 
@@ -743,55 +745,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final state = context.read<AppState>();
     final selected = await showModalBottomSheet<AppLocale>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: AppColors.white,
       showDragHandle: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(4, 0, 4, 16),
-                child: Text(
-                  state.tr(
-                    ru: 'Выбери язык приложения',
-                    kk: 'Қолданба тілін таңда',
-                    en: 'Choose the app language',
-                  ),
-                  style: const TextStyle(
-                    fontFamily: 'Nunito',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.navyDark,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 0, 4, 16),
+                  child: Text(
+                    state.tr(
+                      ru: 'Выбери язык приложения',
+                      kk: 'Қолданба тілін таңда',
+                      en: 'Choose the app language',
+                    ),
+                    style: const TextStyle(
+                      fontFamily: 'Nunito',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.navyDark,
+                    ),
                   ),
                 ),
-              ),
-              _SettingsCard(
-                children: [
-                  for (final locale in AppLocale.values)
-                    _SettingsRow(
-                      key: ValueKey('settings-app-locale-${locale.code}'),
-                      icon: locale == state.locale
-                          ? Icons.check_circle_rounded
-                          : Icons.language_rounded,
-                      label: _appLocaleName(locale),
-                      color: locale == state.locale
-                          ? AppColors.pistachio
-                          : AppColors.textGrey,
-                      trailing: locale == state.locale
-                          ? const Icon(Icons.check_rounded,
-                              color: AppColors.pistachio, size: 22)
-                          : const SizedBox.shrink(),
-                      onTap: () => Navigator.pop(sheetContext, locale),
-                    ),
-                ],
-              ),
-            ],
+                _SettingsCard(
+                  children: [
+                    for (final locale in AppLocale.values)
+                      _SettingsRow(
+                        key: ValueKey('settings-app-locale-${locale.code}'),
+                        icon: locale == state.locale
+                            ? Icons.check_circle_rounded
+                            : Icons.language_rounded,
+                        label: _appLocaleName(locale),
+                        color: locale == state.locale
+                            ? AppColors.pistachio
+                            : AppColors.textGrey,
+                        trailing: locale == state.locale
+                            ? const Icon(Icons.check_rounded,
+                                color: AppColors.pistachio, size: 22)
+                            : const SizedBox.shrink(),
+                        onTap: () => Navigator.pop(sheetContext, locale),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

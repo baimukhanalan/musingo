@@ -6,7 +6,6 @@ import '../models/friend.dart';
 import '../services/app_state.dart';
 import '../services/backend_service.dart';
 import '../utils/colors.dart';
-import '../widgets/language_pills.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
 import '../widgets/premium_card.dart';
@@ -76,7 +75,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
       if (!mounted) return;
       // Фолбэк на локальный код — экран остаётся рабочим и оффлайн.
       setState(() {
-        _loadError = readableBackendError(error);
+        _loadError = readableBackendError(error,
+            localeCode: context.read<AppState>().locale.code);
         _loading = false;
       });
     }
@@ -106,7 +106,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
       await state.handleBackendSessionError(error);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(readableBackendError(error))),
+        SnackBar(
+            content: Text(
+                readableBackendError(error, localeCode: state.locale.code))),
       );
     } finally {
       if (mounted) setState(() => _adding = false);
@@ -132,7 +134,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
       await state.handleBackendSessionError(error);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(readableBackendError(error))),
+        SnackBar(
+            content: Text(
+                readableBackendError(error, localeCode: state.locale.code))),
       );
     }
   }

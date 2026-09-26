@@ -14,6 +14,7 @@ import 'package:muslingo/utils/app_locale.dart';
 import 'package:muslingo/widgets/premium_button.dart';
 
 import 'support/exhaustive_audit.dart';
+import 'support/localization_host.dart';
 
 const _action = ValueKey('curriculum-primary-action');
 const _sizes = [Size(320, 568), Size(390, 844), Size(430, 932)];
@@ -80,6 +81,9 @@ void main() {
       await tester.pumpWidget(ChangeNotifierProvider<AppState>.value(
         value: state,
         child: MaterialApp(
+            locale: state.locale.toLocale(),
+            supportedLocales: testSupportedLocales,
+            localizationsDelegates: testLocalizationDelegates,
             home: Builder(
                 builder: (context) => Scaffold(
                       body: Center(
@@ -317,6 +321,9 @@ Future<void> _open(WidgetTester tester, AppState state, CurriculumModule module,
   await tester.pumpWidget(ChangeNotifierProvider<AppState>.value(
     value: state,
     child: MaterialApp(
+      locale: state.locale.toLocale(),
+      supportedLocales: testSupportedLocales,
+      localizationsDelegates: testLocalizationDelegates,
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context)
             .copyWith(textScaler: TextScaler.linear(textScale)),
@@ -334,6 +341,8 @@ Future<void> _open(WidgetTester tester, AppState state, CurriculumModule module,
     ),
   ));
   await tester.pumpAndSettle();
+  expect(Directionality.of(tester.element(find.byType(CurriculumModuleScreen))),
+      state.locale.isRtl ? TextDirection.rtl : TextDirection.ltr);
   expect(tester.takeException(), isNull, reason: '${module.id} opening');
 }
 

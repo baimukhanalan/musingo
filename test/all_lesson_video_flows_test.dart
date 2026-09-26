@@ -9,6 +9,8 @@ import 'package:muslingo/services/lesson_video_catalog.dart';
 import 'package:muslingo/utils/app_locale.dart';
 import 'package:muslingo/widgets/lesson_video_card.dart';
 
+import 'support/localization_host.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(LessonContentLocalization.load);
@@ -39,6 +41,9 @@ void main() {
         await tester.pumpWidget(ChangeNotifierProvider<AppState>.value(
           value: state,
           child: MaterialApp(
+            locale: state.locale.toLocale(),
+            supportedLocales: testSupportedLocales,
+            localizationsDelegates: testLocalizationDelegates,
             builder: (context, child) => MediaQuery(
               data: MediaQuery.of(context)
                   .copyWith(textScaler: const TextScaler.linear(1.3)),
@@ -59,6 +64,8 @@ void main() {
           ),
         ));
         await tester.pumpAndSettle();
+        expect(Directionality.of(tester.element(find.byType(LessonVideoCard))),
+            locale.isRtl ? TextDirection.rtl : TextDirection.ltr);
         expect(tester.takeException(), isNull, reason: video.id);
         expect(opened, isEmpty, reason: 'Videos must not autoplay');
         await _tap(tester, 'lesson-video-play');

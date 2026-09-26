@@ -43,7 +43,7 @@ void main() {
     await state.loginAsGuest();
 
     for (var index = 0; index < 10; index++) {
-      await state.completeLesson('r1', 0);
+      await state.completeLesson('r${index + 1}', 0);
     }
     expect(
       state.achievements
@@ -185,7 +185,7 @@ void main() {
 
     final result = await state.completeLesson('r1', 0);
 
-    expect(result['energyEarned'], 12);
+    expect(result['energyEarned'], 8);
     expect(result['rewardToken'], isA<String>());
     expect(state.user?.dailyProgress, 1);
     expect(state.user?.lessonAttempts, 1);
@@ -291,6 +291,43 @@ void main() {
     // (server/routes/progress-complete.js: firstCompletion ? 25 : 5).
     expect(first['xpEarned'], 25);
     expect(repeat['xpEarned'], 5);
+    expect(state.user?.totalLessons, 1);
+    expect(state.user?.lessonAttempts, 2);
+  });
+
+  test('completion deduplicates ayahs across legacy and the complete path',
+      () async {
+    final state = AppState();
+    await _waitUntilInitialized(state);
+    await state.loginAsGuest();
+    await state.completeLesson('q_fatiha_1', 0, elapsedSeconds: 40);
+    await state.completeLesson('q_full_1_1_7', 0, elapsedSeconds: 40);
+    expect(state.user?.learnedAyats, 7);
+    expect(state.user?.totalLessons, 2);
+    expect(state.user?.totalStudySeconds, 80);
+    expect(state.user?.totalMinutes, 1);
+  });
+
+  test(
+      'replay preserves the completed next lesson and concurrent save is one award',
+      () async {
+    final state = AppState();
+    await _waitUntilInitialized(state);
+    await state.loginAsGuest();
+    await Future.wait([
+      state.completeLesson('r1', 0),
+      state.completeLesson('r1', 0),
+    ]);
+    expect(state.user?.xp, 25);
+    expect(state.user?.lessonAttempts, 1);
+    await state.completeLesson('r2', 0);
+    await state.completeLesson('r1', 0);
+    expect(state.getCourse(CourseType.rules)!.lessons[1].status,
+        LessonStatus.completed);
+    expect(state.user?.totalLessons, 2);
+    await expectLater(
+        state.completeLesson('not_a_lesson', 0), throwsStateError);
+    expect(state.user?.totalLessons, 2);
   });
 
   test('deleting a local account removes saved email login', () async {
@@ -325,6 +362,7 @@ void main() {
 
     await state.completeLesson('r1', 0);
     await state.completeLesson('r2', 0);
+    await state.completeLesson('r3', 0);
     state.loseHeart();
 
     final restored = await state.restoreHeart();

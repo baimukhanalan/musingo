@@ -36,6 +36,7 @@ class NotificationService {
     int ayahHour = 8,
     int ayahMinute = 15,
     bool showOnLockScreen = false,
+    String localeCode = 'ru',
   }) =>
       _platform.scheduleDaily(
         hour: hour,
@@ -50,10 +51,17 @@ class NotificationService {
         ayahHour: ayahHour,
         ayahMinute: ayahMinute,
         showOnLockScreen: showOnLockScreen,
+        localeCode: localeCode,
       );
 
   Future<void> cancelAll({String authToken = ''}) =>
       _platform.cancelAll(authToken: authToken);
 
-  Future<bool> showTest(ReminderMessage message) => _platform.showTest(message);
+  Future<bool> showTest(
+    ReminderMessage message, {
+    String localeCode = 'ru',
+    bool showOnLockScreen = false,
+  }) =>
+      _platform.showTest(message,
+          localeCode: localeCode, showOnLockScreen: showOnLockScreen);
 }

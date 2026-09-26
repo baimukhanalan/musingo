@@ -3,6 +3,7 @@ import '../models/knowledge_state.dart';
 import '../models/learning_profile.dart';
 import 'backend_service.dart';
 import 'localized_coach.dart';
+import 'arabic_coach.dart';
 
 class CoachService {
   static const suggestions = [
@@ -19,6 +20,7 @@ class CoachService {
   static List<String> suggestionsFor(String locale) => switch (locale) {
         'kk' => LocalizedCoach.kazakhSuggestions,
         'en' => LocalizedCoach.englishSuggestions,
+        'ar' => ArabicCoach.suggestions,
         _ => suggestions,
       };
 
@@ -572,14 +574,16 @@ class CoachService {
     final normalized = clean.toLowerCase();
     if (clean.isEmpty ||
         clean.endsWith('?') ||
-        RegExp(r'^(запомни|есіңде сақта|remember)', caseSensitive: false)
+        clean.endsWith('؟') ||
+        RegExp(r'^(запомни|есіңде сақта|remember|تذكر|تذكّر|احفظ عني)',
+                caseSensitive: false)
             .hasMatch(clean) ||
         !RegExp(
-          r'(мне (?:удобнее|легче|лучше)|я (?:хочу|предпочитаю|люблю) (?:заниматься|учиться|повторять)|моя цель|хочу (?:выучить|освоить)|маған (?:ыңғайлы|оңай)|менің мақсатым|мен (?:оқығым|үйренгім) келеді|i (?:prefer|learn best|want to study)|my goal)',
+          r'(мне (?:удобнее|легче|лучше)|я (?:хочу|предпочитаю|люблю) (?:заниматься|учиться|повторять)|моя цель|хочу (?:выучить|освоить)|маған (?:ыңғайлы|оңай)|менің мақсатым|мен (?:оқығым|үйренгім) келеді|i (?:prefer|learn best|want to study)|my goal|أفضل (?:التعلم|الدراسة|المراجعة)|هدفي|أريد (?:تعلم|حفظ|أن أتعلم))',
           caseSensitive: false,
         ).hasMatch(normalized) ||
         RegExp(
-          r'(парол|password|құпия ?сөз|token|токен|otp|pin|банк|bank|карт|card|cvv|iban|иин|iin|паспорт|passport|адрес|address|мекенжай|телефон|phone|email|e-mail|почт|медицин|medical|диагноз|diagnos|интим|intimate|сексуал|sexual|голосов.*запис|voice recording)',
+          r'(парол|password|құпия ?сөз|token|токен|otp|pin|банк|bank|карт|card|cvv|iban|иин|iin|паспорт|passport|адрес|address|мекенжай|телефон|phone|email|e-mail|почт|медицин|medical|диагноз|diagnos|интим|intimate|сексуал|sexual|голосов.*запис|voice recording|كلمة\s*(?:ال)?مرور|رمز\s*(?:ال)?تحقق|رقم\s*(?:ال)?بطاق|حساب\s*بنكي|جواز|عنواني|رقم\s*هاتفي|بريد|تشخيص|مرض|طبي|حميم|جنسي|تسجيل\s*صوت)',
           caseSensitive: false,
         ).hasMatch(normalized)) {
       return response;

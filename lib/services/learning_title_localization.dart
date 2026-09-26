@@ -1,9 +1,15 @@
 import '../models/lesson.dart';
 import '../utils/quran_search.dart';
+import 'lessons/quran_curriculum_localization.dart';
 
 /// Controlled lesson headings only. Quran recitation, teaching prose and grading
 /// are not rewritten. Names are identifiers, never translated as ordinary words.
 String? localizeLearningTitle(String source, CourseType course, String locale) {
+  if (course == CourseType.quran) {
+    final readingTitle = localizeQuranCurriculumText(source, locale);
+    if (readingTitle != null) return readingTitle;
+  }
+  if (locale == 'ar') return _arabicTitle(source, course);
   if (locale != 'kk' && locale != 'en') return null;
   final kk = locale == 'kk';
   if (course == CourseType.tajwid) {
@@ -44,6 +50,142 @@ String? localizeLearningTitle(String source, CourseType course, String locale) {
   };
   return '$localizedName$suffix';
 }
+
+String? _arabicTitle(String source, CourseType course) {
+  if (course == CourseType.tajwid) return _arabicTajwidTitles[source];
+  if (course != CourseType.quran) return null;
+  const prefix = 'Закрепление: ';
+  if (source.startsWith(prefix)) {
+    final title = _arabicTitle(source.substring(prefix.length), course);
+    return title == null ? null : 'مراجعة: $title';
+  }
+  const topics = {
+    'Хвала Господу миров': 'الحمد لرب العالمين',
+    'Поклонение и просьба': 'العبادة والدعاء',
+    'Прямой путь': 'الصراط المستقيم',
+    'Проверка 5 сур': 'اختبار في خمس سور',
+    'Проверка коротких сур': 'اختبار السور القصيرة',
+  };
+  if (topics[source] case final title?) return title;
+  final parts =
+      RegExp(r'^(.*?)(, часть [12]|: начало| 1-2)?$').firstMatch(source)!;
+  final name = parts[1]!;
+  final chapter = quranRussianNames.indexOf(_chapterAliases[name] ?? name) + 1;
+  final title = arabicLearningSurahNames[chapter];
+  if (title == null) return null;
+  final suffix = switch (parts[2]) {
+    ', часть 1' => '، الجزء 1',
+    ', часть 2' => '، الجزء 2',
+    ': начало' => ': البداية',
+    ' 1-2' => ' 1–2',
+    _ => '',
+  };
+  return 'سورة $title$suffix';
+}
+
+/// Chapter identifiers verified against https://api.alquran.cloud/v1/surah.
+/// Display spelling omits optional diacritics; the canonical ayah asset is never
+/// changed. Only chapters used by the legacy guided title set are listed here.
+const arabicLearningSurahNames = <int, String>{
+  1: 'الفاتحة',
+  2: 'البقرة',
+  58: 'المجادلة',
+  59: 'الحشر',
+  60: 'الممتحنة',
+  61: 'الصف',
+  62: 'الجمعة',
+  63: 'المنافقون',
+  64: 'التغابن',
+  65: 'الطلاق',
+  66: 'التحريم',
+  67: 'الملك',
+  68: 'القلم',
+  69: 'الحاقة',
+  70: 'المعارج',
+  71: 'نوح',
+  72: 'الجن',
+  73: 'المزمل',
+  74: 'المدثر',
+  75: 'القيامة',
+  76: 'الإنسان',
+  77: 'المرسلات',
+  78: 'النبأ',
+  79: 'النازعات',
+  80: 'عبس',
+  81: 'التكوير',
+  82: 'الانفطار',
+  83: 'المطففين',
+  84: 'الانشقاق',
+  85: 'البروج',
+  86: 'الطارق',
+  87: 'الأعلى',
+  88: 'الغاشية',
+  89: 'الفجر',
+  90: 'البلد',
+  91: 'الشمس',
+  92: 'الليل',
+  93: 'الضحى',
+  94: 'الشرح',
+  95: 'التين',
+  96: 'العلق',
+  97: 'القدر',
+  98: 'البينة',
+  99: 'الزلزلة',
+  100: 'العاديات',
+  101: 'القارعة',
+  102: 'التكاثر',
+  103: 'العصر',
+  104: 'الهمزة',
+  105: 'الفيل',
+  106: 'قريش',
+  107: 'الماعون',
+  108: 'الكوثر',
+  109: 'الكافرون',
+  110: 'النصر',
+  111: 'المسد',
+  112: 'الإخلاص',
+  113: 'الفلق',
+  114: 'الناس',
+};
+
+const _arabicTajwidTitles = <String, String>{
+  'Что такое таджвид': 'ما التجويد؟',
+  'Пять зон махраджа': 'مناطق المخارج الخمس',
+  'Полость рта и мадд': 'الجوف والمد',
+  'Глубокая часть горла': 'أقصى الحلق',
+  'Средняя часть горла': 'وسط الحلق',
+  'Верхняя часть горла': 'أدنى الحلق',
+  'Губные буквы': 'حروف الشفتين',
+  'Буква ف': 'حرف الفاء',
+  'Межзубные ث ذ ظ': 'الحروف ث ذ ظ',
+  'Буквы ت د ط': 'الحروف ت د ط',
+  'Свистящие ز س ص': 'حروف الصفير ز س ص',
+  'Середина языка': 'وسط اللسان',
+  'Бок языка: ض и ل': 'حافة اللسان: ض و ل',
+  'Задняя часть языка': 'أقصى اللسان',
+  'Кончик языка: ل ن ر': 'طرف اللسان: ل ن ر',
+  'Контроль махраджей': 'تقييم المخارج',
+  'Хамс и джахр': 'الهمس والجهر',
+  'Сила потока звука': 'قوة جريان الصوت',
+  'Твердые буквы': 'الحروف المفخمة',
+  'Калькаля': 'القلقلة',
+  'Гунна': 'الغنة',
+  'Изхар': 'الإظهار',
+  'Идгам с гунной': 'الإدغام بغنة',
+  'Идгам без гунны': 'الإدغام بغير غنة',
+  'Икляб': 'الإقلاب',
+  'Ихфа': 'الإخفاء',
+  'Мим сакина': 'الميم الساكنة',
+  'Мадд табии': 'المد الطبيعي',
+  'Муттасиль и мунфасиль': 'المد المتصل والمنفصل',
+  'Мадд лязим': 'المد اللازم',
+  'Мадд арид': 'المد العارض للسكون',
+  'Лям в имени Аллаха': 'لام لفظ الجلالة',
+  'Солнечные и лунные': 'الحروف الشمسية والقمرية',
+  'Буква ر': 'حرف الراء',
+  'Остановка и знаки вакфа': 'الوقف وعلاماته',
+  'Итоговая практика': 'التدريب الختامي',
+};
 
 // Equivalent source spellings already present in guided lessons vs the reader.
 const _chapterAliases = <String, String>{

@@ -10,6 +10,8 @@ import 'package:muslingo/screens/premium_screen.dart';
 import 'package:muslingo/services/app_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/localization_host.dart';
+
 void main() {
   setUp(() {
     SharedPreferences.resetStatic();
@@ -38,13 +40,17 @@ void main() {
     await tester.pumpWidget(
       ChangeNotifierProvider<AppState>.value(
         value: state,
-        child: MaterialApp(
-          home: const OnboardingScreen(),
-          onGenerateRoute: (settings) => MaterialPageRoute<void>(
-            settings: settings,
-            builder: (_) => const SizedBox.shrink(),
-          ),
-        ),
+        child: Consumer<AppState>(
+            builder: (_, state, __) => MaterialApp(
+                  locale: state.locale.toLocale(),
+                  supportedLocales: testSupportedLocales,
+                  localizationsDelegates: testLocalizationDelegates,
+                  home: const OnboardingScreen(),
+                  onGenerateRoute: (settings) => MaterialPageRoute<void>(
+                    settings: settings,
+                    builder: (_) => const SizedBox.shrink(),
+                  ),
+                )),
       ),
     );
     await tester.pump();
@@ -58,6 +64,14 @@ void main() {
     await tester.pump();
     expect(find.text('Your path to the Quran'), findsOneWidget);
     expect(state.locale.code, 'en');
+
+    await tester.tap(find.text('العربية'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(state.locale.code, 'ar');
+    expect(Directionality.of(tester.element(find.byType(OnboardingScreen))),
+        TextDirection.rtl);
+    expect(tester.takeException(), isNull);
 
     await _teardown(tester);
   });

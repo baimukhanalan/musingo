@@ -27,9 +27,15 @@ class NotificationPlatform {
     int ayahHour = 8,
     int ayahMinute = 15,
     bool showOnLockScreen = false,
+    String localeCode = 'ru',
   }) async {}
 
   Future<void> cancelAll({String authToken = ''}) async {}
 
-  Future<bool> showTest(ReminderMessage message) async => false;
+  Future<bool> showTest(
+    ReminderMessage message, {
+    String localeCode = 'ru',
+    bool showOnLockScreen = false,
+  }) async =>
+      false;
 }

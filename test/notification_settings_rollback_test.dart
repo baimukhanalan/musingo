@@ -1,11 +1,38 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:muslingo/models/reminder_message.dart';
+import 'package:muslingo/models/mentor_profile.dart';
 import 'package:muslingo/services/app_state.dart';
 import 'package:muslingo/services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('birthday greeting stays in-app and never enters a weekly reminder slot',
+      () async {
+    SharedPreferences.resetStatic();
+    SharedPreferences.setMockInitialValues({});
+    final notifications = _FakeNotificationService();
+    final state = AppState(notificationService: notifications);
+    while (!state.isInitialized) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    await state.loginAsGuest();
+    final now = DateTime.now();
+    await state.updateMentorProfile(MentorProfile(
+      birthdayMonth: now.month,
+      birthdayDay: now.day,
+      preferredName: 'Alan',
+    ));
+    expect(await state.setNotificationsEnabled(true), isTrue);
+    expect(notifications.lastMessages, isNotEmpty);
+    expect(
+        notifications.lastMessages
+            .any((message) => message.title.contains('С днём рождения')),
+        isFalse);
+    expect(state.mentorTipAt(now).id, contains('-birthday-'));
+    state.dispose();
+  });
 
   test('failed scheduling restores every visible notification setting',
       () async {
@@ -108,6 +135,7 @@ void main() {
 }
 
 class _FakeNotificationService extends NotificationService {
+  List<ReminderMessage> lastMessages = [];
   bool failScheduling = false;
   bool failCancellation = false;
   NotificationPermissionState permission = NotificationPermissionState.granted;
@@ -135,8 +163,10 @@ class _FakeNotificationService extends NotificationService {
     int ayahHour = 8,
     int ayahMinute = 15,
     bool showOnLockScreen = false,
+    String localeCode = 'ru',
   }) async {
     if (failScheduling) throw StateError('scheduler unavailable');
+    lastMessages = messages;
   }
 
   @override

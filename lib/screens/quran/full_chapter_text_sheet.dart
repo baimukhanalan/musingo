@@ -16,6 +16,8 @@ class _FullChapterTextSheetState extends State<_FullChapterTextSheet> {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final chapter = widget.chapter;
+    final arabicOnly = state.locale.code == 'ar';
+    final showArabic = arabicOnly || _showArabic;
     return SafeArea(
       child: DraggableScrollableSheet(
         expand: false,
@@ -39,31 +41,32 @@ class _FullChapterTextSheetState extends State<_FullChapterTextSheet> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                SegmentedButton<bool>(
-                  segments: [
-                    ButtonSegment<bool>(
-                      value: true,
-                      icon: const Icon(Icons.language_rounded),
-                      label: Text(
-                          state.tr(ru: 'Арабский', kk: 'Араб', en: 'Arabic')),
+                if (!arabicOnly)
+                  SegmentedButton<bool>(
+                    segments: [
+                      ButtonSegment<bool>(
+                        value: true,
+                        icon: const Icon(Icons.language_rounded),
+                        label: Text(
+                            state.tr(ru: 'Арабский', kk: 'Араб', en: 'Arabic')),
+                      ),
+                      ButtonSegment<bool>(
+                        value: false,
+                        icon: const Icon(Icons.translate_rounded),
+                        label: Text(state.tr(
+                            ru: 'Русский', kk: 'Қазақша', en: 'English')),
+                      ),
+                    ],
+                    selected: {_showArabic},
+                    onSelectionChanged: (selection) {
+                      setState(() => _showArabic = selection.first);
+                    },
+                    style: ButtonStyle(
+                      visualDensity: VisualDensity.compact,
+                      foregroundColor:
+                          WidgetStateProperty.all<Color>(AppColors.navy),
                     ),
-                    ButtonSegment<bool>(
-                      value: false,
-                      icon: const Icon(Icons.translate_rounded),
-                      label: Text(state.tr(
-                          ru: 'Русский', kk: 'Қазақша', en: 'English')),
-                    ),
-                  ],
-                  selected: {_showArabic},
-                  onSelectionChanged: (selection) {
-                    setState(() => _showArabic = selection.first);
-                  },
-                  style: ButtonStyle(
-                    visualDensity: VisualDensity.compact,
-                    foregroundColor:
-                        WidgetStateProperty.all<Color>(AppColors.navy),
                   ),
-                ),
                 const SizedBox(height: 14),
                 Expanded(
                   child: Container(
@@ -83,20 +86,20 @@ class _FullChapterTextSheetState extends State<_FullChapterTextSheet> {
                       separatorBuilder: (_, __) => const SizedBox(height: 16),
                       itemBuilder: (context, index) {
                         final verse = chapter.verses[index];
-                        final content = _showArabic
+                        final content = showArabic
                             ? '${verse.numberInChapter}. ${verse.arabicText}'
                             : '${verse.numberInChapter}. ${verse.translation}';
                         return SelectableText(
                           content,
-                          textDirection: _showArabic
+                          textDirection: showArabic
                               ? TextDirection.rtl
                               : TextDirection.ltr,
                           textAlign:
-                              _showArabic ? TextAlign.right : TextAlign.left,
+                              showArabic ? TextAlign.right : TextAlign.left,
                           style: TextStyle(
-                            fontFamily: _showArabic ? 'Amiri' : 'Nunito',
-                            fontSize: _showArabic ? 25 : 16,
-                            height: _showArabic ? 1.9 : 1.55,
+                            fontFamily: showArabic ? 'Amiri' : 'Nunito',
+                            fontSize: showArabic ? 25 : 16,
+                            height: showArabic ? 1.9 : 1.55,
                             color: AppColors.textDark,
                           ),
                         );
