@@ -37,6 +37,35 @@ void main() {
     );
   });
 
+  test('all course lessons stay open without granting completion', () async {
+    final state = AppState();
+    await _waitUntilInitialized(state);
+    await state.loginAsGuest();
+
+    final allLessons =
+        state.courses.expand((course) => course.lessons).toList();
+    expect(allLessons, hasLength(1148));
+    expect(
+        allLessons.every((lesson) => lesson.status == LessonStatus.available),
+        isTrue);
+    expect(state.user?.totalLessons, 0);
+
+    await state.completeLesson('r1', 0);
+    final restored = AppState();
+    await _waitUntilInitialized(restored);
+    final restoredLessons =
+        restored.courses.expand((course) => course.lessons).toList();
+    expect(restoredLessons.singleWhere((lesson) => lesson.id == 'r1').status,
+        LessonStatus.completed);
+    expect(
+      restoredLessons
+          .where((lesson) => lesson.id != 'r1')
+          .every((lesson) => lesson.status == LessonStatus.available),
+      isTrue,
+    );
+    expect(restored.user?.totalLessons, 1);
+  });
+
   test('achievements are rebuilt for the active user after logout', () async {
     final state = AppState();
     await _waitUntilInitialized(state);
@@ -153,7 +182,7 @@ void main() {
     expect(state.recommendedLesson?.id, 'a7');
     expect(
       state.getCourse(CourseType.arabic)!.lessons.take(6).every(
-            (lesson) => lesson.status == LessonStatus.completed,
+            (lesson) => lesson.status == LessonStatus.available,
           ),
       isTrue,
     );

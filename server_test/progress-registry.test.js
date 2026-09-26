@@ -6,7 +6,7 @@ import test from 'node:test';
 // at import) so these run without a DATABASE_URL and without a real database.
 import {
   ayatRewards, clampErrors, completionDays, completionStudyTime, completionUpdate,
-  distinctStudiedAyahs, lessons, lessonXp, previousLessonId,
+  distinctStudiedAyahs, lessons, lessonXp,
   quranCurriculumManifest, quranLessonMetadata, requiredRecordedSteps,
 } from '../server/routes/progress-complete.js';
 import { defaultProgress, lessonAttemptEligibility, mergeLearningState } from '../server/lib/progress.js';
@@ -208,15 +208,14 @@ test('Quran progress counts unique practiced ayahs, not repeated lesson referenc
   assert.equal(distinctStudiedAyahs(quranIds), 602);
 });
 
-test('full Quran entry is independent and subsequent units retain prerequisites', () => {
-  assert.equal(previousLessonId('q_full_1_1_7'), null);
-  assert.equal(previousLessonId(fullQuranIds[1]), fullQuranIds[0]);
-  assert.equal(previousLessonId('q_fatiha_1'), null);
-  assert.equal(previousLessonId('q_fatiha_2'), 'q_fatiha_1');
-  assert.equal(previousLessonId('q_mastery_100'), 'q_mastery_99');
-  assert.equal(previousLessonId('a1'), null);
-  assert.equal(previousLessonId('tj01'), null);
-  assert.equal(previousLessonId('r1'), null);
+test('every course lesson is registered without prerequisite access gating', () => {
+  assert.ok(lessons.has('q_full_1_1_7'));
+  assert.ok(lessons.has(fullQuranIds[1]));
+  assert.ok(lessons.has('q_fatiha_2'));
+  assert.ok(lessons.has('q_mastery_100'));
+  assert.ok(lessons.has('a100'));
+  assert.ok(lessons.has('tj36'));
+  assert.ok(lessons.has('r10'));
 });
 
 test('a long full-path lesson requires all recorded steps, not just five', () => {

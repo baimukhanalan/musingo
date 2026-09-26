@@ -25,7 +25,7 @@ import 'screens/onboarding_screen.dart';
 import 'screens/coach_screen.dart';
 import 'screens/mentor_memory_screen.dart';
 import 'screens/rules_screen.dart';
-import 'screens/academy_screen.dart';
+import 'screens/academy_modes_screen.dart';
 import 'screens/continuous_audio_screen.dart';
 import 'screens/curriculum_library_screen.dart';
 import 'screens/curriculum_module_screen.dart';
@@ -216,7 +216,7 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
               );
         break;
       case '/premium':
-        page = const AcademyScreen();
+        page = const AcademyModesScreen();
         break;
       case '/friends':
         page = const FriendsScreen();
@@ -258,7 +258,7 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
         page = const RulesScreen();
         break;
       case '/academy':
-        page = const AcademyScreen();
+        page = const AcademyModesScreen();
         break;
       case '/curriculum':
         page = const CurriculumLibraryScreen();

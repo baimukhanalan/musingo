@@ -1,7 +1,7 @@
 import { issueLessonAttempt, requireUser } from '../lib/auth.js';
 import { sql } from '../lib/db.js';
 import { ApiError, method, readJson, text, withApi } from '../lib/http.js';
-import { lessons, previousLessonId, requiredRecordedSteps } from './progress-complete.js';
+import { lessons, requiredRecordedSteps } from './progress-complete.js';
 
 export default withApi(async (request, response) => {
   method(request, ['POST']);
@@ -9,14 +9,8 @@ export default withApi(async (request, response) => {
   const body = readJson(request);
   const lessonId = text(body.lessonId, { min: 2, max: 40, field: 'lesson' });
   if (!lessons.has(lessonId)) throw new ApiError(400, 'unknown_lesson', 'Unknown lesson.');
-  const currentRows = await sql`
-    SELECT document FROM muslingo_progress WHERE user_id = ${user.id}::uuid
-  `;
-  const completed = new Set(currentRows[0]?.document?.completedLessons ?? []);
-  const previous = previousLessonId(lessonId);
-  if (previous && !completed.has(previous)) {
-    throw new ApiError(409, 'lesson_locked', 'Complete the previous lesson first.');
-  }
+  // Course order guides recommendations, not access. A learner may start any
+  // registered lesson; the signed attempt still gates verified completion.
   const attempt = await issueLessonAttempt(user.id, lessonId);
   await sql`
     DELETE FROM muslingo_lesson_attempts

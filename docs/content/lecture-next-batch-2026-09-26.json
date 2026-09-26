@@ -1,0 +1,132 @@
+{
+  "status": "research_batch_not_lecture_approval",
+  "modules": [
+    {
+      "module_id": "QUR-001",
+      "sources_checked": [
+        {
+          "url": "https://quran.com/1",
+          "locator": "Al-Fatihah 1:1–7",
+          "role": "primary Quran text viewer",
+          "checked_at": "2026-09-26",
+          "supported_claims": [
+            "The displayed chapter is numbered 1 and contains verses 1:1 through 1:7.",
+            "A learner can identify chapter and verse numbers without using a translation to define the canonical locator."
+          ],
+          "not_supported": [
+            "Any interpretive claim about the meaning of the surah without a selected and reviewed tafsir.",
+            "Rights to bundle Quran Foundation translations, tafsir or audio."
+          ]
+        },
+        {
+          "url": "https://tanzil.net/docs/Text_License",
+          "locator": "Text License, terms of use",
+          "role": "primary rights statement",
+          "checked_at": "2026-09-26",
+          "supported_claims": [
+            "Tanzil permits attributed verbatim use of its Arabic Quran text under its stated terms."
+          ],
+          "not_supported": ["Permission to alter the Arabic text or reuse a translation or recitation."]
+        }
+      ],
+      "lecture_outline": [
+        "Show the chapter identifier and seven verse locators, without reproducing an unlicensed translation.",
+        "Ask the learner to locate 1:1, 1:4 and 1:7 and distinguish verse numbering from interpretation.",
+        "Explain that meaning, recitation and translation require separately selected and reviewed sources."
+      ],
+      "remaining_gate": "Canonical text checksum, edition/licence attribution, translation/tafsir selection and Quran editor review."
+    },
+    {
+      "module_id": "ARB-001",
+      "sources_checked": [
+        {
+          "url": "https://corpus.quran.com/documentation/phonetic.jsp",
+          "locator": "Figure 1, alif row; introductory context note",
+          "role": "primary linguistic project documentation",
+          "checked_at": "2026-09-26",
+          "supported_claims": [
+            "The corpus transcription chart lists alif with the transcription ā.",
+            "The documentation warns that pronunciation depends on context."
+          ],
+          "not_supported": [
+            "A complete lesson on isolated and connected glyph shapes from this transcription page alone.",
+            "A teacher-level pronunciation or Tajwid score from an ASR transcript."
+          ]
+        }
+      ],
+      "lecture_outline": [
+        "Introduce alif as the target symbol and show the corpus transcription chart as a reference, not a copied course page.",
+        "Defer connected-form examples until a licensed script reference and human-selected exact Quran examples are recorded.",
+        "Keep recognition practice separate from pronunciation assessment."
+      ],
+      "remaining_gate": "Find an authoritative contextual-shapes source and exact licensed examples; Arabic teacher and rights review."
+    },
+    {
+      "module_id": "TAJ-001",
+      "sources_checked": [
+        {
+          "url": "https://developer.apple.com/documentation/speech/",
+          "locator": "Speech framework overview",
+          "role": "primary technical API documentation",
+          "checked_at": "2026-09-26",
+          "supported_claims": [
+            "Speech recognition returns transcriptions and confidence-like outputs from audio."
+          ],
+          "not_supported": [
+            "A transcription or confidence score certifies Tajwid correctness.",
+            "The specific religious rules a teacher should assess."
+          ]
+        },
+        {
+          "url": "https://qurancomplex.gov.sa/en/techquran/dev/",
+          "locator": "Al-Tajwid al-Muyassar listing; chapter/page unresolved",
+          "role": "proposed official Tajwid reference, not yet inspected to page level",
+          "checked_at": null,
+          "supported_claims": [],
+          "not_supported": ["A page-specific Tajwid rule or permission to adapt the book."]
+        }
+      ],
+      "lecture_outline": [
+        "Explain the product's three separate labels: text match, timing or fluency signals, and teacher-reviewed Tajwid.",
+        "Describe ASR output only as a tentative transcription; do not turn it into religious certification.",
+        "Do not teach a detailed Tajwid rule until a qualified teacher maps its exact official source and reviews the audio."
+      ],
+      "remaining_gate": "Exact Tajwid book chapter/page and usage permission; named qualified teacher, audio validation and review."
+    },
+    {
+      "module_id": "FND-011",
+      "sources_checked": [
+        {
+          "url": "https://quran.com/4/59",
+          "locator": "Quran 4:59",
+          "role": "primary Quran verse viewer",
+          "checked_at": "2026-09-26",
+          "supported_claims": [
+            "The verse refers disputes to Allah and the Messenger."
+          ],
+          "not_supported": [
+            "A complete theory of jurisprudence, the authority of a particular school or a ruling on a modern dispute."
+          ]
+        },
+        {
+          "url": "https://quran.com/16/44",
+          "locator": "Quran 16:44",
+          "role": "primary Quran verse viewer",
+          "checked_at": "2026-09-26",
+          "supported_claims": [
+            "The verse says the Reminder was sent down to the Prophet so he would explain what was revealed to people."
+          ],
+          "not_supported": [
+            "A full classification of hadith, tafsir, fiqh and individual opinion from this verse alone."
+          ]
+        }
+      ],
+      "lecture_outline": [
+        "Identify the exact Qur'anic references and avoid treating a translation as the Arabic text.",
+        "Introduce the labels Quran, Sunnah, tafsir, fiqh and opinion as a question to research, not as an already sourced hierarchy.",
+        "Defer detailed distinctions and hadith grading until a named methodology source and qualified scholar review are recorded."
+      ],
+      "remaining_gate": "Select exact hadith-method source/edition and reviewed definitions for all five categories; Islamic and language review."
+    }
+  ]
+}

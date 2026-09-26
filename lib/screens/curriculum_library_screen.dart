@@ -14,10 +14,12 @@ import '../widgets/translation_review_note.dart';
 
 class CurriculumLibraryScreen extends StatefulWidget {
   final Future<List<CurriculumModule>>? modulesFuture;
+  final bool embedded;
 
   const CurriculumLibraryScreen({
     super.key,
     @visibleForTesting this.modulesFuture,
+    this.embedded = false,
   });
 
   @override
@@ -67,152 +69,151 @@ class _CurriculumLibraryScreenState extends State<CurriculumLibraryScreen> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: PremiumBackground(
-        child: SafeArea(
-          child: Column(
-            children: [
-              _header(state),
-              TranslationReviewNote(locale: state.locale.code),
-              Expanded(
-                child: FutureBuilder<List<CurriculumModule>>(
-                  future: _modules,
-                  builder: (context, snapshot) {
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Text(state.tr(
-                          ru: 'Не удалось открыть библиотеку.',
-                          kk: 'Кітапхананы ашу мүмкін болмады.',
-                          en: 'Could not open the library.',
-                        )),
-                      );
-                    }
-                    final sourceModules = snapshot.data;
-                    if (sourceModules == null) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    final modules = sourceModules
-                        .map((module) =>
-                            LessonContentLocalization.localizeModule(
-                                module, state.locale.code))
-                        .toList(growable: false);
-                    final filtered = _filter(modules);
-                    return CustomScrollView(
-                      key: const ValueKey('curriculum-scroll'),
-                      slivers: [
-                        SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
-                          sliver: SliverList.list(
-                            children: [
-                              _learningDashboard(state, modules),
-                              const SizedBox(height: 14),
-                              TextField(
-                                key: const ValueKey('curriculum-search'),
-                                controller: _searchController,
-                                onChanged: (value) =>
-                                    setState(() => _query = value.trim()),
-                                decoration: InputDecoration(
-                                  hintText: state.tr(
-                                    ru: 'Найти модуль',
-                                    kk: 'Модульді табу',
-                                    en: 'Find a module',
+    final content = Column(
+      children: [
+        if (!widget.embedded) _header(state),
+        TranslationReviewNote(locale: state.locale.code),
+        Expanded(
+          child: FutureBuilder<List<CurriculumModule>>(
+            future: _modules,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text(state.tr(
+                    ru: 'Не удалось открыть библиотеку.',
+                    kk: 'Кітапхананы ашу мүмкін болмады.',
+                    en: 'Could not open the library.',
+                  )),
+                );
+              }
+              final sourceModules = snapshot.data;
+              if (sourceModules == null) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final modules = sourceModules
+                  .map((module) => LessonContentLocalization.localizeModule(
+                      module, state.locale.code))
+                  .toList(growable: false);
+              final filtered = _filter(modules);
+              return CustomScrollView(
+                key: const ValueKey('curriculum-scroll'),
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
+                    sliver: SliverList.list(
+                      children: [
+                        _learningDashboard(state, modules),
+                        const SizedBox(height: 14),
+                        TextField(
+                          key: const ValueKey('curriculum-search'),
+                          controller: _searchController,
+                          onChanged: (value) =>
+                              setState(() => _query = value.trim()),
+                          decoration: InputDecoration(
+                            hintText: state.tr(
+                              ru: 'Найти модуль',
+                              kk: 'Модульді табу',
+                              en: 'Find a module',
+                            ),
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            suffixIcon: _query.isEmpty
+                                ? null
+                                : IconButton(
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() => _query = '');
+                                    },
+                                    icon: const Icon(Icons.close_rounded),
                                   ),
-                                  prefixIcon: const Icon(Icons.search_rounded),
-                                  suffixIcon: _query.isEmpty
-                                      ? null
-                                      : IconButton(
-                                          onPressed: () {
-                                            _searchController.clear();
-                                            setState(() => _query = '');
-                                          },
-                                          icon: const Icon(Icons.close_rounded),
-                                        ),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(
-                                  children: [
-                                    _trackChip(
-                                        state,
-                                        'all',
-                                        state.tr(
-                                          ru: 'Все 570',
-                                          kk: 'Барлық 570',
-                                          en: 'All 570',
-                                        )),
-                                    _trackChip(
-                                        state,
-                                        'Quran',
-                                        state.tr(
-                                            ru: 'Коран · 150',
-                                            kk: 'Құран · 150',
-                                            en: 'Quran · 150')),
-                                    _trackChip(
-                                        state,
-                                        'Arabic',
-                                        state.tr(
-                                            ru: 'Арабский · 170',
-                                            kk: 'Араб тілі · 170',
-                                            en: 'Arabic · 170')),
-                                    _trackChip(
-                                        state,
-                                        'Tajwid',
-                                        state.tr(
-                                            ru: 'Таджвид · 70',
-                                            kk: 'Тәжуид · 70',
-                                            en: 'Tajwid · 70')),
-                                    _trackChip(
-                                        state,
-                                        'Foundations/Academy',
-                                        state.tr(
-                                            ru: 'Основы · 180',
-                                            kk: 'Негіздер · 180',
-                                            en: 'Foundations · 180')),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              Text(
-                                state.tr(
-                                  ru: 'Найдено: ${filtered.length}',
-                                  kk: 'Табылды: ${filtered.length}',
-                                  en: 'Found: ${filtered.length}',
-                                ),
-                                style: const TextStyle(
-                                  fontFamily: 'Nunito',
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.textGrey,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _trackChip(
+                                  state,
+                                  'all',
+                                  state.tr(
+                                    ru: 'Все 570',
+                                    kk: 'Барлық 570',
+                                    en: 'All 570',
+                                  )),
+                              _trackChip(
+                                  state,
+                                  'Quran',
+                                  state.tr(
+                                      ru: 'Коран · 150',
+                                      kk: 'Құран · 150',
+                                      en: 'Quran · 150')),
+                              _trackChip(
+                                  state,
+                                  'Arabic',
+                                  state.tr(
+                                      ru: 'Арабский · 170',
+                                      kk: 'Араб тілі · 170',
+                                      en: 'Arabic · 170')),
+                              _trackChip(
+                                  state,
+                                  'Tajwid',
+                                  state.tr(
+                                      ru: 'Таджвид · 70',
+                                      kk: 'Тәжуид · 70',
+                                      en: 'Tajwid · 70')),
+                              _trackChip(
+                                  state,
+                                  'Foundations/Academy',
+                                  state.tr(
+                                      ru: 'Основы · 180',
+                                      kk: 'Негіздер · 180',
+                                      en: 'Foundations · 180')),
                             ],
                           ),
                         ),
-                        SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(18, 0, 18, 32),
-                          sliver: SliverList.builder(
-                            itemCount: filtered.length,
-                            itemBuilder: (context, index) => Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: _ModuleCard(
-                                module: filtered[index],
-                                progress: _progress,
-                                onReturn: _reloadProgress,
-                              ),
-                            ),
+                        const SizedBox(height: 14),
+                        Text(
+                          state.tr(
+                            ru: 'Найдено: ${filtered.length}',
+                            kk: 'Табылды: ${filtered.length}',
+                            en: 'Found: ${filtered.length}',
+                          ),
+                          style: const TextStyle(
+                            fontFamily: 'Nunito',
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textGrey,
                           ),
                         ),
+                        const SizedBox(height: 8),
                       ],
-                    );
-                  },
-                ),
-              ),
-            ],
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 32),
+                    sliver: SliverList.builder(
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _ModuleCard(
+                          module: filtered[index],
+                          progress: _progress,
+                          onReturn: _reloadProgress,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
+      ],
+    );
+    if (widget.embedded) return content;
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: PremiumBackground(
+        child: SafeArea(child: content),
       ),
     );
   }

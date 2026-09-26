@@ -20,13 +20,10 @@ void main() {
       course.lessons.map((lesson) => lesson.order),
       List.generate(36, (index) => index + 1),
     );
-    expect(course.lessons.first.status, LessonStatus.available);
     expect(
-      course.lessons
-          .skip(1)
-          .every((lesson) => lesson.status == LessonStatus.locked),
-      isTrue,
-    );
+        course.lessons
+            .every((lesson) => lesson.status == LessonStatus.available),
+        isTrue);
   });
 
   test('every Tajwid lesson follows the complete learning loop', () {

@@ -38,12 +38,18 @@ class LessonData {
   static List<Course> getCourses() =>
       [quranCourse, arabicCourse, tajwidCourse, rulesCourse];
 
+  // Course order is guidance, not an access gate. Completion is restored from
+  // learner progress by AppState; opening any lesson never completes it.
+  static List<Lesson> _openLessons(Iterable<Lesson> lessons) => lessons
+      .map((lesson) => lesson.copyWith(status: LessonStatus.available))
+      .toList(growable: false);
+
   static Course get quranCourse => Course(
         id: 'quran',
         title: 'Коран',
         description: 'Изучай аяты с аудио и переводом',
         type: CourseType.quran,
-        lessons: [..._quranLessons, ..._fullQuranLessons],
+        lessons: _openLessons([..._quranLessons, ..._fullQuranLessons]),
       );
 
   static Course get arabicCourse => Course(
@@ -51,7 +57,7 @@ class LessonData {
         title: 'Арабский язык',
         description: 'Буквы, чтение и произношение в игровом формате',
         type: CourseType.arabic,
-        lessons: _arabicLessons,
+        lessons: _openLessons(_arabicLessons),
       );
 
   static Course get rulesCourse => Course(
@@ -59,7 +65,7 @@ class LessonData {
         title: 'Основы ислама',
         description: 'Краткое введение в основы ислама с источниками',
         type: CourseType.rules,
-        lessons: _rulesLessons,
+        lessons: _openLessons(_rulesLessons),
       );
 
   static Course get tajwidCourse => Course(
@@ -67,6 +73,6 @@ class LessonData {
         title: 'Таджвид',
         description: 'Махрадж, качества букв и правила чтения Корана',
         type: CourseType.tajwid,
-        lessons: _tajwidLessons,
+        lessons: _openLessons(_tajwidLessons),
       );
 }

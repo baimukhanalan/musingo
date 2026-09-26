@@ -2,6 +2,7 @@ import SwiftUI
 import WidgetKit
 
 private let appGroupId = "group.com.muslingo.app"
+private let openAppURL = URL(string: "muslingo:///home")
 
 private struct WidgetCopy {
   let localeCode: String
@@ -142,7 +143,7 @@ private struct AyahWidgetView: View {
         Image(systemName: "book.closed.fill")
       }
       .widgetAccentable()
-      .widgetURL(URL(string: "https://muslingo-mobile.vercel.app/#/home"))
+      .widgetURL(openAppURL)
     } else if #available(iOSApplicationExtension 16.0, *), family == .accessoryRectangular {
       VStack(alignment: .leading, spacing: 2) {
         HStack(spacing: 4) {
@@ -166,11 +167,11 @@ private struct AyahWidgetView: View {
             .minimumScaleFactor(0.78)
         }
       }
-      .widgetURL(URL(string: "https://muslingo-mobile.vercel.app/#/home"))
+      .widgetURL(openAppURL)
       .muslingoWidgetBackground()
     } else {
       homeScreenContent
-        .widgetURL(URL(string: "https://muslingo-mobile.vercel.app/#/home"))
+        .widgetURL(openAppURL)
         .muslingoWidgetBackground()
     }
   }

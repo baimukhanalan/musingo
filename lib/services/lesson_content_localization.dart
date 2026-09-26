@@ -78,6 +78,10 @@ class LessonContentLocalization {
     if (quranReading != null) return quranReading;
     final terminology = localizeArabicLearningText(source, locale);
     if (terminology != null) return terminology;
+    if (locale == 'ar') {
+      final logicChallenge = _localizeArabicLogicChallenge(source);
+      if (logicChallenge != null) return logicChallenge;
+    }
     // Reasoning questions embed the very same source facts used by the lesson.
     // Translate each fact independently, so a corrected letter name cannot
     // become "Dad"/"father" again inside a combined answer.
@@ -95,6 +99,25 @@ class LessonContentLocalization {
       if (letterName != null) return '${letterPair[1]} — $letterName';
     }
     return _strings[locale]?[source] ?? source;
+  }
+
+  /// The challenge engine combines existing questions at runtime. Translate
+  /// only its fixed shell and independently translate each original question;
+  /// unknown facts stay visibly untranslated instead of being paraphrased.
+  static String? _localizeArabicLogicChallenge(String source) {
+    final match = RegExp(
+      r'^(Три|Два) вывода одновременно\. Выбери единственную цепочку без ошибки\.\n\n((?:\d+\. .+(?:\n|$))+)$',
+    ).firstMatch(source);
+    if (match == null) return null;
+    final opening = match[1] == 'Три'
+        ? 'ثلاث نتائج في آنٍ واحد. اختر السلسلة الوحيدة الخالية من الأخطاء.'
+        : 'نتيجتان في آنٍ واحد. اختر السلسلة الوحيدة الخالية من الأخطاء.';
+    final questions = match[2]!.trimRight().split('\n').map((line) {
+      final numbered = RegExp(r'^(\d+\. )(.*)$').firstMatch(line);
+      if (numbered == null) return line;
+      return '${numbered[1]}${translateText(numbered[2]!, 'ar')}';
+    }).join('\n');
+    return '$opening\n\n$questions';
   }
 
   static String trackTitle(String track, String locale) {

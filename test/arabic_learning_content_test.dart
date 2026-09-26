@@ -139,6 +139,56 @@ void main() {
         'Русская строка вне перевода');
   });
 
+  test('first fifteen Arabic reading lessons have Arabic-facing steps', () {
+    final originals = LessonData.arabicCourse.lessons
+        .where((lesson) => RegExp(r'^a(?:[1-9]|1[0-5])$').hasMatch(lesson.id))
+        .toList();
+    expect(originals, hasLength(15));
+    for (final original in originals) {
+      final localized =
+          LessonContentLocalization.localizeLesson(original, 'ar');
+      expect(localized.id, original.id);
+      expect(localized.steps.length, original.steps.length);
+      final visibleText = <String>[
+        localized.title,
+        localized.subtitle,
+        for (final step in localized.steps) ...[
+          if (step.russianText != null) step.russianText!,
+          if (step.question != null) step.question!,
+          if (step.explanation != null) step.explanation!,
+          ...?step.answers,
+          for (final pair in step.matchPairs) ...[pair.prompt, pair.answer],
+        ],
+      ];
+      for (final value in visibleText) {
+        expect(cyrillic.hasMatch(value), isFalse,
+            reason: '${original.id}: $value');
+      }
+      for (var index = 0; index < original.steps.length; index++) {
+        expect(localized.steps[index].arabicText,
+            original.steps[index].arabicText);
+        expect(localized.steps[index].correctAnswerIndex,
+            original.steps[index].correctAnswerIndex);
+        expect(localized.steps[index].sourceRefs,
+            original.steps[index].sourceRefs);
+      }
+    }
+  });
+
+  test('qaf and kaf remain distinct in early letter lessons', () {
+    final original = LessonData.arabicCourse.lessons
+        .singleWhere((lesson) => lesson.id == 'a11');
+    final localized = LessonContentLocalization.localizeLesson(original, 'ar');
+    final matching = localized.steps
+        .singleWhere((step) => step.type == LessonStepType.matching);
+    expect(matching.matchPairs[1].prompt, 'ق');
+    expect(matching.matchPairs[1].answer, 'القاف');
+    expect(matching.matchPairs[2].prompt, 'ك');
+    expect(matching.matchPairs[2].answer, 'الكاف');
+    expect(matching.matchPairs[1].answer,
+        isNot(matching.matchPairs[2].answer));
+  });
+
   testWidgets('legacy Arabic notice appears at entry only, never on every step',
       (tester) async {
     SharedPreferences.resetStatic();

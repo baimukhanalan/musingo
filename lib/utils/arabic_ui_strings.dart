@@ -123,6 +123,7 @@ const Map<String, String> arabicUiStrings = {
   "About sources": "عن المصادر",
   "About these audio outlines": "عن هذه الملخصات الصوتية",
   "Academy": "الأكاديمية",
+  "Learn": "تعلّم",
   "Account": "الحساب",
   "Account created. If the email arrives, confirm it using the one-time link.":
       "تم إنشاء الحساب. عند وصول الرسالة، أكّد بريدك باستخدام الرابط المخصص لمرة واحدة.",

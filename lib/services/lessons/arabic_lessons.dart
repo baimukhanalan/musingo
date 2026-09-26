@@ -633,7 +633,7 @@ final List<Lesson> arabicLessons = [
       LessonStep(
         type: LessonStepType.audio,
         arabicText: 'ق',
-        transliteration: 'Каф',
+        transliteration: 'Каф глубокая',
         russianText:
             'Буква Каф — глубокий «къ», произносится дальше во рту, чем «ك».',
       ),
@@ -658,7 +658,7 @@ final List<Lesson> arabicLessons = [
       LessonStep(
         type: LessonStepType.question,
         question: 'Буква «ف» называется...',
-        answers: ['Фа', 'Каф', 'Кяф'],
+        answers: ['Фа', 'Каф глубокая', 'Каф'],
         correctAnswerIndex: 0,
       ),
       LessonStep(
@@ -666,8 +666,8 @@ final List<Lesson> arabicLessons = [
         question: 'Соедини букву и её название',
         matchPairs: [
           LessonMatchPair(prompt: 'ف', answer: 'Фа'),
-          LessonMatchPair(prompt: 'ق', answer: 'Каф'),
-          LessonMatchPair(prompt: 'ك', answer: 'Кяф'),
+          LessonMatchPair(prompt: 'ق', answer: 'Каф глубокая'),
+          LessonMatchPair(prompt: 'ك', answer: 'Каф'),
         ],
       ),
       LessonStep(

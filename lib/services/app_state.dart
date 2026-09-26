@@ -641,7 +641,19 @@ class AppState extends ChangeNotifier {
     final preferredType = _preferredCourseType;
     final preferred = getCourse(preferredType)?.lessons;
     if (preferred != null) {
-      for (final lesson in preferred) {
+      // Placement changes the recommended starting point, never lesson access
+      // or completion. Earlier lessons remain open for voluntary review.
+      const arabicStartIndexByLevel = <int>[0, 0, 2, 4, 6, 8, 12, 15];
+      final startIndex = preferredType == CourseType.arabic
+          ? arabicStartIndexByLevel[_placementLevel.clamp(1, 8) - 1]
+          : 0;
+      for (final lesson in preferred.skip(startIndex)) {
+        if (lesson.status == LessonStatus.available ||
+            lesson.status == LessonStatus.inProgress) {
+          return lesson;
+        }
+      }
+      for (final lesson in preferred.take(startIndex)) {
         if (lesson.status == LessonStatus.available ||
             lesson.status == LessonStatus.inProgress) {
           return lesson;
@@ -1648,7 +1660,6 @@ class AppState extends ChangeNotifier {
     _placementLevel = level.clamp(1, 8).toInt();
     _learningRecommendation = recommendation;
     _learningSkillProfile = skillProfile;
-    _applyPlacementCourseStart();
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(_learningGoalKey, goal.storageValue);
     await preferences.setInt(_placementLevelKey, _placementLevel);
@@ -1691,42 +1702,6 @@ class AppState extends ChangeNotifier {
     return _learningGoal == LearningGoal.arabicReading
         ? CourseType.arabic
         : CourseType.quran;
-  }
-
-  void _applyPlacementCourseStart() {
-    if (_preferredCourseType != CourseType.arabic) return;
-    final courseIndex = _courses.indexWhere(
-      (course) => course.type == CourseType.arabic,
-    );
-    if (courseIndex < 0) return;
-    final course = _courses[courseIndex];
-    if (course.lessons.any((lesson) =>
-        lesson.status == LessonStatus.completed ||
-        lesson.status == LessonStatus.inProgress)) {
-      return;
-    }
-
-    const startIndexByLevel = <int>[0, 0, 2, 4, 6, 8, 12, 15];
-    final startIndex = startIndexByLevel[_placementLevel - 1]
-        .clamp(0, course.lessons.length - 1)
-        .toInt();
-    if (startIndex == 0) return;
-    final lessons = <Lesson>[];
-    for (var index = 0; index < course.lessons.length; index += 1) {
-      final status = index < startIndex
-          ? LessonStatus.completed
-          : index == startIndex
-              ? LessonStatus.available
-              : LessonStatus.locked;
-      lessons.add(course.lessons[index].copyWith(status: status));
-    }
-    _courses[courseIndex] = Course(
-      id: course.id,
-      title: course.title,
-      description: course.description,
-      type: course.type,
-      lessons: lessons,
-    );
   }
 
   Future<bool> setNotificationsEnabled(bool enabled) async {
@@ -2793,20 +2768,12 @@ class AppState extends ChangeNotifier {
   void _applyCourseProgress(Set<String> completed) {
     _courses = LessonData.getCourses();
     _courses = _courses.map((course) {
-      var previousCompleted = true;
       final lessons = <Lesson>[];
       for (final lesson in course.lessons) {
         final isCompleted = completed.contains(lesson.id);
-        // Preserve independent entry points from the source catalogue. The
-        // complete Quran path must not depend on finishing the 100 intro units.
-        final isEntryPoint = lesson.status == LessonStatus.available;
-        final status = isCompleted
-            ? LessonStatus.completed
-            : previousCompleted || isEntryPoint
-                ? LessonStatus.available
-                : LessonStatus.locked;
+        final status =
+            isCompleted ? LessonStatus.completed : LessonStatus.available;
         lessons.add(lesson.copyWith(status: status));
-        previousCompleted = isCompleted;
       }
       return Course(
         id: course.id,

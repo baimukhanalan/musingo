@@ -249,6 +249,7 @@ void main() {
 
     await tester.tap(find.text('Прослушать'));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 20));
     expect(player.sources, hasLength(1));
     expect(player.starts, 1);
     expect(find.text('Остановить'), findsOneWidget);
@@ -256,6 +257,9 @@ void main() {
     player.events
         .add(const QuranAudioPlaybackState(playing: false, completed: true));
     await tester.pump();
+    // Stream delivery and the resulting frame are distinct async turns under
+    // a busy full-suite runner; assert the settled user-visible state.
+    await tester.pump(const Duration(milliseconds: 20));
     expect(find.text('Прослушать'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });

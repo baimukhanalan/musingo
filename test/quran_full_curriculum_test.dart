@@ -120,15 +120,17 @@ void main() {
     final current = LessonData.quranCourse.lessons;
     expect(legacyLessons, hasLength(100));
     expect(current, hasLength(1002));
-    expect(current.take(100), orderedEquals(legacyLessons));
+    for (var index = 0; index < 100; index++) {
+      expect(current[index].id, legacyLessons[index].id);
+      expect(current[index].steps, same(legacyLessons[index].steps));
+      expect(current[index].sourceUrl, legacyLessons[index].sourceUrl);
+      expect(current[index].xpReward, legacyLessons[index].xpReward);
+    }
     expect(
         current.map((lesson) => lesson.id).toSet(), hasLength(current.length));
     expect(current[100].id, 'q_full_1_1_7');
     expect(current[100].status, LessonStatus.available);
-    expect(
-        current
-            .skip(101)
-            .every((lesson) => lesson.status == LessonStatus.locked),
+    expect(current.every((lesson) => lesson.status == LessonStatus.available),
         isTrue);
     expect(LessonData.getCourses().expand((course) => course.lessons),
         hasLength(1148));
@@ -247,13 +249,13 @@ void main() {
         .lessons
         .singleWhere((lesson) => lesson.id == id);
     expect(find(state, 'q_full_1_1_7').status, LessonStatus.available);
-    expect(find(state, 'q_full_2_1_10').status, LessonStatus.locked);
+    expect(find(state, 'q_full_2_1_10').status, LessonStatus.available);
     await state.completeLesson('q_full_1_1_7', 0);
     final restored = await ready();
     expect(find(restored, 'q_full_1_1_7').status, LessonStatus.completed);
     expect(find(restored, 'q_full_2_1_10').status, LessonStatus.available);
-    expect(find(restored, 'q_full_2_11_18').status, LessonStatus.locked);
+    expect(find(restored, 'q_full_2_11_18').status, LessonStatus.available);
     expect(find(restored, 'q_fatiha_1').status, LessonStatus.available);
-    expect(find(restored, 'q_fatiha_2').status, LessonStatus.locked);
+    expect(find(restored, 'q_fatiha_2').status, LessonStatus.available);
   });
 }

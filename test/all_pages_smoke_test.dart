@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:muslingo/screens/academy_screen.dart';
+import 'package:muslingo/screens/academy_modes_screen.dart';
 import 'package:muslingo/screens/achievements_screen.dart';
 import 'package:muslingo/screens/coach_screen.dart';
 import 'package:muslingo/screens/friends_screen.dart';
@@ -52,7 +52,7 @@ void main() {
       'league': const LeagueScreen(),
       'achievements': const AchievementsScreen(),
       'islam foundations': const RulesScreen(),
-      'academy': const AcademyScreen(),
+      'academy': const AcademyModesScreen(),
       'install': const InstallAppScreen(),
       'premium': const PremiumScreen(),
       'friends': const FriendsScreen(),

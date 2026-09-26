@@ -189,4 +189,39 @@ void main() {
     expect(calls.where((call) => call.method == 'zonedSchedule'), hasLength(7));
     expect(calls.last.method, 'cancelAll');
   });
+
+  test('rapid reminder edits and final off action leave no pending schedule',
+      () async {
+    final platform = NotificationPlatform(supportedOverride: true);
+    final operations = <Future<void>>[];
+    for (var index = 0; index < 30; index++) {
+      operations.add(platform.scheduleDaily(
+        hour: 8 + index % 12,
+        minute: index % 60,
+        messages: const [ReminderMessage('Lesson', 'Continue learning')],
+      ));
+    }
+    operations.add(platform.cancelAll());
+    await Future.wait(operations);
+
+    expect(calls.where((call) => call.method == 'zonedSchedule'),
+        hasLength(30 * 7));
+    expect(calls.last.method, 'cancelAll');
+  });
+
+  test('maximum reminder plan stays below the iOS 64 pending limit', () async {
+    final platform = NotificationPlatform(supportedOverride: true);
+    await platform.scheduleDaily(
+      hour: 19,
+      minute: 30,
+      streak: 6,
+      messages: const [ReminderMessage('Lesson', 'Continue learning')],
+      ayahMessages: List.generate(
+          28, (index) => ReminderMessage('Ayah $index', 'Daily ayah')),
+    );
+    final scheduled =
+        calls.where((call) => call.method == 'zonedSchedule').toList();
+    expect(scheduled, hasLength(42));
+    expect(scheduled.length, lessThan(64));
+  });
 }

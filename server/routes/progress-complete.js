@@ -85,18 +85,6 @@ export function distinctStudiedAyahs(completedLessons) {
   return addresses.size;
 }
 
-// The full path is an independent course entry, not gated by 100 older units.
-export function previousLessonId(lessonId) {
-  const prefix = lessonId.startsWith('q_full_') ? 'q_full_'
-    : lessonId.startsWith('tj') ? 'tj'
-      : lessonId.startsWith('q') ? 'q'
-        : lessonId.slice(0, 1);
-  const path = [...lessons].filter((id) => id.startsWith(prefix) &&
-    (prefix !== 'q' || !id.startsWith('q_full_')));
-  const index = path.indexOf(lessonId);
-  return index > 0 ? path[index - 1] : null;
-}
-
 export function requiredRecordedSteps(lessonId) {
   return lessonId.startsWith('q_full_')
     ? (quranLessonMetadata.get(lessonId)?.stepCount ?? 5)
