@@ -60,12 +60,6 @@ class _LessonVideoPlayerScreenState extends State<LessonVideoPlayerScreen> {
       final controller = WebViewController();
       if (!kIsWeb) {
         await controller.setJavaScriptMode(JavaScriptMode.unrestricted);
-        await controller.setNavigationDelegate(NavigationDelegate(
-          onNavigationRequest: (request) =>
-              isAllowedEmbeddedVideoNavigation(Uri.tryParse(request.url))
-                  ? NavigationDecision.navigate
-                  : NavigationDecision.prevent,
-        ));
       }
       await controller.loadRequest(
         _playbackUri,
@@ -180,17 +174,4 @@ class _LessonVideoPlayerScreenState extends State<LessonVideoPlayerScreen> {
       ),
     );
   }
-}
-
-@visibleForTesting
-bool isAllowedEmbeddedVideoNavigation(Uri? uri) {
-  if (uri == null || uri.scheme != 'https') return false;
-  final host = uri.host.toLowerCase();
-  if (host == 'www.youtube-nocookie.com' || host == 'youtube-nocookie.com') {
-    return uri.pathSegments.isNotEmpty && uri.pathSegments.first == 'embed';
-  }
-  if (host == 'player.vimeo.com') {
-    return uri.pathSegments.isNotEmpty && uri.pathSegments.first == 'video';
-  }
-  return false;
 }
