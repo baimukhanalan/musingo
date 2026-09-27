@@ -160,6 +160,7 @@ class LessonVideoCard extends StatefulWidget {
 
 class _LessonVideoCardState extends State<LessonVideoCard> {
   bool _transcriptExpanded = false;
+  bool _segmentsExpanded = false;
   bool _opening = false;
   bool _checkStarted = false;
   bool _checkRevealed = false;
@@ -240,9 +241,9 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
               ),
               child: Text(
                 state.tr(
-                  ru: 'Дополнительный урок эксперта · без XP',
-                  kk: 'Қосымша сарапшы сабағы · XP берілмейді',
-                  en: 'Optional expert lesson · no XP',
+                  ru: 'Дополнительное видео · без XP',
+                  kk: 'Қосымша бейне · XP берілмейді',
+                  en: 'Optional video · no XP',
                 ),
                 style: const TextStyle(
                   fontFamily: 'Nunito',
@@ -292,7 +293,8 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
                 spacing: 6,
                 runSpacing: 4,
                 children: [
-                  for (final segment in segments)
+                  for (final segment
+                      in _segmentsExpanded ? segments : segments.take(3))
                     OutlinedButton(
                       key: ValueKey('lesson-video-segment-${segment.number}'),
                       onPressed: _opening
@@ -306,11 +308,39 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
                     ),
                 ],
               ),
+              if (segments.length > 3)
+                TextButton(
+                  key: const ValueKey('lesson-video-more-parts'),
+                  onPressed: () => setState(
+                    () => _segmentsExpanded = !_segmentsExpanded,
+                  ),
+                  child: Text(_segmentsExpanded
+                      ? state.tr(
+                          ru: 'Скрыть части',
+                          kk: 'Бөліктерді жасыру',
+                          en: 'Hide parts',
+                          ar: 'إخفاء الأجزاء')
+                      : state.tr(
+                          ru: 'Показать все части',
+                          kk: 'Барлық бөліктерді көрсету',
+                          en: 'Show all parts',
+                          ar: 'عرض جميع الأجزاء')),
+                ),
             ],
             const SizedBox(height: 12),
             _MetadataLine(
               icon: Icons.record_voice_over_outlined,
               text: '${video.speaker.name} · ${video.speaker.role}',
+            ),
+            const SizedBox(height: 7),
+            _MetadataLine(
+              icon: Icons.language_rounded,
+              text: state.tr(
+                ru: 'Язык оригинала: ${video.languageCode.toUpperCase()}',
+                kk: 'Түпнұсқа тілі: ${video.languageCode.toUpperCase()}',
+                en: 'Original language: ${video.languageCode.toUpperCase()}',
+                ar: 'لغة الفيديو الأصلية: ${video.languageCode.toUpperCase()}',
+              ),
             ),
             const SizedBox(height: 7),
             _MetadataLine(

@@ -65,8 +65,8 @@ void main() {
     expect(catalog.forLesson('lesson-2'), [other]);
     expect(
       catalog.forLesson('lesson-1', languageCode: 'kk'),
-      isEmpty,
-      reason: 'A learner should not see a video in another explanation track.',
+      [valid],
+      reason: 'The original video is offered with its language labelled.',
     );
   });
 
@@ -82,12 +82,12 @@ void main() {
     );
     expect(
       LessonVideoCatalog.curated.forLesson('a2', languageCode: 'kk'),
-      isEmpty,
+      hasLength(1),
     );
     expect(
       LessonVideoCatalog.curated.entries.every(
         (video) =>
-            policy.validate(video, now: DateTime.utc(2026, 9, 12)).canDisplay,
+            policy.validate(video, now: DateTime.utc(2026, 9, 27)).canDisplay,
       ),
       isTrue,
     );

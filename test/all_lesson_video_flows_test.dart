@@ -81,6 +81,9 @@ void main() {
             : segments.first.playbackUri(video);
         expect(opened, [primary, primary, Uri.parse(video.embedUrl)]);
         if (segments.isNotEmpty) {
+          if (segments.length > 3) {
+            await _tap(tester, 'lesson-video-more-parts');
+          }
           await _tap(tester, 'lesson-video-segment-${segments.last.number}');
           expect(opened.last, segments.last.playbackUri(video));
         }

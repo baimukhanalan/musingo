@@ -1,4 +1,5 @@
 import '../models/lesson_video.dart';
+import 'academy_lecture_catalog.dart';
 
 class LessonVideoValidation {
   final List<String> errors;
@@ -151,7 +152,11 @@ class LessonVideoCatalog {
   final LessonVideoPolicy policy;
 
   static final LessonVideoCatalog curated = LessonVideoCatalog(
-    entries: _curatedLessonVideos,
+    entries: [
+      ..._curatedLessonVideos,
+      ..._topicMatchedLectures,
+      ..._foundationVideos,
+    ],
   );
 
   const LessonVideoCatalog({
@@ -159,17 +164,193 @@ class LessonVideoCatalog {
     this.policy = const LessonVideoPolicy(),
   });
 
-  List<LessonVideo> forLesson(
-    String lessonId, {
-    String? languageCode,
-  }) =>
-      entries
-          .where((video) =>
-              video.lessonId == lessonId &&
-              (languageCode == null || video.languageCode == languageCode) &&
-              policy.validate(video).canDisplay)
-          .toList(growable: false);
+  List<LessonVideo> forLesson(String lessonId, {String? languageCode}) {
+    final available = entries
+        .where((video) =>
+            video.lessonId == lessonId && policy.validate(video).canDisplay)
+        .toList(growable: false);
+    if (languageCode == null) return available;
+    final native = available
+        .where((video) => video.languageCode == languageCode)
+        .toList(growable: false);
+    // External speech is never translated by the UI. When no native-language
+    // video exists, show the Russian original with a visible language label.
+    if (native.isNotEmpty) return native;
+    final russian = available
+        .where((video) => video.languageCode == 'ru')
+        .toList(growable: false);
+    return russian.isNotEmpty ? russian : available;
+  }
 }
+
+/// These are explicit topic matches, not a periodic filler attached to every
+/// fourth lesson. No mapping is made where the publisher's lecture title does
+/// not support the lesson topic. Full originals remain in Academy's library.
+const Map<String, String> topicMatchedLectureIds = {
+  'q_fatiha_1': 'lO9mDJMiZ6E',
+  'q_fatiha_2': 'ZkhrwBYEJ7s',
+  'q_fatiha_3': 'G1OoOq3xyhE',
+  'q_fatiha_4': 'Ltf63L9LmlA',
+  'q_ikhlas_1': 'DOrOO7PwZXI',
+  'q_falaq_1': 'bTqICPRyUBI',
+  'q_nas_1': 'x8KQ-c-bSCQ',
+  'q_fil_1': 'KG8gTsejHx0',
+  'q_quraysh_1': 'BhyG5s2QA8M',
+  'q_maun_1': 'FzCUUH5jlQ8',
+  'q_kawthar_1': 'PeWlfvzhRWc',
+  'q_kafirun_1': 'DxxTh9y0CxM',
+  'q_nasr_1': 'lqrwJ7sosXk',
+  'q_masad_1': 'b6pO6c2cjB0',
+  'q_full_1_1_7': 'ZkhrwBYEJ7s',
+  'q_full_105_1_5': 'KG8gTsejHx0',
+  'q_full_106_1_4': 'BhyG5s2QA8M',
+  'q_full_107_1_7': 'FzCUUH5jlQ8',
+  'q_full_108_1_3': 'PeWlfvzhRWc',
+  'q_full_109_1_6': 'DxxTh9y0CxM',
+  'q_full_110_1_3': 'lqrwJ7sosXk',
+  'q_full_111_1_5': 'b6pO6c2cjB0',
+  'q_full_112_1_4': 'DOrOO7PwZXI',
+  'q_full_113_1_5': 'bTqICPRyUBI',
+  'q_full_114_1_6': 'x8KQ-c-bSCQ',
+  'a4': 'GtHxfgLr6Qw',
+  'a7': '7g71yKDV4Vw',
+  'a8': 'JaHb-VMs-QE',
+  'a9': '1wauyLGz0qk',
+  'a11': 'H46SELvYrVw',
+  'a12': 'oTONa18LeQY',
+  'a16': 'IUk-Zn4JfL8',
+  'a19': 'xBMZz7FilgA',
+  'a21': 'f0SO6wqovwI',
+  'a23': 'Q4PjIyBHTSw',
+  'a26': 'ktzza5_FuIQ',
+  'a29': 'odW0pz1eDb4',
+  'a32': '7g71yKDV4Vw',
+  'a35': 'SVrZl4FJFdM',
+  'a38': '2zQlxXNxjQM',
+  'a41': 'PhWz-YPjnd4',
+  'a44': 'JaHb-VMs-QE',
+  'a47': 'JEW_ZlGmY4M',
+  'a50': 'LjbsNdJnJlQ',
+  'a53': 'bN_mxfBahEo',
+  'a56': '5lzGpSd_kqs',
+  'a59': 'tLYwIV9nw7E',
+  'a62': 'rGF8zPyIi1k',
+  'a65': 'RWxuPNFVKdw',
+  'a68': 'hN3whZh9m6M',
+  'a71': 'J6NmUun0Dk8',
+  'a74': 'sukS_YYlWrY',
+  'a77': '41VgnUihPJs',
+  'a80': '8o2UZtle-vM',
+  'a83': 'XuvcrPknaiM',
+  'a86': 'Hckut613qDo',
+  'a89': 'VoB84bYm2TM',
+  'a92': 'GtHxfgLr6Qw',
+  'a95': 'moVsbfqq5iw',
+  'a98': 'znJ_sMQgvY4',
+  'tj04': 'DnFtBYCludQ',
+  'tj08': 'OIGd0UcMsnA',
+  'tj12': '5J5A8ijuwUw',
+  'tj16': 'IUk-Zn4JfL8',
+  'tj20': 'Lu5LPX53ETo',
+  'tj26': 'YdWsYhQ8iHI',
+  'tj28': '0qU-3WHwfN8',
+  'tj29': 'LkItu-ypJ48',
+  'tj30': 'W3xcX8seMMY',
+  'tj31': 'ck8WqTU0Wx4',
+  'tj34': 'lxcly0ltFlg',
+  'tj35': 'f0SO6wqovwI',
+};
+
+final List<LessonVideo> _topicMatchedLectures = [
+  for (final match in topicMatchedLectureIds.entries)
+    if (AcademyLectureCatalog.byYoutubeId(match.value) case final lecture?)
+      _fromAcademyLecture(match.key, lecture),
+];
+
+LessonVideo _fromAcademyLecture(String lessonId, AcademyLecture lecture) {
+  final source = lecture.toPlayerVideo();
+  return LessonVideo(
+    id: 'matched-$lessonId',
+    lessonId: lessonId,
+    title: source.title,
+    topic: source.topic,
+    languageCode: source.languageCode,
+    provider: source.provider,
+    embedUrl: source.embedUrl,
+    transcript:
+        'Дополнительный внешний материал по теме «${lecture.title}». Просмотр не заменяет упражнения урока и не даёт XP.',
+    source: source.source,
+    speaker: source.speaker,
+    rights: source.rights,
+    review: source.review,
+  );
+}
+
+final List<LessonVideo> _foundationVideos = [
+  _muslimKzVideo(
+    lessonId: 'r1',
+    youtubeId: 'g0duU7_SaO0',
+    title: 'Ниет мәселесі',
+    sourceUrl: 'https://muslim.kz/videos/view/1961',
+    speaker: 'Қанат Қыдырмин',
+  ),
+  _muslimKzVideo(
+    lessonId: 'r5',
+    youtubeId: 'OVlrikenOIg',
+    title: 'Намаз дәрет және таяммум туралы',
+    sourceUrl: 'https://muslim.kz/videos/view/3008',
+    speaker: 'Muslim.kz',
+  ),
+  _muslimKzVideo(
+    lessonId: 'r9',
+    youtubeId: 'BDKrAve6-g0',
+    title: 'Бес парыз',
+    sourceUrl: 'https://muslim.kz/videos/view/376',
+    speaker: 'Рашид Абдуалиұлы',
+  ),
+];
+
+LessonVideo _muslimKzVideo({
+  required String lessonId,
+  required String youtubeId,
+  required String title,
+  required String sourceUrl,
+  required String speaker,
+}) =>
+    LessonVideo(
+      id: 'matched-$lessonId',
+      lessonId: lessonId,
+      title: title,
+      topic: title,
+      languageCode: 'kk',
+      provider: LessonVideoProvider.youtubeNoCookie,
+      embedUrl: 'https://www.youtube-nocookie.com/embed/$youtubeId',
+      transcript:
+          'Muslim.kz ресми парақшасындағы «$title» бейнесі. Бұл қосымша материал, интерактив сабақтың орнына жүрмейді.',
+      source: LessonVideoSource(
+        title: title,
+        publisher: 'Muslim.kz',
+        url: 'https://www.youtube.com/watch?v=$youtubeId',
+      ),
+      speaker: LessonVideoSpeaker(
+        name: speaker,
+        role: 'Muslim.kz ресми бейнесінің авторы',
+      ),
+      rights: LessonVideoRights(
+        holder: 'Muslim.kz',
+        basis: LessonVideoRightsBasis.platformEmbed,
+        label: 'Ресми сілтеме · жүктеусіз және монтажсыз',
+        evidenceUrl: sourceUrl,
+        confirmedAt: DateTime.utc(2026, 9, 27),
+      ),
+      review: LessonVideoReview(
+        status: LessonVideoReviewStatus.approved,
+        reviewer: 'Muslingo publisher-metadata check',
+        standard:
+            'Optional source-labelled display; topic title checked; religious content awaits independent expert review; no XP',
+        reviewedAt: DateTime.utc(2026, 9, 27),
+      ),
+    );
 
 final List<LessonVideo> _curatedLessonVideos = [
   _ruslanVideo(

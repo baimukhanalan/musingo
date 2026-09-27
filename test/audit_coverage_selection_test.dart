@@ -92,7 +92,8 @@ void main() {
     print('Default lesson samples by course: $lessonCountsByCourse');
     expect(lessonCounts, {'ru': 1148, 'kk': 14, 'en': 14, 'ar': 15});
     expect(moduleCounts, {'ru': 16, 'kk': 16, 'en': 16, 'ar': 16});
-    expect(LessonVideoCatalog.curated.entries, hasLength(13));
+    expect(LessonVideoCatalog.curated.entries,
+        hasLength(13 + topicMatchedLectureIds.length + 3));
     // ignore: avoid_print
     print('Full audit counts: lessons=${1148 * AppLocale.values.length}, '
         'modules=${modules.length * AppLocale.values.length}, '

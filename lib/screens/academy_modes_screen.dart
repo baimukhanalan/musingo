@@ -6,6 +6,7 @@ import '../services/app_state.dart';
 import '../utils/colors.dart';
 import '../widgets/premium_background.dart';
 import 'continuous_audio_screen.dart';
+import 'academy_lectures_screen.dart';
 import 'curriculum_library_screen.dart';
 
 /// Two ways into the same 570-topic catalogue. Switching modes never awards
@@ -79,6 +80,16 @@ class _AcademyModesScreenState extends State<AcademyModesScreen> {
                           en: 'Listen',
                           ar: 'استمع'),
                     ),
+                    const SizedBox(width: 10),
+                    _modeButton(
+                      index: 2,
+                      icon: Icons.ondemand_video_rounded,
+                      label: state.tr(
+                          ru: 'Лекции',
+                          kk: 'Дәрістер',
+                          en: 'Lectures',
+                          ar: 'محاضرات'),
+                    ),
                   ],
                 ),
               ),
@@ -90,11 +101,14 @@ class _AcademyModesScreenState extends State<AcademyModesScreen> {
                         // ignore: invalid_use_of_visible_for_testing_member
                         modulesFuture: widget.modulesFuture,
                         embedded: true)
-                    : ContinuousAudioScreen(
-                        key: const ValueKey('academy-listen-mode'),
-                        // ignore: invalid_use_of_visible_for_testing_member
-                        modulesFuture: widget.modulesFuture,
-                        embedded: true),
+                    : _mode == 1
+                        ? ContinuousAudioScreen(
+                            key: const ValueKey('academy-listen-mode'),
+                            // ignore: invalid_use_of_visible_for_testing_member
+                            modulesFuture: widget.modulesFuture,
+                            embedded: true)
+                        : const AcademyLecturesScreen(
+                            key: ValueKey('academy-lectures-mode')),
               ),
             ],
           ),

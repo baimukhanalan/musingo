@@ -1,4 +1,5 @@
 import '../models/lesson_video.dart';
+import 'academy_lecture_catalog.dart';
 
 /// A timed view of an original provider-hosted video, not a copied clip.
 class LessonVideoSegment {
@@ -52,12 +53,18 @@ const Map<String, int> reviewedVideoDurationSeconds = {
   'ruslan-idgham-without-ghunnah': 1055,
   'ruslan-iqlab': 550,
   'ruslan-mim-sakinah': 1167,
+  'matched-r1': 537,
+  'matched-r5': 361,
+  'matched-r9': 403,
 };
 
 /// At most six minutes per part. Balanced boundaries avoid a tiny last part.
 /// The learner can still select the uncut original video separately.
 List<LessonVideoSegment> lessonVideoSegments(LessonVideo video) {
-  final duration = reviewedVideoDurationSeconds[video.id];
+  final duration = reviewedVideoDurationSeconds[video.id] ??
+      AcademyLectureCatalog.byYoutubeId(
+              Uri.tryParse(video.embedUrl)?.pathSegments.lastOrNull ?? '')
+          ?.durationSeconds;
   if (video.provider != LessonVideoProvider.youtubeNoCookie ||
       duration == null ||
       duration <= 360) {
