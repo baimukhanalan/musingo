@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:muslingo/models/lesson.dart';
 import 'package:muslingo/screens/lesson_screen.dart';
 import 'package:muslingo/services/app_state.dart';
+import 'package:muslingo/services/lesson_video_catalog.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -37,7 +38,10 @@ void main() {
       ChangeNotifierProvider<AppState>.value(
         value: state,
         child: MaterialApp(
-          home: const LessonScreen(lesson: lesson),
+          home: const LessonScreen(
+            lesson: lesson,
+            videoCatalog: LessonVideoCatalog(),
+          ),
           onGenerateRoute: (settings) => MaterialPageRoute<void>(
             settings: settings,
             builder: (_) => const Scaffold(
@@ -176,7 +180,10 @@ Widget _questionLessonApp(AppState state) {
   return ChangeNotifierProvider<AppState>.value(
     value: state,
     child: MaterialApp(
-      home: const LessonScreen(lesson: lesson),
+      home: const LessonScreen(
+        lesson: lesson,
+        videoCatalog: LessonVideoCatalog(),
+      ),
       onGenerateRoute: (settings) => MaterialPageRoute<void>(
         settings: settings,
         builder: (_) => const Scaffold(key: ValueKey('lesson_review_route')),
