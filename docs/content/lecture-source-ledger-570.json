@@ -8407,9 +8407,13 @@
         "lecture_rights": "not_completed_for_new_manuscript",
         "source_to_objective_alignment": "not_human_verified"
       },
-      "manuscript": null,
+      "manuscript": {
+        "status": "editorial_draft_not_for_publication",
+        "locale": "ru",
+        "word_count": 861
+      },
       "open_gates": [
-        "full_lecture_manuscript_missing",
+        "draft_manuscript_not_expert_reviewed",
         "module_claims_not_individually_verified",
         "human_religious_and_language_review_required",
         "quran_examples_not_yet_selected_or_checked",

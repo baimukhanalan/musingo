@@ -115,6 +115,15 @@ class _HomeScreenState extends State<HomeScreen> {
           // слайверы самоизмеряемые, поэтому такой проблемы нет.
           child: CustomScrollView(
             slivers: [
+              // The iPhone standalone web app can report zero top padding even
+              // while its status bar overlays the viewport. Keep the greeting
+              // comfortably below that area on native and installed web alike.
+              const SliverToBoxAdapter(
+                child: SizedBox(
+                  key: ValueKey('home-top-breathing-space'),
+                  height: 56,
+                ),
+              ),
               // Keep the greeting; language selection lives in Settings.
               SliverToBoxAdapter(
                 child: _GreetingHeader(name: user.name),

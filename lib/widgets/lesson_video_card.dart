@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../models/lesson_video.dart';
+import '../screens/lesson_video_player_screen.dart';
 import '../services/app_state.dart';
 import '../services/lesson_video_catalog.dart';
 import '../services/lesson_content_localization.dart';
@@ -144,11 +144,13 @@ List<LessonVideoKnowledgeChallenge> buildLessonVideoChallenges(
 class LessonVideoCard extends StatefulWidget {
   final LessonVideo video;
   final LessonVideoOpener? opener;
+  final Widget Function(Uri)? embeddedPlayerBuilder;
 
   const LessonVideoCard({
     super.key,
     required this.video,
     this.opener,
+    @visibleForTesting this.embeddedPlayerBuilder,
   });
 
   @override
@@ -200,8 +202,7 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
                     child: ExcludeSemantics(
                       child: IconButton.filled(
                         key: const Key('lesson-video-play'),
-                        onPressed:
-                            _opening ? null : () => _open(video.source.url),
+                        onPressed: _opening ? null : () => _open(video),
                         icon: _opening
                             ? const SizedBox.square(
                                 dimension: 24,
@@ -327,12 +328,12 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
                 ),
                 TextButton.icon(
                   key: const Key('lesson-video-source'),
-                  onPressed: _opening ? null : () => _open(video.source.url),
-                  icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                  onPressed: _opening ? null : () => _open(video),
+                  icon: const Icon(Icons.play_circle_outline_rounded, size: 18),
                   label: Text(state.tr(
-                    ru: 'Источник',
-                    kk: 'Дереккөз',
-                    en: 'Source',
+                    ru: 'Смотреть видео',
+                    kk: 'Бейнені көру',
+                    en: 'Watch video',
                   )),
                 ),
               ],
@@ -547,13 +548,15 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
     }
   }
 
-  Future<void> _open(String value) async {
+  Future<void> _open(LessonVideo video) async {
     if (_opening) return;
     setState(() => _opening = true);
-    final uri = Uri.parse(value);
+    final uri = Uri.parse(video.embedUrl);
     var opened = false;
     try {
-      opened = await (widget.opener ?? _openExternally)(uri);
+      opened = widget.opener != null
+          ? await widget.opener!(uri)
+          : await _openInApp(video);
     } catch (_) {
       // Browser/native launchers may throw when blocked or unavailable. Release
       // the busy state so the learner can retry or use the study notes.
@@ -574,8 +577,17 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
     );
   }
 
-  Future<bool> _openExternally(Uri uri) =>
-      launchUrl(uri, mode: LaunchMode.externalApplication);
+  Future<bool> _openInApp(LessonVideo video) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => LessonVideoPlayerScreen(
+          video: video,
+          playerBuilder: widget.embeddedPlayerBuilder,
+        ),
+      ),
+    );
+    return true;
+  }
 }
 
 class _MetadataLine extends StatelessWidget {

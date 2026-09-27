@@ -1,6 +1,11 @@
 /// Arabic UI copy for the existing English-keyed presentation layer.
 /// User messages, lesson source material, and quotations are not translated here.
 const Map<String, String> arabicUiStrings = {
+  "Video lesson": "درس مرئي",
+  "The embedded player is unavailable. Return to the lesson notes.":
+      "المشغّل المضمّن غير متاح. عُد إلى ملاحظات الدرس.",
+  "Back to lesson": "العودة إلى الدرس",
+  "Watch video": "شاهد الفيديو",
   "Enter a valid email address.": "أدخل عنوان بريد إلكتروني صالحًا.",
   "If the account exists and its email is verified, a link has been sent.":
       "إذا كان الحساب موجودًا وبريده مؤكّدًا، فقد أُرسل رابط.",

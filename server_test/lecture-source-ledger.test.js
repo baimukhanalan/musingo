@@ -49,7 +49,8 @@ test('ledger covers every module exactly once with provenance and rights gates',
   assert.ok(byId['FND-001'].open_gates.includes('draft_manuscript_not_expert_reviewed'));
   assert.equal(byId['QUR-001'].manuscript.status, 'editorial_draft_not_for_publication');
   assert.equal(byId['ARB-001'].manuscript.status, 'editorial_draft_not_for_publication');
-  assert.equal(ledger.modules.filter((module) => module.manuscript).length, 3);
+  assert.equal(byId['ARB-002'].manuscript.status, 'editorial_draft_not_for_publication');
+  assert.equal(ledger.modules.filter((module) => module.manuscript).length, 4);
   assert.equal(new Set(ledger.modules.flatMap((module) => module.declared_urls.map((source) => source.url))).size, 12);
 });
 

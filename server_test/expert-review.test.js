@@ -17,7 +17,7 @@ test('expert review package includes every topic without inventing lecture appro
   )));
   assert.deepEqual(
     data.modules.filter((module) => module.lecture_drafts.length).map((module) => module.id).sort(),
-    ['ARB-001', 'FND-001', 'QUR-001'],
+    ['ARB-001', 'ARB-002', 'FND-001', 'QUR-001'],
   );
 });
 

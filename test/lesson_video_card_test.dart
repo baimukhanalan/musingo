@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:muslingo/services/app_state.dart';
 import 'package:muslingo/services/lesson_video_catalog.dart';
+import 'package:muslingo/screens/lesson_video_player_screen.dart';
 import 'package:muslingo/widgets/lesson_video_card.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -99,7 +100,7 @@ void main() {
     await tester.tap(find.byKey(const Key('lesson-video-play')));
     await tester.pump();
 
-    expect(opened, [Uri.parse(video.source.url)]);
+    expect(opened, [Uri.parse(video.embedUrl)]);
 
     semantics.dispose();
     await tester.pumpWidget(const SizedBox.shrink());
@@ -125,6 +126,45 @@ void main() {
     expect(find.byKey(const Key('lesson-video-play')), findsNothing);
     expect(find.text(unsafe.title), findsNothing);
 
+    await tester.pumpWidget(const SizedBox.shrink());
+    state.dispose();
+  });
+
+  testWidgets('opens the provider embed inside a Muslingo route',
+      (tester) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final state = await _state(tester);
+    final video = testLessonVideo();
+    final embedded = <Uri>[];
+    await tester.pumpWidget(ChangeNotifierProvider<AppState>.value(
+      value: state,
+      child: MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: LessonVideoCard(
+              video: video,
+              embeddedPlayerBuilder: (uri) {
+                embedded.add(uri);
+                return const ColoredBox(color: Colors.black);
+              },
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('lesson-video-play')));
+    await tester.pumpAndSettle();
+    expect(find.byType(LessonVideoPlayerScreen), findsOneWidget);
+    expect(embedded, [Uri.parse(video.embedUrl)]);
+    expect(find.byKey(const Key('lesson-video-close')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('lesson-video-close')));
+    await tester.pumpAndSettle();
+    expect(find.byType(LessonVideoPlayerScreen), findsNothing);
+    expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     state.dispose();
   });

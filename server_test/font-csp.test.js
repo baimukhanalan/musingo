@@ -44,6 +44,7 @@ test('font fallback permission does not broaden other CSP directives', () => {
     'style-src': ["'self'", "'unsafe-inline'"],
     'img-src': ["'self'", 'data:', 'blob:', 'https://cdn.islamic.network', 'https://everyayah.com'],
     'media-src': ["'self'", 'blob:', 'https://cdn.islamic.network', 'https://everyayah.com', 'https://server8.mp3quran.net'],
+    'frame-src': ['https://www.youtube-nocookie.com', 'https://www.youtube.com', 'https://player.vimeo.com'],
     'worker-src': ["'self'", 'blob:'],
     'manifest-src': ["'self'"],
   });

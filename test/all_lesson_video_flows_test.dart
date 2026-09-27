@@ -70,11 +70,11 @@ void main() {
         expect(opened, isEmpty, reason: 'Videos must not autoplay');
         await _tap(tester, 'lesson-video-play');
         expect(find.byType(SnackBar), findsOneWidget);
-        // A failed external launcher must not leave an endless busy button.
+        // A failed embedded-player opener must not leave a busy button.
         await tester.pump(const Duration(seconds: 5));
         await _tap(tester, 'lesson-video-play');
         await _tap(tester, 'lesson-video-source');
-        expect(opened, List.filled(3, Uri.parse(video.source.url)));
+        expect(opened, List.filled(3, Uri.parse(video.embedUrl)));
         await _tap(tester, 'lesson-video-transcript-toggle');
         expect(
             tester

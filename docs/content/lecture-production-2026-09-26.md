@@ -20,23 +20,24 @@ of a religious claim, reuse rights or the exact source-to-objective match.
 The ledger generator strips punctuation after two Corpus `.jsp` addresses in
 the original plan so review links do not end in a stray semicolon.
 
-## Baseline on 2026-09-26
+## Current baseline on 2026-09-27
 
 | Track | Planned topics | Unique plan locators | Substantive lecture drafts | Human-approved new lectures |
 | --- | ---: | ---: | ---: | ---: |
 | Quran | 150 | 25 | 1 | 0 |
-| Arabic | 170 | 68 | 1 | 0 |
+| Arabic | 170 | 68 | 2 | 0 |
 | Tajwid | 70 | 1 | 0 | 0 |
 | Foundations/Academy | 180 | 18 | 1 | 0 |
-| **Total** | **570** | **112 within-track** | **3** | **0** |
+| **Total** | **570** | **112 within-track** | **4** | **0** |
 
 The original editorial drafts are [`FND-001`](./lectures/FND-001.json),
-[`QUR-001`](./lectures/QUR-001.json) and
-[`ARB-001`](./lectures/ARB-001.json). Each exceeds 650 Russian words and has
+[`QUR-001`](./lectures/QUR-001.json),
+[`ARB-001`](./lectures/ARB-001.json) and
+[`ARB-002`](./lectures/ARB-002.json). Each exceeds 650 Russian words and has
 paragraph-level source IDs, rights notes and an explicit review status. They
 are **not in the app** and must not be labelled approved religious lectures.
 The new Quran draft deliberately teaches only the verse map, without copying
-or interpreting a translation. The Arabic draft uses original practice letter
+or interpreting a translation. The Arabic drafts use original practice letter
 pairs and the [Unicode Arabic joining rules](https://www.unicode.org/versions/Unicode17.0.0/core-spec/chapter-9/)
 alongside the Quranic Arabic Corpus's phonetic reference; it does not claim
 teacher-validated pronunciation or Quran example selection.

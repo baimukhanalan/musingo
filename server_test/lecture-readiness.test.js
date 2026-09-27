@@ -12,17 +12,17 @@ test('570-module plan and substantive drafts remain distinct', () => {
   const result = auditLectureReadiness(inputs);
   assert.equal(result.plan_modules, 570);
   assert.equal(result.owner_verified_plan_rows, 570);
-  assert.equal(result.substantive_lecture_drafts, 3);
+  assert.equal(result.substantive_lecture_drafts, 4);
   assert.equal(result.human_approved_lectures, 0);
-  assert.equal(result.modules_without_lecture_draft, 567);
+  assert.equal(result.modules_without_lecture_draft, 566);
   assert.equal(result.source_gaps.exact_mapping_pending, 70);
   assert.equal(result.source_gaps.translation_or_tafsir_not_selected, 150);
   assert.deepEqual(result.errors, []);
 });
 
-test('three lectures are real-length drafts with precise sources, not publication claims', () => {
+test('four lectures are real-length drafts with precise sources, not publication claims', () => {
   const { plan, lectures } = loadReadinessInputs();
-  for (const id of ['FND-001', 'QUR-001', 'ARB-001']) {
+  for (const id of ['FND-001', 'QUR-001', 'ARB-001', 'ARB-002']) {
     const draft = lectures.find((lecture) => lecture.module_id === id);
     assert.ok(draft);
     assert.ok(lectureWordCount(draft) >= 650);
