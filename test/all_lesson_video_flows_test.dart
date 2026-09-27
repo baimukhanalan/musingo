@@ -87,38 +87,45 @@ void main() {
           await _tap(tester, 'lesson-video-segment-${segments.last.number}');
           expect(opened.last, segments.last.playbackUri(video));
         }
-        await _tap(tester, 'lesson-video-transcript-toggle');
-        expect(
-            tester
-                .widget<SelectableText>(
-                    find.byKey(const Key('lesson-video-transcript')))
-                .maxLines,
-            isNull);
-        await _tap(tester, 'lesson-video-transcript-toggle');
-        expect(
-            tester
-                .widget<SelectableText>(
-                    find.byKey(const Key('lesson-video-transcript')))
-                .maxLines,
-            5);
-        await _tap(tester, 'lesson-video-check-start');
-        final challenges =
-            buildLessonVideoChallenges(video, locale: locale.code);
-        final submit = find.byKey(const Key('lesson-video-check-submit'));
-        for (final challenge in challenges) {
-          expect(tester.widget<FilledButton>(submit).onPressed, isNull);
-          await _tap(tester,
-              'lesson-video-check-answer-${(challenge.correctIndex + 1) % 4}');
-          await _tap(tester, 'lesson-video-check-submit');
-          await _tap(tester, 'lesson-video-check-submit');
-          expect(tester.widget<FilledButton>(submit).onPressed, isNull);
-          await _tap(
-              tester, 'lesson-video-check-answer-${challenge.correctIndex}');
-          await _tap(tester, 'lesson-video-check-submit');
-          await _tap(tester, 'lesson-video-check-submit');
+        if (video.id.startsWith('matched-')) {
+          expect(
+              find.byKey(const Key('lesson-video-check-start')), findsNothing);
+          expect(find.byKey(const Key('lesson-video-transcript-toggle')),
+              findsNothing);
+        } else {
+          await _tap(tester, 'lesson-video-transcript-toggle');
+          expect(
+              tester
+                  .widget<SelectableText>(
+                      find.byKey(const Key('lesson-video-transcript')))
+                  .maxLines,
+              isNull);
+          await _tap(tester, 'lesson-video-transcript-toggle');
+          expect(
+              tester
+                  .widget<SelectableText>(
+                      find.byKey(const Key('lesson-video-transcript')))
+                  .maxLines,
+              5);
+          await _tap(tester, 'lesson-video-check-start');
+          final challenges =
+              buildLessonVideoChallenges(video, locale: locale.code);
+          final submit = find.byKey(const Key('lesson-video-check-submit'));
+          for (final challenge in challenges) {
+            expect(tester.widget<FilledButton>(submit).onPressed, isNull);
+            await _tap(tester,
+                'lesson-video-check-answer-${(challenge.correctIndex + 1) % 4}');
+            await _tap(tester, 'lesson-video-check-submit');
+            await _tap(tester, 'lesson-video-check-submit');
+            expect(tester.widget<FilledButton>(submit).onPressed, isNull);
+            await _tap(
+                tester, 'lesson-video-check-answer-${challenge.correctIndex}');
+            await _tap(tester, 'lesson-video-check-submit');
+            await _tap(tester, 'lesson-video-check-submit');
+          }
+          expect(find.byKey(const Key('lesson-video-check-mastered')),
+              findsOneWidget);
         }
-        expect(find.byKey(const Key('lesson-video-check-mastered')),
-            findsOneWidget);
         expect(tester.takeException(), isNull, reason: video.id);
         await tester.pumpWidget(const SizedBox.shrink());
         await tester.pump();

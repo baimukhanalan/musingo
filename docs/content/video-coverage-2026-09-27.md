@@ -8,6 +8,8 @@ Muslingo keeps two different formats:
   as a complete treatment of all letters in that lesson. Long videos play as
   provider-hosted time ranges of at most six minutes; the full original is
   separately available. Watching does not award XP or finish the lesson.
+  Newly attached videos do not expose an auto-generated knowledge check from
+  title metadata alone; assessments require expert-reviewed content notes.
 - **Academy → Lectures** contains **220 complete, uncut external videos**:
   139 on reading the Quran, 51 on surah meaning, and 30 on prayer. These are
   separate from the 570 interactive Academy modules, not 220 newly authored

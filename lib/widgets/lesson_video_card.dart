@@ -173,6 +173,7 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
     final state = context.watch<AppState>();
     final video = LessonContentLocalization.localizeVideo(
         widget.video, state.locale.code);
+    final sourceOnly = widget.video.id.startsWith('matched-');
     final segments = lessonVideoSegments(widget.video);
     if (!const LessonVideoPolicy().validate(widget.video).canDisplay) {
       return const SizedBox.shrink();
@@ -351,9 +352,14 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
             const SizedBox(height: 16),
             Text(
               state.tr(
-                ru: 'Конспект и текстовая опора',
-                kk: 'Конспект және мәтіндік тірек',
-                en: 'Study notes and text support',
+                ru: sourceOnly ? 'Об источнике' : 'Конспект и текстовая опора',
+                kk: sourceOnly
+                    ? 'Дереккөз туралы'
+                    : 'Конспект және мәтіндік тірек',
+                en: sourceOnly
+                    ? 'About this source'
+                    : 'Study notes and text support',
+                ar: sourceOnly ? 'عن هذا المصدر' : null,
               ),
               style: const TextStyle(
                 fontFamily: 'Nunito',
@@ -366,7 +372,7 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
             SelectableText(
               video.transcript,
               key: const Key('lesson-video-transcript'),
-              maxLines: _transcriptExpanded ? null : 5,
+              maxLines: sourceOnly || _transcriptExpanded ? null : 5,
               style: const TextStyle(
                 fontFamily: 'Nunito',
                 fontSize: 14,
@@ -380,25 +386,26 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
               spacing: 8,
               runSpacing: 4,
               children: [
-                TextButton.icon(
-                  key: const Key('lesson-video-transcript-toggle'),
-                  onPressed: () => setState(
-                    () => _transcriptExpanded = !_transcriptExpanded,
+                if (!sourceOnly)
+                  TextButton.icon(
+                    key: const Key('lesson-video-transcript-toggle'),
+                    onPressed: () => setState(
+                      () => _transcriptExpanded = !_transcriptExpanded,
+                    ),
+                    icon: Icon(
+                      _transcriptExpanded
+                          ? Icons.expand_less_rounded
+                          : Icons.expand_more_rounded,
+                    ),
+                    label: Text(
+                      _transcriptExpanded
+                          ? state.tr(ru: 'Свернуть', kk: 'Жию', en: 'Show less')
+                          : state.tr(
+                              ru: 'Весь конспект',
+                              kk: 'Толық конспект',
+                              en: 'Full study notes'),
+                    ),
                   ),
-                  icon: Icon(
-                    _transcriptExpanded
-                        ? Icons.expand_less_rounded
-                        : Icons.expand_more_rounded,
-                  ),
-                  label: Text(
-                    _transcriptExpanded
-                        ? state.tr(ru: 'Свернуть', kk: 'Жию', en: 'Show less')
-                        : state.tr(
-                            ru: 'Весь конспект',
-                            kk: 'Толық конспект',
-                            en: 'Full study notes'),
-                  ),
-                ),
                 TextButton.icon(
                   key: const Key('lesson-video-source'),
                   onPressed: _opening ? null : () => _open(video),
@@ -414,7 +421,7 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
               ],
             ),
             const SizedBox(height: 10),
-            _knowledgeCheck(state, video),
+            if (!sourceOnly) _knowledgeCheck(state, video),
           ],
         ),
       ),

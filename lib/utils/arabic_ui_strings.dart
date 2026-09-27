@@ -575,6 +575,7 @@ const Map<String, String> arabicUiStrings = {
   "Open video": "فتح الفيديو",
   "Open weekly league": "فتح الدوري الأسبوعي",
   "Optional video · no XP": "فيديو إضافي · دون نقاط خبرة",
+  "About this source": "عن هذا المصدر",
   "Show all parts": "عرض جميع الأجزاء",
   "Hide parts": "إخفاء الأجزاء",
   "220 complete lectures": "٢٢٠ محاضرة كاملة",
