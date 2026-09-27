@@ -91,6 +91,13 @@ void main() {
       ),
       isTrue,
     );
+    expect(
+      LessonVideoCatalog.curated.entries.every(
+        (video) => video.rights.basis == LessonVideoRightsBasis.platformEmbed,
+      ),
+      isTrue,
+      reason: 'Official embeds are not a claim of direct reuse permission.',
+    );
   });
 
   test('CMS JSON round-trip retains mandatory governance metadata', () {

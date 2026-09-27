@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:muslingo/services/app_state.dart';
 import 'package:muslingo/services/lesson_content_localization.dart';
 import 'package:muslingo/services/lesson_video_catalog.dart';
+import 'package:muslingo/services/lesson_video_segments.dart';
 import 'package:muslingo/utils/app_locale.dart';
 import 'package:muslingo/widgets/lesson_video_card.dart';
 
@@ -74,7 +75,15 @@ void main() {
         await tester.pump(const Duration(seconds: 5));
         await _tap(tester, 'lesson-video-play');
         await _tap(tester, 'lesson-video-source');
-        expect(opened, List.filled(3, Uri.parse(video.embedUrl)));
+        final segments = lessonVideoSegments(video);
+        final primary = segments.isEmpty
+            ? Uri.parse(video.embedUrl)
+            : segments.first.playbackUri(video);
+        expect(opened, [primary, primary, Uri.parse(video.embedUrl)]);
+        if (segments.isNotEmpty) {
+          await _tap(tester, 'lesson-video-segment-${segments.last.number}');
+          expect(opened.last, segments.last.playbackUri(video));
+        }
         await _tap(tester, 'lesson-video-transcript-toggle');
         expect(
             tester

@@ -5,6 +5,7 @@ enum LessonVideoRightsBasis {
   licensed,
   permissionGranted,
   publicDomain,
+  platformEmbed,
 }
 
 enum LessonVideoReviewStatus { draft, pending, approved, rejected }

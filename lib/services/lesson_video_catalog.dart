@@ -369,7 +369,7 @@ LessonVideo _youtubeVideo({
       speaker: LessonVideoSpeaker(name: speakerName, role: speakerRole),
       rights: LessonVideoRights(
         holder: publisher,
-        basis: LessonVideoRightsBasis.permissionGranted,
+        basis: LessonVideoRightsBasis.platformEmbed,
         label: rightsLabel,
         evidenceUrl: rightsEvidenceUrl,
         confirmedAt: DateTime.utc(2026, 9, 12),

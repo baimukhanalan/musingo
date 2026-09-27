@@ -6,6 +6,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../models/lesson_video.dart';
 import '../services/app_state.dart';
 import '../services/lesson_video_catalog.dart';
+import '../services/lesson_video_segments.dart';
 import '../services/video_embed_platform_stub.dart'
     if (dart.library.js_interop) '../services/video_embed_platform_web.dart';
 import '../utils/colors.dart';
@@ -14,11 +15,13 @@ import '../utils/colors.dart';
 /// stream is downloaded, proxied or repackaged by the application.
 class LessonVideoPlayerScreen extends StatefulWidget {
   final LessonVideo video;
+  final LessonVideoSegment? segment;
   final Widget Function(Uri)? playerBuilder;
 
   const LessonVideoPlayerScreen({
     super.key,
     required this.video,
+    this.segment,
     this.playerBuilder,
   });
 
@@ -31,11 +34,21 @@ class _LessonVideoPlayerScreenState extends State<LessonVideoPlayerScreen> {
   WebViewController? _controller;
   String? _error;
 
+  Uri get _playbackUri =>
+      widget.segment?.playbackUri(widget.video) ??
+      Uri.parse(widget.video.embedUrl);
+
   @override
   void initState() {
     super.initState();
     if (!const LessonVideoPolicy().validate(widget.video).canDisplay) {
       _error = 'invalid_video';
+      return;
+    }
+    try {
+      _playbackUri;
+    } catch (_) {
+      _error = 'invalid_segment';
       return;
     }
     if (widget.playerBuilder == null) _load();
@@ -49,7 +62,7 @@ class _LessonVideoPlayerScreenState extends State<LessonVideoPlayerScreen> {
         await controller.setJavaScriptMode(JavaScriptMode.unrestricted);
       }
       await controller.loadRequest(
-        Uri.parse(widget.video.embedUrl),
+        _playbackUri,
         // YouTube requires an identifiable embedding client in native
         // WebViews. A browser iframe supplies the page origin automatically.
         headers: kIsWeb
@@ -90,7 +103,7 @@ class _LessonVideoPlayerScreenState extends State<LessonVideoPlayerScreen> {
                 // high. Narrow phones would fall below that at a strict 16:9.
                 height: (constraints.maxWidth * 9 / 16).clamp(200.0, 420.0),
                 child: widget.playerBuilder != null
-                    ? widget.playerBuilder!(Uri.parse(widget.video.embedUrl))
+                    ? widget.playerBuilder!(_playbackUri)
                     : _controller != null
                         ? WebViewWidget(
                             key: const ValueKey('lesson-video-embedded-player'),
@@ -124,6 +137,16 @@ class _LessonVideoPlayerScreenState extends State<LessonVideoPlayerScreen> {
                 ),
               ),
             ),
+            if (widget.segment != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  '${widget.segment!.number}/${widget.segment!.total} · '
+                  '${lessonVideoTimecode(widget.segment!.startSeconds)}–'
+                  '${lessonVideoTimecode(widget.segment!.endSeconds)}',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Text(

@@ -5,6 +5,7 @@ import '../models/lesson_video.dart';
 import '../screens/lesson_video_player_screen.dart';
 import '../services/app_state.dart';
 import '../services/lesson_video_catalog.dart';
+import '../services/lesson_video_segments.dart';
 import '../services/lesson_content_localization.dart';
 import '../utils/colors.dart';
 import '../utils/arabic_ui_strings.dart';
@@ -171,6 +172,7 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
     final state = context.watch<AppState>();
     final video = LessonContentLocalization.localizeVideo(
         widget.video, state.locale.code);
+    final segments = lessonVideoSegments(widget.video);
     if (!const LessonVideoPolicy().validate(widget.video).canDisplay) {
       return const SizedBox.shrink();
     }
@@ -202,7 +204,13 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
                     child: ExcludeSemantics(
                       child: IconButton.filled(
                         key: const Key('lesson-video-play'),
-                        onPressed: _opening ? null : () => _open(video),
+                        onPressed: _opening
+                            ? null
+                            : () => _open(
+                                  video,
+                                  segment:
+                                      segments.isEmpty ? null : segments.first,
+                                ),
                         icon: _opening
                             ? const SizedBox.square(
                                 dimension: 24,
@@ -264,6 +272,41 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
                 color: AppColors.textGrey,
               ),
             ),
+            if (segments.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                state.tr(
+                  ru: 'Короткие части · до 6 минут',
+                  kk: 'Қысқа бөліктер · 6 минутқа дейін',
+                  en: 'Short parts · up to 6 minutes',
+                ),
+                style: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.navyDark,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: [
+                  for (final segment in segments)
+                    OutlinedButton(
+                      key: ValueKey('lesson-video-segment-${segment.number}'),
+                      onPressed: _opening
+                          ? null
+                          : () => _open(video, segment: segment),
+                      child: Text(
+                        '${segment.number} · '
+                        '${lessonVideoTimecode(segment.startSeconds)}–'
+                        '${lessonVideoTimecode(segment.endSeconds)}',
+                      ),
+                    ),
+                ],
+              ),
+            ],
             const SizedBox(height: 12),
             _MetadataLine(
               icon: Icons.record_voice_over_outlined,
@@ -331,9 +374,11 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
                   onPressed: _opening ? null : () => _open(video),
                   icon: const Icon(Icons.play_circle_outline_rounded, size: 18),
                   label: Text(state.tr(
-                    ru: 'Смотреть видео',
-                    kk: 'Бейнені көру',
-                    en: 'Watch video',
+                    ru: segments.isEmpty
+                        ? 'Смотреть видео'
+                        : 'Смотреть целиком',
+                    kk: segments.isEmpty ? 'Бейнені көру' : 'Толық көру',
+                    en: segments.isEmpty ? 'Watch video' : 'Watch full video',
                   )),
                 ),
               ],
@@ -548,15 +593,15 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
     }
   }
 
-  Future<void> _open(LessonVideo video) async {
+  Future<void> _open(LessonVideo video, {LessonVideoSegment? segment}) async {
     if (_opening) return;
     setState(() => _opening = true);
-    final uri = Uri.parse(video.embedUrl);
+    final uri = segment?.playbackUri(video) ?? Uri.parse(video.embedUrl);
     var opened = false;
     try {
       opened = widget.opener != null
           ? await widget.opener!(uri)
-          : await _openInApp(video);
+          : await _openInApp(video, segment: segment);
     } catch (_) {
       // Browser/native launchers may throw when blocked or unavailable. Release
       // the busy state so the learner can retry or use the study notes.
@@ -577,11 +622,13 @@ class _LessonVideoCardState extends State<LessonVideoCard> {
     );
   }
 
-  Future<bool> _openInApp(LessonVideo video) async {
+  Future<bool> _openInApp(LessonVideo video,
+      {LessonVideoSegment? segment}) async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => LessonVideoPlayerScreen(
           video: video,
+          segment: segment,
           playerBuilder: widget.embeddedPlayerBuilder,
         ),
       ),

@@ -6,6 +6,8 @@ const Map<String, String> arabicUiStrings = {
       "المشغّل المضمّن غير متاح. عُد إلى ملاحظات الدرس.",
   "Back to lesson": "العودة إلى الدرس",
   "Watch video": "شاهد الفيديو",
+  "Watch full video": "شاهد الفيديو كاملًا",
+  "Short parts · up to 6 minutes": "مقاطع قصيرة · حتى ٦ دقائق",
   "Enter a valid email address.": "أدخل عنوان بريد إلكتروني صالحًا.",
   "If the account exists and its email is verified, a link has been sent.":
       "إذا كان الحساب موجودًا وبريده مؤكّدًا، فقد أُرسل رابط.",
