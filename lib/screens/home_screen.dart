@@ -35,6 +35,28 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   _LearningMode _mode = _LearningMode.quran;
+  int? _prewarmedWorldWidth;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final width = (MediaQuery.sizeOf(context).width *
+            MediaQuery.devicePixelRatioOf(context))
+        .round()
+        .clamp(384, 768);
+    if (_prewarmedWorldWidth == width) return;
+    _prewarmedWorldWidth = width;
+    // All four compressed backgrounds total under 0.5 MB on disk. Begin
+    // decoding while the learner is on Home, before a course route is opened.
+    for (final mode in _LearningMode.values) {
+      final image = ResizeImage.resizeIfNeeded(
+        width,
+        null,
+        AssetImage('assets/images/world_${mode.name}.webp'),
+      );
+      unawaited(precacheImage(image, context, onError: (_, __) {}));
+    }
+  }
 
   static const _quranIcons = [
     Icons.auto_awesome_rounded,

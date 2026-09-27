@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -161,12 +162,22 @@ class _MuslingoAppState extends State<MuslingoApp> with WidgetsBindingObserver {
           ],
           builder: (context, child) => ColoredBox(
             color: AppColors.backgroundGrey,
-            child: Center(
-              child: ConstrainedBox(
-                // The premium reference is a 402pt mobile composition. Keep a
-                // phone-like canvas on desktop while still filling real phones.
-                constraints: const BoxConstraints(maxWidth: 430),
-                child: child ?? const SizedBox.shrink(),
+            child: SafeArea(
+              // iOS installed web apps can report no top padding while the
+              // system status bar still overlays the Flutter viewport. Apply
+              // one shared inset to every route, including secondary pages.
+              top: true,
+              bottom: false,
+              minimum: EdgeInsets.only(
+                top: defaultTargetPlatform == TargetPlatform.iOS ? 72 : 0,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  // The premium reference is a 402pt mobile composition. Keep a
+                  // phone-like canvas on desktop while still filling real phones.
+                  constraints: const BoxConstraints(maxWidth: 430),
+                  child: child ?? const SizedBox.shrink(),
+                ),
               ),
             ),
           ),
